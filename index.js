@@ -1804,13 +1804,14 @@ try {
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
     console.log("Cleared global application commands (guild-only mode enabled).");
 
+    // If using a single server setup, only register commands in the configured GUILD_ID.
+    // Fall back to department-configured guilds only if GUILD_ID is not set.
     const configuredGuildIds = Object.keys(getAllDepartments())
         .filter(id => /^\d{17,20}$/.test(String(id)));
 
-    const commandGuildIds = Array.from(new Set([
-        GUILD_ID,
-        ...configuredGuildIds
-    ].filter(Boolean)));
+    const commandGuildIds = GUILD_ID
+        ? [String(GUILD_ID)]
+        : Array.from(new Set(configuredGuildIds));
 
     if (commandGuildIds.length === 0) {
         console.warn("No guild IDs available for guild command registration.");
