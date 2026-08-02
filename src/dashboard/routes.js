@@ -1506,8 +1506,8 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             const { status } = req.body;
             const valid = [
                 "online","idle","dnd","invisible",
-                "watching_patrol","listening_radio","playing_tprp",
-                "watching_tp","competing_patrol"
+                "watching_patrol","listening_radio","playing_hcp",
+                "watching_hcp","competing_patrol"
             ];
             if (!valid.includes(status)) return res.status(400).json({ error: "Invalid status value" });
 
@@ -1518,8 +1518,8 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
                 invisible:        { status: "invisible", activity: null },
                 watching_patrol:  { status: "online",    activity: { name: "Patrol Logs",                          type: ActivityType.Watching  } },
                 listening_radio:  { status: "online",    activity: { name: "Radio Traffic",                        type: ActivityType.Listening } },
-                playing_tprp:     { status: "online",    activity: { name: "Twin Palms Roleplay",                  type: ActivityType.Playing   } },
-                watching_tp:      { status: "online",    activity: { name: "Over Twin Palms Roleplay",             type: ActivityType.Watching  } },
+                playing_hcp:      { status: "online",    activity: { name: "Hendry County Project",                type: ActivityType.Playing   } },
+                watching_hcp:     { status: "online",    activity: { name: "Over Hendry County Project",           type: ActivityType.Watching  } },
                 competing_patrol: { status: "online",    activity: { name: "Patrol Hours",                         type: ActivityType.Competing } }
             };
 

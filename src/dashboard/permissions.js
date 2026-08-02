@@ -1,5 +1,5 @@
 /**
- * Express auth middleware for the Twin Palms dashboard.
+ * Express auth middleware for the Hendry County Project dashboard.
  * Extracted so it can be reused across all route files.
  */
 

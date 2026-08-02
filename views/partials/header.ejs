@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🌴 TTRP Control Panel</title>
-  <link rel="icon" href="/images/ttrp-logo.png" type="image/png">
+  <title>� HCP Control Panel</title>
+  <link rel="icon" href="/images/hcp-logo.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -30,8 +30,8 @@
     <% if (botAvatar) { %>
       <img src="<%= botAvatar %>" alt="" class="topbar-avatar" onerror="this.style.display='none'">
     <% } %>
-    <span class="tp-logo topbar-title">🌴 Twin Palms Roleplay</span>
-    <span class="tp-logo topbar-title-short">🌴 Twin Palms</span>
+    <span class="tp-logo topbar-title">� Hendry County Project</span>
+    <span class="tp-logo topbar-title-short">🌿 HCP</span>
     <span class="topbar-badge">Control Panel</span>
   </div>
   <div class="topbar-user">
@@ -80,7 +80,7 @@
           <a href="/departments/<%= srv.id %>"
              class="nav-link <%= page === 'department' && typeof guildId !== 'undefined' && guildId === srv.id ? 'active' : '' %>"
              title="<%= srv.name %>">
-            <span class="nav-icon">🏛️</span><span class="nav-label">Twin Palms Staff</span>
+            <span class="nav-icon">🏛️</span><span class="nav-label">Hendry County Staff</span>
           </a>
         <% }); %>
         <% if (!segmentAccess || segmentAccess.applications) { %>
@@ -138,7 +138,7 @@
       <% } %>
     </nav>
     <div class="sidebar-footer">
-      <span class="sidebar-footer-text">TTRP Dashboard</span>
+      <span class="sidebar-footer-text">HCP Dashboard</span>
     </div>
   </aside>
 

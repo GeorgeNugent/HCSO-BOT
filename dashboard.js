@@ -1,5 +1,5 @@
 ﻿/**
- * Twin Palms Roleplay — Control Panel
+ * Hendry County Project — Control Panel
  * Root re-export — all implementation lives in src/dashboard/dashboard.js
  *
  * index.js imports startDashboard from this file; keeping the import path

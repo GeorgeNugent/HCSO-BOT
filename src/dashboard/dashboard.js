@@ -1,5 +1,5 @@
 /**
- * Twin Palms Roleplay — Control Panel
+ * Hendry County Project — Control Panel
  * Main dashboard assembly point.
  *
  * This file wires together all sub-modules (auth, permissions, routes,
@@ -25,14 +25,14 @@ const __dirname  = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "../../");
 
 /**
- * Start the Twin Palms Roleplay web dashboard.
+ * Start the Hendry County Project web dashboard.
  * Accepts the same context object that index.js currently passes.
  * @param {Object} context
  */
 export function startDashboard(context) {
     const { client } = context;
 
-    const SESSION_SECRET = process.env.SESSION_SECRET || "twin-palms-dashboard-secret-change-me";
+    const SESSION_SECRET = process.env.SESSION_SECRET || "hendry-county-project-dashboard-secret-change-me";
     const port           = context.port || Number(process.env.PORT) || 8100;
     const GUILD_ID       = process.env.GUILD_ID;
     const MAIN_ROLE_GUILD_ID = "1318018654515888138";
@@ -380,7 +380,7 @@ export function startDashboard(context) {
 
     // ── Start listening ───────────────────────────────────────────────────────
     app.listen(port, "0.0.0.0", () => {
-        console.log(`[Dashboard] Twin Palms Roleplay — Control Panel listening on http://0.0.0.0:${port}`);
+        console.log(`[Dashboard] Hendry County Project — Control Panel listening on http://0.0.0.0:${port}`);
     });
 
     return app;

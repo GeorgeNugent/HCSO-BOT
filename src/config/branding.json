@@ -1,13 +1,13 @@
 {
-  "communityName": "Twin Palms Roleplay",
-  "botName": "Twin Palms Roleplay — Main Server Bot",
-  "dashboardTitle": "Twin Palms Roleplay — Control Panel",
+  "communityName": "Hendry County Project",
+  "botName": "Hendry County Project — Main Server Bot",
+  "dashboardTitle": "Hendry County Project — Control Panel",
   "dashboardSubtitle": "Staff Command Panel",
   "defaultColor": "#F8B637",
   "fallback": {
-    "name": "Twin Palms Network",
-    "shortName": "TP",
+    "name": "Hendry County Project",
+    "shortName": "HCP",
     "color": "#F8B637",
-    "footer": "Twin Palms Roleplay Network"
+    "footer": "Hendry County Project Network"
   }
 }

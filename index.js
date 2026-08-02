@@ -1421,7 +1421,7 @@ function canAccessModule(member, moduleType) {
         return true;
     }
 
-    // Full command access role for main TTRP guild.
+    // Full command access role for main HCP guild.
     if (hasMainFullAccessRole(member)) {
         return true;
     }
@@ -1763,7 +1763,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("dashboard")
-        .setDescription("Open the Twin Palms Roleplay Control Panel (staff only)"),
+        .setDescription("Open the Hendry County Project Control Panel (staff only)"),
 
     new SlashCommandBuilder()
         .setName("application-panel")
