@@ -1816,12 +1816,22 @@ try {
         console.warn("No guild IDs available for guild command registration.");
     } else {
         for (const guildId of commandGuildIds) {
-            await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body: commands });
-            console.log(`Registered ${commands.length} guild commands for guild ${guildId}`);
+            try {
+                await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body: commands });
+                console.log(`Registered ${commands.length} guild commands for guild ${guildId}`);
+            } catch (gerr) {
+                // Log and continue registering other guilds. Missing Access is common when
+                // the bot or application isn't present in a specific guild.
+                console.error(`Failed to register commands for guild ${guildId}:`, gerr?.message || gerr);
+                if (gerr?.rawError) {
+                    console.error('Discord API error:', gerr.rawError);
+                }
+                console.warn(`Skipping guild ${guildId} and continuing registration for remaining guilds.`);
+            }
         }
     }
 } catch (error) {
-    console.error("Failed to register application commands:", error);
+    console.error("Failed to initialize command registration:", error);
     console.error("Continuing startup without command registration. Existing commands will remain until this is fixed.");
 }
 
