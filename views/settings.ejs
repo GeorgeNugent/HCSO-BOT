@@ -18,8 +18,8 @@
       <option value="invisible"        <%= cfg.currentStatus === 'invisible'        ? 'selected' : '' %>>👻 Invisible</option>
       <option value="watching_patrol"  <%= cfg.currentStatus === 'watching_patrol'  ? 'selected' : '' %>>👀 Watching Patrol Logs</option>
       <option value="listening_radio"  <%= cfg.currentStatus === 'listening_radio'  ? 'selected' : '' %>>🎧 Listening to Radio Traffic</option>
-      <option value="playing_hcso"     <%= cfg.currentStatus === 'playing_hcso'     ? 'selected' : '' %>>🎮 Playing HCSO Operations</option>
-      <option value="watching_hc"      <%= cfg.currentStatus === 'watching_hc'      ? 'selected' : '' %>>🏘️ Watching Over Hendry County</option>
+      <option value="playing_hcp"     <%= cfg.currentStatus === 'playing_hcp'     ? 'selected' : '' %>><%= typeof branding !== 'undefined' ? '🎮 Playing ' + (branding.fallback.shortName || 'HCP') + ' Operations' : '🎮 Playing HCSO Operations' %></option>
+      <option value="watching_hcp"      <%= cfg.currentStatus === 'watching_hcp'      ? 'selected' : '' %>><%= typeof branding !== 'undefined' ? '🏘️ Watching Over ' + branding.communityName : '🏘️ Watching Over Hendry County' %></option>
       <option value="competing_patrol" <%= cfg.currentStatus === 'competing_patrol' ? 'selected' : '' %>>🏆 Competing in Patrol Hours</option>
     </select>
     <button type="button" class="btn btn-info" onclick="updateStatus()">Apply Status</button>

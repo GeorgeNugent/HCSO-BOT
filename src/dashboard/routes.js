@@ -592,7 +592,7 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             botOwnerId: BOT_OWNER_ID,
             currentUserId: req.session.user?.id || null,
             roleSourceGuildId: ROLE_SOURCE_GUILD_ID,
-            roleSourceGuildName: mainGuild?.name || "Hendry County Sheriff's Office",
+            roleSourceGuildName: mainGuild?.name || getBranding().fallback.name,
             dashboardSegmentAccess,
             dashboardSegmentAccessByGuild,
             suggestionReviewerRoleIds,
@@ -1518,8 +1518,8 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
                 invisible:        { status: "invisible", activity: null },
                 watching_patrol:  { status: "online",    activity: { name: "Patrol Logs",                          type: ActivityType.Watching  } },
                 listening_radio:  { status: "online",    activity: { name: "Radio Traffic",                        type: ActivityType.Listening } },
-                playing_hcp:      { status: "online",    activity: { name: "Hendry County Project",                type: ActivityType.Playing   } },
-                watching_hcp:     { status: "online",    activity: { name: "Over Hendry County Project",           type: ActivityType.Watching  } },
+                playing_hcp:      { status: "online",    activity: { name: getBranding().communityName,                type: ActivityType.Playing   } },
+                watching_hcp:     { status: "online",    activity: { name: `Over ${getBranding().communityName}`,           type: ActivityType.Watching  } },
                 competing_patrol: { status: "online",    activity: { name: "Patrol Hours",                         type: ActivityType.Competing } }
             };
 

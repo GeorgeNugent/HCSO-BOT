@@ -6,12 +6,14 @@ import sharp from "sharp";
 import { createTicketSystem, ticketCommands } from "./ticket-system.js";
 import { startDashboard } from "./dashboard.js";
 import { createDepartmentEmbed, getDepartmentName } from "./src/embeds/embedHandler.js";
-import { getAllDepartments } from "./src/embeds/departmentThemes.js";
+import { getAllDepartments, getBranding } from "./src/embeds/departmentThemes.js";
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const PORT = Number(process.env.PORT) || 10000;
+
+const branding = getBranding();
 
 if (!TOKEN || !CLIENT_ID) {
     console.error("Missing required configuration. Set TOKEN and CLIENT_ID in environment variables or a .env file.");
@@ -1755,15 +1757,15 @@ const commands = [
                 { name: "Invisible", value: "invisible" },
                 { name: "Watching Patrol Logs", value: "watching_patrol" },
                 { name: "Listening to Radio Traffic", value: "listening_radio" },
-                { name: "Playing HCSO Operations", value: "playing_hcso" },
-                { name: "Watching Over Hendry County", value: "watching_hc" },
+                { name: `Playing ${branding.fallback.shortName} Operations`, value: "playing_hcp" },
+                { name: `Watching Over ${branding.communityName}`, value: "watching_hcp" },
                 { name: "Competing in Patrol Hours", value: "competing_patrol" }
             )
         ),
 
     new SlashCommandBuilder()
         .setName("dashboard")
-        .setDescription("Open the Hendry County Project Control Panel (staff only)"),
+        .setDescription(`Open the ${branding.dashboardTitle} (staff only)`),
 
     new SlashCommandBuilder()
         .setName("application-panel")
@@ -1981,15 +1983,15 @@ client.on("ready", () => {
     
     // Restore previous status if it exists
     if (config.currentStatus) {
-        const statusMap = {
+            const statusMap = {
             online: { status: "online", activity: null },
             idle: { status: "idle", activity: null },
             dnd: { status: "dnd", activity: null },
             invisible: { status: "invisible", activity: null },
             watching_patrol: { status: "online", activity: { name: "Patrol Logs", type: "WATCHING" } },
             listening_radio: { status: "online", activity: { name: "Radio Traffic", type: "LISTENING" } },
-            playing_hcso: { status: "online", activity: { name: "HCSO Operations", type: "PLAYING" } },
-            watching_hc: { status: "online", activity: { name: "Over Hendry County Sheriff's Office", type: "WATCHING" } },
+            playing_hcp: { status: "online", activity: { name: branding.communityName, type: "PLAYING" } },
+            watching_hcp: { status: "online", activity: { name: `Over ${branding.communityName}`, type: "WATCHING" } },
             competing_patrol: { status: "online", activity: { name: "Patrol Hours", type: "COMPETING" } }
         };
 
@@ -2011,12 +2013,12 @@ client.on("ready", () => {
                     activities: selectedStatus.activity ? [selectedStatus.activity] : [],
                     status: selectedStatus.status
                 });
-            } else {
-                client.user.setActivity("Hendry County Sheriff's Office", { type: "WATCHING" });
+                } else {
+                client.user.setActivity(branding.communityName, { type: "WATCHING" });
             }
         }
     } else {
-        client.user.setActivity("Hendry County Sheriff's Office", { type: "WATCHING" });
+        client.user.setActivity(branding.communityName, { type: "WATCHING" });
     }
 });
 
@@ -5725,8 +5727,8 @@ client.on("interactionCreate", async interaction => {
                 invisible: { status: "invisible", activity: null },
                 watching_patrol: { status: "online", activity: { name: "Patrol Logs", type: ActivityType.Watching } },
                 listening_radio: { status: "online", activity: { name: "Radio Traffic", type: ActivityType.Listening } },
-                playing_hcso: { status: "online", activity: { name: "HCSO Operations", type: ActivityType.Playing } },
-                watching_hc: { status: "online", activity: { name: "Over Hendry County Sheriff's Office", type: ActivityType.Watching } },
+                playing_hcp: { status: "online", activity: { name: branding.communityName, type: ActivityType.Playing } },
+                watching_hcp: { status: "online", activity: { name: `Over ${branding.communityName}`, type: ActivityType.Watching } },
                 competing_patrol: { status: "online", activity: { name: "Patrol Hours", type: ActivityType.Competing } }
             };
 
@@ -5749,8 +5751,8 @@ client.on("interactionCreate", async interaction => {
                 invisible: "Invisible",
                 watching_patrol: "Watching Patrol Logs",
                 listening_radio: "Listening to Radio Traffic",
-                playing_hcso: "Playing HCSO Operations",
-                watching_hc: "Watching Over Hendry County",
+                playing_hcp: `Playing ${branding.fallback.shortName} Operations`,
+                watching_hcp: `Watching Over ${branding.communityName}`,
                 competing_patrol: "Competing in Patrol Hours"
             };
 

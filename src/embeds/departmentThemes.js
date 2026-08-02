@@ -16,6 +16,28 @@ function load(filePath) {
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+function loadMergedDepartments() {
+    const depts = load(DEPARTMENTS_PATH);
+    const brand = load(BRANDING_PATH);
+    if (brand && brand.departments && typeof brand.departments === 'object') {
+        // For each configured department override, merge into matching dept entries
+        Object.entries(brand.departments).forEach(([shortKey, def]) => {
+            const targetShort = String(shortKey || "").toUpperCase();
+            // Apply overrides to any dept that has this shortName
+            Object.keys(depts).forEach(id => {
+                const d = depts[id];
+                if (String(d?.shortName || "").toUpperCase() === targetShort) {
+                    if (def.name) d.name = def.name;
+                    if (def.shortName) d.shortName = def.shortName;
+                    if (def.color) d.color = def.color;
+                    if (def.footer) d.footer = def.footer;
+                }
+            });
+        });
+    }
+    return depts;
+}
+
 function normalize(input) {
     return String(input || "")
         .toLowerCase()
@@ -25,7 +47,28 @@ function normalize(input) {
 
 function findByShortName(departments, shortName) {
     const target = String(shortName || "").toUpperCase();
-    return Object.values(departments).find(d => String(d?.shortName || "").toUpperCase() === target) || null;
+    const found = Object.values(departments).find(d => String(d?.shortName || "").toUpperCase() === target);
+    if (found) return found;
+
+    // Fall back to branding.json department definitions if present
+    try {
+        const brand = load(BRANDING_PATH);
+        if (brand && brand.departments && typeof brand.departments === 'object') {
+            const def = brand.departments[target] || brand.departments[target.toUpperCase()] || brand.departments[target.toLowerCase()];
+            if (def && def.name) {
+                return {
+                    name: def.name,
+                    shortName: def.shortName || target,
+                    color: def.color || brand.defaultColor,
+                    footer: def.footer || brand.fallback?.footer || ''
+                };
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+
+    return null;
 }
 
 function inferDepartmentFromGuildName(guildName, departments) {
@@ -65,7 +108,7 @@ function inferDepartmentFromGuildName(guildName, departments) {
  * @returns {{ name, shortName, color, footer, description }}
  */
 export function getTheme(guildId) {
-    const depts  = load(DEPARTMENTS_PATH);
+    const depts  = loadMergedDepartments();
     const brand  = load(BRANDING_PATH);
     return (guildId && depts[guildId]) ? depts[guildId] : brand.fallback;
 }
@@ -76,7 +119,7 @@ export function getTheme(guildId) {
  * @returns {object|null}
  */
 export function resolveDepartmentForGuild(guildOrId) {
-    const depts = load(DEPARTMENTS_PATH);
+    const depts = loadMergedDepartments();
     const guildId = typeof guildOrId === "string" ? guildOrId : String(guildOrId?.id || "");
     const guildName = typeof guildOrId === "string" ? "" : String(guildOrId?.name || "");
 

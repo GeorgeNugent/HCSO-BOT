@@ -380,7 +380,7 @@ export function startDashboard(context) {
 
     // ── Start listening ───────────────────────────────────────────────────────
     app.listen(port, "0.0.0.0", () => {
-        console.log(`[Dashboard] Hendry County Project — Control Panel listening on http://0.0.0.0:${port}`);
+        console.log(`[Dashboard] ${getBranding().dashboardTitle} listening on http://0.0.0.0:${port}`);
     });
 
     return app;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>� HCP Control Panel</title>
+  <title><%= typeof branding !== 'undefined' ? branding.dashboardTitle : 'HCP Control Panel' %></title>
   <link rel="icon" href="/images/hcp-logo.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,8 +30,8 @@
     <% if (botAvatar) { %>
       <img src="<%= botAvatar %>" alt="" class="topbar-avatar" onerror="this.style.display='none'">
     <% } %>
-    <span class="tp-logo topbar-title">� Hendry County Project</span>
-    <span class="tp-logo topbar-title-short">🌿 HCP</span>
+    <span class="tp-logo topbar-title">� <%= typeof branding !== 'undefined' ? branding.communityName : 'Hendry County Project' %></span>
+    <span class="tp-logo topbar-title-short">🌿 <%= typeof branding !== 'undefined' ? branding.fallback.shortName : 'HCP' %></span>
     <span class="topbar-badge">Control Panel</span>
   </div>
   <div class="topbar-user">
@@ -80,7 +80,7 @@
           <a href="/departments/<%= srv.id %>"
              class="nav-link <%= page === 'department' && typeof guildId !== 'undefined' && guildId === srv.id ? 'active' : '' %>"
              title="<%= srv.name %>">
-            <span class="nav-icon">🏛️</span><span class="nav-label">Hendry County Staff</span>
+            <span class="nav-icon">🏛️</span><span class="nav-label"><%= typeof branding !== 'undefined' ? (branding.fallback.name + ' Staff') : 'Hendry County Staff' %></span>
           </a>
         <% }); %>
         <% if (!segmentAccess || segmentAccess.applications) { %>
@@ -138,7 +138,7 @@
       <% } %>
     </nav>
     <div class="sidebar-footer">
-      <span class="sidebar-footer-text">HCP Dashboard</span>
+      <span class="sidebar-footer-text"><%= typeof branding !== 'undefined' ? (branding.fallback.shortName + ' Dashboard') : 'HCP Dashboard' %></span>
     </div>
   </aside>
 
