@@ -32,7 +32,7 @@ export function createDepartmentRoutes({ requireAuth, requireStaff, segmentGuard
         "1485085025157382244"
     ];
     const SHERIFF_ALERT_ROLE_ID = "1482203108108013584";
-    const DEFAULT_ROLE_SOURCE_GUILD_ID = "1318018654515888138";
+    const DEFAULT_ROLE_SOURCE_GUILD_ID = process.env.GUILD_ID || "1533590255603810334";
     const roleSourceGuildId = String(ROLE_SOURCE_GUILD_ID || DEFAULT_ROLE_SOURCE_GUILD_ID);
     const DEFAULT_DEPARTMENT_ROLE_SOURCE_BY_GUILD = {
         [HCSO_GUILD_ID]: HCSO_GUILD_ID,

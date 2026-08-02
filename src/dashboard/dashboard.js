@@ -35,7 +35,7 @@ export function startDashboard(context) {
     const SESSION_SECRET = process.env.SESSION_SECRET || "hendry-county-project-dashboard-secret-change-me";
     const port           = context.port || Number(process.env.PORT) || 8100;
     const GUILD_ID       = process.env.GUILD_ID;
-    const MAIN_ROLE_GUILD_ID = "1318018654515888138";
+    const MAIN_ROLE_GUILD_ID = GUILD_ID || "1533590255603810334";
     const HCSO_GUILD_ID = "1482203107432595601";
     const CPD_GUILD_ID = "1482501585803415572";
     const FHP_GUILD_ID = "1482498655523962892";

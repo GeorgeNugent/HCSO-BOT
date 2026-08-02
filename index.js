@@ -1398,7 +1398,7 @@ async function sendLoaReviewLog(guildId, { userId, startDate, endDate, reason, r
 }
 
 // Dashboard permission functions
-const MAIN_GUILD_ID = "1318018654515888138";
+const MAIN_GUILD_ID = process.env.GUILD_ID || "1533590255603810334";
 const MAIN_FULL_ACCESS_ROLE_ID = "1318018654662692956";
 
 function hasMainFullAccessRole(member) {
