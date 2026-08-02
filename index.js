@@ -11,7 +11,7 @@ import { getAllDepartments, getBranding } from "./src/embeds/departmentThemes.js
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
-const PORT = Number(process.env.PORT) || 10000;
+const PORT = Number(process.env.PORT) || 8100;
 
 const branding = getBranding();
 
