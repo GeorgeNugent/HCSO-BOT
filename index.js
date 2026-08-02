@@ -1768,6 +1768,10 @@ const commands = [
         .setDescription(`Open the ${branding.dashboardTitle} (staff only)`),
 
     new SlashCommandBuilder()
+        .setName("help")
+        .setDescription("Show the help menu"),
+
+    new SlashCommandBuilder()
         .setName("application-panel")
         .setDescription("Post the application panel for recruits"),
 
@@ -6196,6 +6200,34 @@ client.on("interactionCreate", async interaction => {
             content: `🌐 **Web Dashboard:** ${webUrl}`,
             ephemeral: true
         });
+    }
+
+    // /help command
+    if (interaction.commandName === "help") {
+        const isAdmin = interaction.member?.permissions?.has?.(PermissionFlagsBits.Administrator);
+        const isStaff = (typeof canAccessDashboard === 'function') ? canAccessDashboard(interaction.member) : false;
+
+        const helpEmbed = new EmbedBuilder()
+            .setColor(0xff0055)
+            .setTitle("Hendry County Project - Help Menu")
+            .setDescription("Use the following commands to interact with the bot. Some commands require staff or admin permissions.");
+
+        helpEmbed.addFields(
+            { name: "General — Everyone", value: "• /suggestion submit — Submit a suggestion\n• /applications — View applications\n• /onlinedash — Get the bot status dashboard (if enabled)", inline: false }
+        );
+
+        if (isStaff) {
+            helpEmbed.addFields({ name: "Staff — Requires Staff Role", value: "• /dashboard — Open the staff control panel\n• /set-log-channel — Configure log channels\n• /application-panel — Post application panel for recruits", inline: false });
+        }
+
+        if (isAdmin) {
+            helpEmbed.addFields({ name: "Admin — Administrators/Bot Owner", value: "• /set-status — Change bot presence/status\n• /set-module-access — Configure module role access\n• /set-log-channel — Set important log channels", inline: false });
+        }
+
+        helpEmbed.setFooter({ text: branding.fallback.footer || branding.communityName });
+        helpEmbed.setTimestamp();
+
+        return interaction.reply({ embeds: [helpEmbed], flags: MessageFlags.Ephemeral });
     }
 
     if (interaction.commandName === "dashboard") {
