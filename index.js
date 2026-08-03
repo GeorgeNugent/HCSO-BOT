@@ -360,6 +360,96 @@ const APPLICATION_REVIEW_ACCEPT_PREFIX = "app_review_accept_";
 const APPLICATION_REVIEW_DENY_PREFIX = "app_review_deny_";
 const SUGGESTION_APPROVE_PREFIX = "suggestion_approve_";
 const SUGGESTION_DENY_PREFIX = "suggestion_deny_";
+const APPLICATION_PENDING_ROLE_IDS = {
+    cpd: "1533590255783907463",
+    hcs: "1533590255763194091",
+    fhp: "1533590255746285584"
+};
+const APPLICATION_NEEDS_INTERVIEW_ROLE_IDS = {
+    cpd: "1533641206037348422",
+    hcs: "1533636184192847892",
+    fhp: "1533634237884793053"
+};
+
+function getApplicationDepartmentRoleKey(app) {
+    if (!app || app.type !== "department") return null;
+
+    const guildId = String(app.departmentGuildId || "");
+    switch (guildId) {
+        case "1482501585803415572":
+            return "cpd";
+        case "1482203107432595601":
+            return "hcs";
+        case "1482498655523962892":
+            return "fhp";
+        default:
+            break;
+    }
+
+    const departmentName = String(app.departmentName || "").toLowerCase();
+    if (departmentName.includes("clewiston") || departmentName.includes("police")) {
+        return "cpd";
+    }
+    if (departmentName.includes("hendry") || departmentName.includes("sheriff")) {
+        return "hcs";
+    }
+    if (departmentName.includes("florida") || departmentName.includes("highway") || departmentName.includes("patrol")) {
+        return "fhp";
+    }
+
+    return null;
+}
+
+async function syncApplicationDepartmentRoleState(app, targetUserId, state, guildContext = null) {
+    if (!app || app.type !== "department" || !targetUserId) return;
+
+    const roleKey = getApplicationDepartmentRoleKey(app);
+    if (!roleKey) return;
+
+    const pendingRoleId = APPLICATION_PENDING_ROLE_IDS[roleKey];
+    const interviewRoleId = APPLICATION_NEEDS_INTERVIEW_ROLE_IDS[roleKey];
+    if (!pendingRoleId && !interviewRoleId) return;
+
+    const guild = guildContext
+        || (app.guildId ? client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null) : null)
+        || (client.guilds.cache.first() || null);
+    if (!guild) return;
+
+    const member = await guild.members.fetch(targetUserId).catch(() => null);
+    if (!member) return;
+
+    const roleIdsToRemove = [];
+    const roleIdsToAdd = [];
+
+    if (state === "pending") {
+        roleIdsToAdd.push(pendingRoleId);
+        roleIdsToRemove.push(interviewRoleId);
+    } else if (state === "interview") {
+        roleIdsToAdd.push(interviewRoleId);
+        roleIdsToRemove.push(pendingRoleId);
+    } else {
+        roleIdsToRemove.push(pendingRoleId, interviewRoleId);
+    }
+
+    const resolvedRoles = [];
+    for (const roleId of [...new Set([...roleIdsToRemove, ...roleIdsToAdd].filter(Boolean))]) {
+        const resolvedRole = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(() => null);
+        if (resolvedRole) {
+            resolvedRoles.push(resolvedRole);
+        }
+    }
+
+    const removeRoles = resolvedRoles.filter(role => roleIdsToRemove.includes(role.id));
+    const addRoles = resolvedRoles.filter(role => roleIdsToAdd.includes(role.id));
+
+    if (removeRoles.length > 0) {
+        await member.roles.remove(removeRoles).catch(() => {});
+    }
+
+    if (addRoles.length > 0) {
+        await member.roles.add(addRoles).catch(() => {});
+    }
+}
 
 const APPLICATION_QUESTIONS = [
     "What's your name you will be going by? (First Initial Last Name)",
@@ -511,7 +601,7 @@ function buildSuggestionEmbed(suggestion) {
     return embed;
 }
 
-function buildApplicationRecord(user, selectionValue) {
+function buildApplicationRecord(user, selectionValue, guildId = null) {
     const departments = getAllDepartments();
     const normalizedSelection = String(selectionValue || "").trim();
     let targetType = "staff";
@@ -541,6 +631,7 @@ function buildApplicationRecord(user, selectionValue) {
         type: targetType,
         departmentGuildId,
         departmentName,
+        guildId: guildId || null,
         status: "in-progress",
         startedAt: new Date().toISOString(),
         submittedAt: null,
@@ -2264,7 +2355,7 @@ client.on("interactionCreate", async interaction => {
                 applicationsBeingStarted.add(interaction.user.id);
 
                 try {
-                    const app = buildApplicationRecord(interaction.user, selection);
+                    const app = buildApplicationRecord(interaction.user, selection, interaction.guildId);
                     applicationsData.applications[app.id] = app;
                     applicationsData.activeSessions[interaction.user.id] = {
                         applicationId: app.id,
@@ -2383,6 +2474,7 @@ client.on("interactionCreate", async interaction => {
                 app.reviewReason = "Accepted in Discord";
                 saveApplications();
 
+                await syncApplicationDepartmentRoleState(app, app.applicantId, "interview", app.guildId ? client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null) : interaction.guild);
                 await sendApplicationDecisionDm(client, app, interaction.user.id, "accepted", "");
 
                 const acceptedEmbed = new EmbedBuilder()
@@ -7005,6 +7097,7 @@ client.on("messageCreate", async message => {
         app.submittedAt = new Date().toISOString();
         delete applicationsData.activeSessions[message.author.id];
         saveApplications();
+        await syncApplicationDepartmentRoleState(app, message.author.id, "pending");
         await message.channel.send("✅ Your application was submitted successfully.").catch(() => {});
         return;
     }
@@ -7035,6 +7128,7 @@ client.on("messageCreate", async message => {
         app.submittedAt = new Date().toISOString();
         delete applicationsData.activeSessions[message.author.id];
         saveApplications();
+        await syncApplicationDepartmentRoleState(app, message.author.id, "pending");
         await message.channel.send("✅ Application submitted. Staff and command can now review it from the online dashboard.").catch(() => {});
         return;
     }
