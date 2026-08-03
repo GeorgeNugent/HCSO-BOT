@@ -6226,7 +6226,7 @@ client.on("interactionCreate", async interaction => {
 
     // /dashboard command
     if (interaction.commandName === "onlinedash") {
-        const webUrl = process.env.DASHBOARD_URL || "http://45.143.198.46:8100";
+        const webUrl = process.env.DASHBOARD_URL || "http://51.79.43.184:8199";
         return interaction.reply({
             content: `🌐 **Web Dashboard:** ${webUrl}`,
             ephemeral: true
