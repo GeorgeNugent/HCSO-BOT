@@ -329,7 +329,7 @@ const SUGGESTION_APPROVE_PREFIX = "suggestion_approve_";
 const SUGGESTION_DENY_PREFIX = "suggestion_deny_";
 
 const APPLICATION_QUESTIONS = [
-    "What's your name you will be going by? (First Name Last Initial)",
+    "What's your name you will be going by? (First Initial Last Name)",
     "Date of Birth (Month Day, Year). This will be your in-role-life date of birth.",
     "Are you able to read, write, and speak in English Language?",
     "Has your application ever been denied? If so, explain why and give an approximate date.",
@@ -346,6 +346,11 @@ const APPLICATION_QUESTIONS = [
 function getDepartmentApplicationChoices() {
     const departments = getAllDepartments();
     const shortOrder = ["CPD", "HCSO", "FHP"];
+    const explicitLabels = {
+        "1482501585803415572": "Clewiston Police Department",
+        "1482203107432595601": "Hendry County Sheriff's Office",
+        "1482498655523962892": "Florida Highway Patrol"
+    };
     const choices = [];
 
     const departmentEntries = Object.entries(departments || {})
@@ -365,8 +370,9 @@ function getDepartmentApplicationChoices() {
     });
 
     for (const [guildId, dept] of orderedEntries) {
+        const label = explicitLabels[String(guildId)] || dept.name || dept.shortName || guildId;
         choices.push({
-            label: dept.shortName || dept.name || guildId,
+            label,
             value: `dept:${guildId}`,
             description: `Apply for ${dept.shortName || dept.name || "department"}`
         });
@@ -6387,7 +6393,7 @@ client.on("interactionCreate", async interaction => {
             .setColor("#4ea8de")
             .setTitle("📝 Emergency Service Applications")
             .setDescription("Use the dropdown below to choose your application type. Once you confirm, I will send your application questions in DMs and route the completed application to the correct dashboard department.")
-            .addFields({ name: "Select", value: "Choose from CPD, HCSO, FHP, or Staff, then confirm to begin." })
+            .addFields({ name: "Select", value: "Choose from Clewiston Police Department, Hendry County Sheriff's Office, Florida Highway Patrol, or Staff, then confirm to begin." })
             .setTimestamp();
 
         const select = new StringSelectMenuBuilder()
