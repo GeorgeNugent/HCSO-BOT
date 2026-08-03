@@ -380,7 +380,8 @@ export function startDashboard(context) {
 
     // ── Start listening ───────────────────────────────────────────────────────
     app.listen(port, "0.0.0.0", () => {
-        console.log(`[Dashboard] ${getBranding().dashboardTitle} listening on http://0.0.0.0:${port}`);
+        const publicUrl = process.env.DASHBOARD_URL || `http://51.79.43.184:${port}`;
+        console.log(`[Dashboard] ${getBranding().dashboardTitle} listening on ${publicUrl}`);
     });
 
     return app;

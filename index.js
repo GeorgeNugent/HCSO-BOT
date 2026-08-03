@@ -12,6 +12,7 @@ const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const PORT = Number(process.env.PORT) || 8100;
+const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://51.79.43.184:${PORT}`;
 
 const branding = getBranding();
 
@@ -6239,9 +6240,8 @@ client.on("interactionCreate", async interaction => {
 
     // /dashboard command
     if (interaction.commandName === "onlinedash") {
-        const webUrl = process.env.DASHBOARD_URL || "http://45.143.198.46:8100";
         return interaction.reply({
-            content: `🌐 **Web Dashboard:** ${webUrl}`,
+            content: `🌐 **Web Dashboard:** ${DASHBOARD_URL}`,
             ephemeral: true
         });
     }
