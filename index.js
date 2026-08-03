@@ -546,11 +546,11 @@ function getOpenApplicationSession(userId) {
 async function sendApplicationInstructionsDm(user, app) {
     const embed = new EmbedBuilder()
         .setColor("#4ea8de")
-        .setTitle(`${app.departmentName || "Application"} — Instructions`)
-        .setDescription("Please read these instructions before answering the questions. You will have 60 minutes to complete the full application in DMs.")
+        .setTitle("Application Started")
+        .setDescription("Please answer the questions below, either by clicking on the dropdown menus or sending a message to the bot.")
         .addFields(
             { name: "What happens next", value: "I will send you one question at a time. Reply with your answer for each question in this DM thread." },
-            { name: "Important", value: "If you do not finish the application in time, you will need to restart it. If you wish to stop, click Cancel application in the original panel." },
+            { name: "Important", value: "If you do not finish the application in time, you will need to restart it. If you wish to stop, use the cancel button below at any time." },
             { name: "How to answer", value: "Send one answer per message. I will move you automatically to the next question after each reply." }
         )
         .setTimestamp();
@@ -571,7 +571,12 @@ async function sendApplicationQuestionDm(user, app, index) {
         .addFields({ name: "How to answer", value: "Send your answer in this DM. I will automatically move you to the next question." })
         .setTimestamp();
 
-    await user.send({ embeds: [embed] });
+    const cancelButton = new ButtonBuilder()
+        .setCustomId(`${APPLICATION_CANCEL_PREFIX}${app.id}`)
+        .setLabel("Cancel Application")
+        .setStyle(ButtonStyle.Danger);
+
+    await user.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(cancelButton)] });
 }
 
 async function sendApplicationDecisionDm(clientRef, app, acceptedBy, decision, reasonText) {
