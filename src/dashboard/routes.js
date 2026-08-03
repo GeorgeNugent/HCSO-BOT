@@ -644,6 +644,9 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
                 blacklistJoinAction: config.blacklistJoinAction || "ban",
                 ticketCategory:      config.ticketCategory      || null,
                 ticketTypes:         config.ticketTypes         || [],
+                ticketPanelTitle:    config.ticketPanelTitle    || null,
+                ticketPanelDescription: config.ticketPanelDescription || null,
+                ticketPanelImageUrl: config.ticketPanelImageUrl || null,
                 statusRoles:         config.statusRoles         || [],
                 moduleRoleAccess:    config.moduleRoleAccess    || {},
                 dashboardSegmentAccess: ownerVm.dashboardSegmentAccess
