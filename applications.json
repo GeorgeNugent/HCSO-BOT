@@ -1,5 +1,35 @@
 {
-  "counter": 0,
-  "applications": {},
-  "activeSessions": {}
+  "counter": 1,
+  "applications": {
+    "APP-000001": {
+      "id": "APP-000001",
+      "applicantId": "327951443090735104",
+      "applicantTag": "itscrizpy",
+      "type": "department",
+      "departmentGuildId": "1482498655523962892",
+      "departmentName": "Florida Highway Patrol",
+      "status": "in-progress",
+      "startedAt": "2026-08-03T17:15:20.263Z",
+      "submittedAt": null,
+      "reviewedAt": null,
+      "reviewedBy": null,
+      "reviewDecision": null,
+      "reviewReason": "",
+      "answers": [
+        {
+          "index": 1,
+          "question": "What's your name you will be going by? (First Initial Last Name)",
+          "answer": "1",
+          "answeredAt": "2026-08-03T17:15:31.885Z"
+        }
+      ]
+    }
+  },
+  "activeSessions": {
+    "327951443090735104": {
+      "applicationId": "APP-000001",
+      "currentQuestionIndex": 1,
+      "createdAt": "2026-08-03T17:15:20.263Z"
+    }
+  }
 }

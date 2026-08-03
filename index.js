@@ -317,9 +317,9 @@ ensureSuggestionsData();
 const MAX_STRIKES = 3;
 const LOG_TYPES = ["patrol", "case", "moderation", "strike", "loa", "transcript", "timeout", "ban", "blacklist", "discord", "commendations", "memberjoin", "memberleave"];
 const STRIKE_ROLE_IDS = [
-    "1485084924921774242",
-    "1485084972535648326",
-    "1485085025157382244"
+    "1533590255633043662",
+    "1533590255633043663",
+    "1533590255633043664"
 ];
 const STRIKE_ALERT_USER_ID = "967375704486449222";
 const WELCOME_INTERVIEW_CHANNEL_ID = "1482503313491492935";
