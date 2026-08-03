@@ -1859,7 +1859,10 @@ const commands = [
 
 // Register commands
 const rest = new REST({ version: "10" }).setToken(TOKEN);
-const TARGET_COMMAND_GUILD_ID = String(process.env.GUILD_ID || "1533590255603810334").trim();
+const TARGET_COMMAND_GUILD_IDS = String(process.env.COMMAND_GUILD_IDS || process.env.GUILD_ID || "")
+    .split(",")
+    .map(id => String(id || "").trim())
+    .filter(Boolean);
 
 const STALE_APPLICATION_COMMAND_NAMES = new Set([
     "applicationresultscpd",
@@ -1892,33 +1895,49 @@ async function cleanupAndLogGuildCommands(guildId) {
     }
 }
 
-try {
-    const commandGuildIds = TARGET_COMMAND_GUILD_ID ? [TARGET_COMMAND_GUILD_ID] : [];
-
-    if (commandGuildIds.length === 0) {
-        console.warn("No guild IDs available for guild command registration.");
-    } else {
-        await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
-        console.log("Cleared global application commands (guild-only mode enabled).");
-
-        for (const guildId of commandGuildIds) {
-            try {
-                await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body: commands });
-                console.log(`Registered ${commands.length} guild commands for guild ${guildId}`);
-                console.log(`Registered command names: ${commands.map(command => command.name).join(", ")}`);
-                await cleanupAndLogGuildCommands(guildId);
-            } catch (gerr) {
-                console.error(`Failed to register commands for guild ${guildId}:`, gerr?.message || gerr);
-                if (gerr?.rawError) {
-                    console.error("Discord API error:", gerr.rawError);
-                }
-                console.warn(`Skipping guild ${guildId} and continuing startup.`);
-            }
+async function registerCommandsForGuild(guildId) {
+    try {
+        await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body: commands });
+        console.log(`Registered ${commands.length} guild commands for guild ${guildId}`);
+        console.log(`Registered command names: ${commands.map(command => command.name).join(", ")}`);
+        await cleanupAndLogGuildCommands(guildId);
+    } catch (gerr) {
+        console.error(`Failed to register commands for guild ${guildId}:`, gerr?.message || gerr);
+        if (gerr?.rawError) {
+            console.error("Discord API error:", gerr.rawError);
         }
+        console.warn(`Skipping guild ${guildId} and continuing startup.`);
     }
-} catch (error) {
-    console.error("Failed to initialize command registration:", error);
-    console.error("Continuing startup without command registration. Existing commands will remain until this is fixed.");
+}
+
+async function getCommandGuildIds() {
+    if (TARGET_COMMAND_GUILD_IDS.length > 0) {
+        return TARGET_COMMAND_GUILD_IDS;
+    }
+
+    try {
+        const guilds = await client.guilds.fetch();
+        return [...new Set([...guilds.values()].map(g => String(g.id)).filter(Boolean))];
+    } catch (err) {
+        console.warn("Unable to resolve guild IDs for command registration:", err?.message || err);
+        return [];
+    }
+}
+
+async function registerCommands(guildIds = TARGET_COMMAND_GUILD_IDS) {
+    const resolvedGuildIds = guildIds && guildIds.length > 0 ? [...new Set(guildIds)] : await getCommandGuildIds();
+
+    if (resolvedGuildIds.length === 0) {
+        console.warn("No guild IDs configured or discovered for command registration.");
+        console.warn("Set GUILD_ID or COMMAND_GUILD_IDS in environment variables to enable guild command sync.");
+        return;
+    }
+
+    console.log(`Command registration target guild IDs: ${resolvedGuildIds.join(", ")}`);
+
+    for (const guildId of resolvedGuildIds) {
+        await registerCommandsForGuild(guildId);
+    }
 }
 
 // Create bot
@@ -1946,6 +1965,16 @@ async function sendDiscordEventLog(guildId, embed) {
         console.error("Discord event log send failed:", error);
     }
 }
+
+client.on("guildCreate", async guild => {
+    console.log(`Joined guild ${guild.id}; syncing slash commands for it.`);
+    await registerCommandsForGuild(guild.id);
+});
+
+client.once("ready", async () => {
+    console.log(`Bot ready as ${client.user?.tag || "unknown user"}`);
+    await registerCommands(await getCommandGuildIds());
+});
 
 client.on("guildMemberAdd", async member => {
     const guildBlacklistStore = getGuildBlacklistStore(member.guild.id);
