@@ -2225,9 +2225,10 @@ client.on("interactionCreate", async interaction => {
                 const cancelEmbed = new EmbedBuilder()
                     .setColor("#8b0000")
                     .setTitle("Application Cancelled")
-                    .setDescription("Your application has been stopped. No further questions will be sent. If you want to start over later, use the application panel again.")
+                    .setDescription("Your application has been cancelled. If this was a mistake you can restart your application the same way you did the first time.")
                     .setTimestamp();
 
+                await interaction.user.send({ embeds: [cancelEmbed] }).catch(() => {});
                 return interaction.update({ embeds: [cancelEmbed], components: [] });
             }
 
