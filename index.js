@@ -541,6 +541,21 @@ function getOpenApplicationSession(userId) {
     return { session, app };
 }
 
+async function sendApplicationInstructionsDm(user, app) {
+    const embed = new EmbedBuilder()
+        .setColor("#4ea8de")
+        .setTitle(`${app.departmentName || "Application"} — Instructions`)
+        .setDescription("Please read these instructions before answering the questions. You will have 60 minutes to complete the full application in DMs.")
+        .addFields(
+            { name: "What happens next", value: "I will send you one question at a time. Reply with your answer for each question in this DM thread." },
+            { name: "Important", value: "If you do not finish the application in time, you will need to restart it. If you wish to stop, click Cancel application in the original panel." },
+            { name: "How to answer", value: "Send one answer per message. I will move you automatically to the next question after each reply." }
+        )
+        .setTimestamp();
+
+    await user.send({ embeds: [embed] });
+}
+
 async function sendApplicationQuestionDm(user, app, index) {
     const question = APPLICATION_QUESTIONS[index];
     if (!question) {
@@ -2155,6 +2170,7 @@ client.on("interactionCreate", async interaction => {
                 saveApplications();
 
                 try {
+                    await sendApplicationInstructionsDm(interaction.user, app);
                     await sendApplicationQuestionDm(interaction.user, app, 0);
                 } catch {
                     delete applicationsData.activeSessions[interaction.user.id];
