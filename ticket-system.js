@@ -40,6 +40,11 @@ export const ticketCommands = [
         .setName("ticket-management")
         .setDescription("Open the ticket management panel for this ticket channel")
         .setDMPermission(false),
+
+    new SlashCommandBuilder()
+        .setName("ticketmanagement")
+        .setDescription("Open the ticket management panel for this ticket channel")
+        .setDMPermission(false),
 ];
 
 export function createTicketSystem({ config = {}, tickets = { tickets: {} }, saveTickets = () => {}, saveConfig = () => {}, getLogChannelId = () => null, isStaffMember = () => false } = {}) {
