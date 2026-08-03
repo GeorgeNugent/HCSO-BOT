@@ -5944,9 +5944,14 @@ client.on("interactionCreate", async interaction => {
         }
     }
 
-    if (await ticketSystem.handleChatInputCommand(interaction)) {
+    console.log(`[DEBUG] About to call ticketSystem.handleChatInputCommand`);
+    const ticketSystemHandled = await ticketSystem.handleChatInputCommand(interaction);
+    console.log(`[DEBUG] ticketSystem.handleChatInputCommand returned:`, ticketSystemHandled);
+    if (ticketSystemHandled) {
+        console.log(`[DEBUG] ticketSystem handled the command`);
         return;
     }
+    console.log(`[DEBUG] ticketSystem did not handle, continuing`);
 
     // /set-status
     if (interaction.commandName === "set-status") {

@@ -849,7 +849,11 @@ ${results.join("\n")}` }).catch(() => {});
     }
 
     async function handleChatInputCommand(interaction) {
-        if (!interaction.isChatInputCommand()) return false;
+        if (!interaction.isChatInputCommand()) {
+            console.log(`[TicketSystem] Not a chat input command, returning false`);
+            return false;
+        }
+        console.log(`[TicketSystem.handleChatInputCommand] Received command: ${interaction.commandName}`);
 
         if (interaction.commandName === "ticket") {
             const ticket = getTicketByChannel(interaction.channelId) || recoverTicketFromChannel(interaction.channel);
@@ -892,6 +896,7 @@ ${results.join("\n")}` }).catch(() => {});
         }
 
         if (interaction.commandName === "ticket-panel" || interaction.commandName === "ticketpanel-public") {
+            console.log(`[TicketSystem] FOUND ticket-panel/ticketpanel-public command`);
             const ticketTypeLabels = Array.isArray(config.ticketTypes) && config.ticketTypes.length > 0
                 ? config.ticketTypes.map(t => String(t?.label || "").trim()).filter(Boolean)
                 : ["Open a Ticket"];
@@ -908,7 +913,9 @@ ${results.join("\n")}` }).catch(() => {});
             }
 
             // Do NOT specify ephemeral - default behavior is non-ephemeral (visible to all)
+            console.log(`[TicketSystem] Calling interaction.reply WITHOUT ephemeral flag`);
             await interaction.reply({ embeds: [panelEmbed], components: [row] }).catch(() => {});
+            console.log(`[TicketSystem] Reply sent`);
             return true;
         }
 
