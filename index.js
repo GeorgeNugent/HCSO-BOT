@@ -375,12 +375,29 @@ const STAFF_APPLICATION_QUESTIONS = [
     "Do you understand that your application can take up to 24 hours to get accepted?"
 ];
 
-function getApplicationQuestionsForType(appType) {
-    if (String(appType || "").toLowerCase() === "staff") {
-        return STAFF_APPLICATION_QUESTIONS;
+function getApplicationTypeFromSelection(selectionValue) {
+    const normalizedSelection = String(selectionValue || "").trim().toLowerCase();
+
+    if (!normalizedSelection) {
+        return "staff";
     }
-    return APPLICATION_QUESTIONS;
-};
+
+    if (normalizedSelection.startsWith("dept:") || /^\d{17,20}$/.test(normalizedSelection) || normalizedSelection.includes("department")) {
+        return "department";
+    }
+
+    if (normalizedSelection.includes("staff")) {
+        return "staff";
+    }
+
+    return "staff";
+}
+
+function getApplicationQuestionsForType(appType) {
+    return getApplicationTypeFromSelection(appType) === "staff"
+        ? STAFF_APPLICATION_QUESTIONS
+        : APPLICATION_QUESTIONS;
+}
 
 function getDepartmentApplicationChoices() {
     const departments = getAllDepartments();
@@ -500,16 +517,16 @@ function buildSuggestionEmbed(suggestion) {
 function buildApplicationRecord(user, selectionValue) {
     const departments = getAllDepartments();
     const normalizedSelection = String(selectionValue || "").trim();
-    let targetType = "staff";
+    const targetType = getApplicationTypeFromSelection(normalizedSelection);
     let departmentGuildId = null;
     let departmentName = "Staff Application";
 
-    if (normalizedSelection.startsWith("dept:")) {
-        targetType = "department";
-        departmentGuildId = normalizedSelection.slice(5);
-    } else if (/^\d{17,20}$/.test(normalizedSelection)) {
-        targetType = "department";
-        departmentGuildId = normalizedSelection;
+    if (targetType === "department") {
+        if (normalizedSelection.startsWith("dept:")) {
+            departmentGuildId = normalizedSelection.slice(5);
+        } else if (/^\d{17,20}$/.test(normalizedSelection)) {
+            departmentGuildId = normalizedSelection;
+        }
     }
 
     if (targetType === "department" && departmentGuildId) {
@@ -2098,7 +2115,7 @@ client.on("guildMemberAdd", async member => {
     const welcomeEmbed = new EmbedBuilder()
         .setColor("#2d5a3d")
         .setTitle(`Welcome ${memberName}`)
-        .setDescription(`Welcome <@${member.id}>!\nYou are our ${memberCountLabel} Deputy.\nPlease look around and post in <#${WELCOME_INTERVIEW_CHANNEL_ID}> for an interview.`)
+        .setDescription(`Welcome <@${member.id}>!\nYou are our ${memberCountLabel} Member.\nPlease look around and talk to some of our members.`)
         .setTimestamp();
 
     const payload = {
