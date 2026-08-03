@@ -907,7 +907,8 @@ ${results.join("\n")}` }).catch(() => {});
                 );
             }
 
-            const shouldBeEphemeral = Boolean(config.ticketPanelEphemeral);
+            // Force non-ephemeral by default; only ephemeral if explicitly true
+            const shouldBeEphemeral = config.ticketPanelEphemeral === true;
             await interaction.reply({ embeds: [panelEmbed], components: [row], ephemeral: shouldBeEphemeral }).catch(() => {});
             return true;
         }
