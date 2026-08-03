@@ -912,9 +912,9 @@ ${results.join("\n")}` }).catch(() => {});
                 );
             }
 
-            // Do NOT specify ephemeral - default behavior is non-ephemeral (visible to all)
-            console.log(`[TicketSystem] Calling interaction.reply WITHOUT ephemeral flag`);
-            await interaction.reply({ embeds: [panelEmbed], components: [row] }).catch(() => {});
+            // EXPLICITLY set ephemeral: false to ensure persistent panel
+            console.log(`[TicketSystem] Calling interaction.reply with ephemeral: false`);
+            await interaction.reply({ embeds: [panelEmbed], components: [row], ephemeral: false }).catch(() => {});
             console.log(`[TicketSystem] Reply sent`);
             return true;
         }
