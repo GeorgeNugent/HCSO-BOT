@@ -2203,6 +2203,11 @@ client.on("ready", () => {
 
 // Handle commands
 client.on("interactionCreate", async interaction => {
+    // Debug: Log ALL interactions
+    if (interaction.commandName === "ticket-panel" || interaction.commandName === "ticketpanel-public") {
+        console.log(`[INTERCEPT] ticket-panel interaction detected, type: ${interaction.type}, isChatInputCommand: ${interaction.isChatInputCommand()}`);
+    }
+    
     if (interaction.isChatInputCommand()) {
         console.log(`[command] /${interaction.commandName} by ${interaction.user.tag} in guild ${interaction.guildId || "DM"}`);
     }
