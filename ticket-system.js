@@ -26,11 +26,6 @@ export const ticketCommands = [
         .setDMPermission(false),
 
     new SlashCommandBuilder()
-        .setName("ticketmanagement")
-        .setDescription("Open the ticket management panel for this ticket channel")
-        .setDMPermission(false),
-
-    new SlashCommandBuilder()
         .setName("ticketcat")
         .setDescription("Set the category where new tickets will be created")
         .setDMPermission(false)
@@ -39,7 +34,12 @@ export const ticketCommands = [
                 .setDescription("Category to create ticket channels under")
                 .addChannelTypes(ChannelType.GuildCategory)
                 .setRequired(true)
-        )
+        ),
+
+    new SlashCommandBuilder()
+        .setName("ticket-management")
+        .setDescription("Open the ticket management panel for this ticket channel")
+        .setDMPermission(false),
 ];
 
 export function createTicketSystem({ config = {}, tickets = { tickets: {} }, saveTickets = () => {}, saveConfig = () => {}, getLogChannelId = () => null, isStaffMember = () => false } = {}) {
@@ -769,7 +769,7 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
             return true;
         }
 
-        if (interaction.commandName === "ticketmanagement") {
+        if (interaction.commandName === "ticket-management" || interaction.commandName === "ticketmanagement") {
             const ticket = getOpenTicketByChannel(interaction.channelId);
             if (!ticket) {
                 await interaction.reply({ content: "❌ No open ticket was found in this channel.", flags: MessageFlags.Ephemeral }).catch(() => {});
