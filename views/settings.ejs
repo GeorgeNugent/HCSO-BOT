@@ -58,19 +58,34 @@
   <p class="section-desc">Change this setting using <code>/set-blacklist-action</code> in Discord.</p>
 </div>
 
-<!-- Ticket Types -->
-<% if (cfg.ticketTypes && cfg.ticketTypes.length > 0) { %>
+<!-- Ticket System -->
 <div class="section-card" style="margin-top:20px;">
-  <h3 class="section-title">Ticket Types (<%= cfg.ticketTypes.length %>)</h3>
-  <div style="display:flex;flex-wrap:wrap;gap:8px;">
-    <% cfg.ticketTypes.forEach(t => { %>
-    <span class="filter-chip <%= t.enabled ? 'active' : '' %>">
-      <%= t.label %> <%= t.enabled ? '' : '(hidden)' %>
-    </span>
-    <% }); %>
+  <h3 class="section-title">Ticket System</h3>
+  <p class="section-desc">Configure the category where new support tickets will be opened and the button labels shown on the ticket panel.</p>
+  <form class="cmd-form" style="max-width:640px;">
+    <label for="ticketCategoryId">Ticket Category ID</label>
+    <input id="ticketCategoryId" type="text" value="<%= cfg.ticketCategory || '' %>" placeholder="Enter a category ID">
+
+    <label for="ticketButtonLabels" style="margin-top:12px;">Ticket Panel Buttons (one per line)</label>
+    <textarea id="ticketButtonLabels" rows="5" placeholder="Support&#10;Bug Report&#10;Feature Request"><% if (cfg.ticketTypes && cfg.ticketTypes.length > 0) { %><%= cfg.ticketTypes.map(t => t.label).join('\n') %><% } %></textarea>
+
+    <button type="button" class="btn btn-info" onclick="updateTicketSystemSettings()">Save Ticket Settings</button>
+    <div id="ticket-settings-result" class="inline-result" style="display:none"></div>
+  </form>
+
+  <% if (cfg.ticketTypes && cfg.ticketTypes.length > 0) { %>
+  <div style="margin-top:16px;">
+    <h4 class="section-title" style="font-size:14px;">Current Panel Buttons</h4>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      <% cfg.ticketTypes.forEach(t => { %>
+      <span class="filter-chip <%= t.enabled ? 'active' : '' %>">
+        <%= t.label %> <%= t.enabled ? '' : '(hidden)' %>
+      </span>
+      <% }); %>
+    </div>
   </div>
+  <% } %>
 </div>
-<% } %>
 
 <!-- Module Role Access -->
 <div class="section-card" style="margin-top:20px;">
@@ -121,6 +136,37 @@ async function updateStatus() {
     const d = await r.json();
     if (d.success) {
       resultEl.textContent = "✅ Status updated!";
+      resultEl.classList.add("result-success");
+    } else {
+      resultEl.textContent = "❌ " + (d.error || "Failed");
+      resultEl.classList.add("result-error");
+    }
+  } catch (e) {
+    resultEl.textContent = "❌ Network error";
+    resultEl.classList.add("result-error");
+  }
+}
+
+async function updateTicketSystemSettings() {
+  const categoryId = document.getElementById("ticketCategoryId").value.trim();
+  const buttonLabels = document.getElementById("ticketButtonLabels").value
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const resultEl = document.getElementById("ticket-settings-result");
+  resultEl.style.display = "block";
+  resultEl.className = "inline-result";
+  resultEl.textContent = "Saving...";
+
+  try {
+    const r = await fetch("/api/settings/ticket-system", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoryId, buttonLabels })
+    });
+    const d = await r.json();
+    if (d.success) {
+      resultEl.textContent = "✅ Ticket settings saved!";
       resultEl.classList.add("result-success");
     } else {
       resultEl.textContent = "❌ " + (d.error || "Failed");

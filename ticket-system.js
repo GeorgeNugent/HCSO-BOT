@@ -19,6 +19,9 @@ export const ticketCommands = [
 export function createTicketSystem({ config = {}, tickets = { tickets: {} }, saveTickets = () => {}, saveConfig = () => {}, getLogChannelId = () => null } = {}) {
     const ticketStore = tickets?.tickets || {};
     const ticketCategory = String(config.ticketCategory || "").trim();
+    const ticketButtonLabels = Array.isArray(config.ticketTypes) && config.ticketTypes.length > 0
+        ? config.ticketTypes.map(t => String(t?.label || "").trim()).filter(Boolean)
+        : ["Open a Ticket"];
 
     async function createTicketChannel(interaction) {
         if (!interaction.guild) {
@@ -121,7 +124,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
                 return false;
             }
 
-            if (interaction.customId !== "ticket_panel_open") {
+            if (!interaction.customId.startsWith("ticket_panel_open")) {
                 return false;
             }
 
@@ -157,15 +160,22 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
             const panelEmbed = new EmbedBuilder()
                 .setColor("#4ea8de")
                 .setTitle("🎫 Ticket Creation Panel")
-                .setDescription("Use the button below to open a support ticket. The ticket channel will be created under your configured ticket category.")
+                .setDescription(
+                    ticketCategory
+                        ? `Use the buttons below to open a support ticket. New ticket channels will be created under the configured category ID: ${ticketCategory}.`
+                        : "Use the buttons below to open a support ticket. The ticket channel will be created in the configured ticket category once you set one in the dashboard."
+                )
                 .setTimestamp();
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId("ticket_panel_open")
-                    .setLabel("Open a Ticket")
-                    .setStyle(ButtonStyle.Primary)
-            );
+            const row = new ActionRowBuilder();
+            for (const label of ticketButtonLabels) {
+                row.addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`ticket_panel_open:${encodeURIComponent(label)}`)
+                        .setLabel(label)
+                        .setStyle(ButtonStyle.Primary)
+                );
+            }
 
             await interaction.reply({
                 embeds: [panelEmbed],

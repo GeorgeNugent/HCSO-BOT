@@ -632,6 +632,7 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
                 logChannels:         config.logChannels         || {},
                 currentStatus:       config.currentStatus       || "watching_hc",
                 blacklistJoinAction: config.blacklistJoinAction || "ban",
+                ticketCategory:      config.ticketCategory      || null,
                 ticketTypes:         config.ticketTypes         || [],
                 statusRoles:         config.statusRoles         || [],
                 moduleRoleAccess:    config.moduleRoleAccess    || {},
@@ -1515,6 +1516,36 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             res.json({ success: true, message: `Case updated: ${caseId}` });
         } catch (err) {
             console.error("[Dashboard API] case-edit:", err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // ── API: Ticket System settings ─────────────────────────────────────────
+    router.post("/api/settings/ticket-system", requireStaff, segmentGuard("settings"), async (req, res) => {
+        try {
+            const rawCategoryId = String(req.body?.categoryId || "").trim();
+            const categoryId = rawCategoryId || null;
+            if (categoryId && !/^\d{17,20}$/.test(categoryId)) {
+                return res.status(400).json({ error: "Ticket category ID must be a Discord channel/category ID." });
+            }
+
+            const rawButtons = Array.isArray(req.body?.buttonLabels)
+                ? req.body.buttonLabels
+                : String(req.body?.buttonLabels || "").split(/\r?\n/);
+
+            const normalizedButtons = [...new Set(
+                rawButtons
+                    .map(label => String(label || "").trim())
+                    .filter(Boolean)
+            )].slice(0, 5).map(label => ({ label, enabled: true }));
+
+            config.ticketCategory = categoryId;
+            config.ticketTypes = normalizedButtons.length > 0 ? normalizedButtons : [{ label: "Open a Ticket", enabled: true }];
+            saveConfig();
+
+            res.json({ success: true, message: "Ticket system settings saved." });
+        } catch (err) {
+            console.error("[Dashboard API] settings/ticket-system:", err.message);
             res.status(500).json({ error: err.message });
         }
     });
