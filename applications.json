@@ -1,95 +1,28 @@
 {
-  "counter": 1,
+  "counter": 5,
   "applications": {
-    "APP-000001": {
-      "id": "APP-000001",
-      "applicantId": "327951443090735104",
-      "applicantTag": "itscrizpy",
-      "type": "department",
-      "departmentGuildId": "1482498655523962892",
-      "departmentName": "Florida Highway Patrol",
-      "status": "pending",
-      "startedAt": "2026-08-03T17:15:20.263Z",
-      "submittedAt": "2026-08-03T17:16:47.939Z",
+    "APP-000005": {
+      "id": "APP-000005",
+      "applicantId": "967375704486449222",
+      "applicantTag": "synissleepy",
+      "type": "staff",
+      "departmentGuildId": null,
+      "departmentName": "Staff Application",
+      "status": "in-progress",
+      "startedAt": "2026-08-03T17:40:17.819Z",
+      "submittedAt": null,
       "reviewedAt": null,
       "reviewedBy": null,
       "reviewDecision": null,
       "reviewReason": "",
-      "answers": [
-        {
-          "index": 1,
-          "question": "What's your name you will be going by? (First Initial Last Name)",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:15:31.885Z"
-        },
-        {
-          "index": 2,
-          "question": "Date of Birth (Month Day, Year). This will be your in-role-life date of birth.",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:02.845Z"
-        },
-        {
-          "index": 3,
-          "question": "Are you able to read, write, and speak in English Language?",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:04.608Z"
-        },
-        {
-          "index": 4,
-          "question": "Has your application ever been denied? If so, explain why and give an approximate date.",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:05.773Z"
-        },
-        {
-          "index": 5,
-          "question": "Have you previously been in this community? (Left/kicked and came back) If so, explain. If not, put N/A.",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:21.688Z"
-        },
-        {
-          "index": 6,
-          "question": "What tools or skills can you bring to the department? 3 full sentences at minimum.",
-          "answer": "11",
-          "answeredAt": "2026-08-03T17:16:25.489Z"
-        },
-        {
-          "index": 7,
-          "question": "Name your 3 strengths separated by commas.",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:34.067Z"
-        },
-        {
-          "index": 8,
-          "question": "Name your 3 weaknesses separated by commas.",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:36.983Z"
-        },
-        {
-          "index": 9,
-          "question": "Why should the department hire you? 3 full sentences at minimum.",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:38.645Z"
-        },
-        {
-          "index": 10,
-          "question": "Do you understand regardless of experience you will start off as Cadet until you prove yourself in-game during patrols?",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:42.415Z"
-        },
-        {
-          "index": 11,
-          "question": "List 3 different dates and times you're available for a Discord voice interview.",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:44.285Z"
-        },
-        {
-          "index": 12,
-          "question": "Do you understand if your application gets accepted, you have 14 days to complete your interview or your process will be terminated?",
-          "answer": "1",
-          "answeredAt": "2026-08-03T17:16:47.939Z"
-        }
-      ]
+      "answers": []
     }
   },
-  "activeSessions": {}
+  "activeSessions": {
+    "967375704486449222": {
+      "applicationId": "APP-000005",
+      "currentQuestionIndex": 0,
+      "createdAt": "2026-08-03T17:40:17.819Z"
+    }
+  }
 }
