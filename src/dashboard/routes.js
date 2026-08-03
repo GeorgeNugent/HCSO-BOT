@@ -220,7 +220,9 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             activePatrols,
             activeLoas,
             openCases,
-            openTickets
+            openTickets,
+            ticketCategory: config.ticketCategory || null,
+            ticketTypes: config.ticketTypes || []
         });
     });
 

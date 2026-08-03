@@ -107,11 +107,62 @@
 </div>
 <% } %>
 
+<!-- Ticket System -->
+<% if (typeof ticketCategory !== 'undefined' || typeof ticketTypes !== 'undefined') { %>
+<div class="section-card" style="margin-top:20px;">
+  <h3 class="section-title">🎫 Ticket System</h3>
+  <p class="section-desc">Configure the category that new tickets open under and the buttons shown on the panel.</p>
+  <form class="cmd-form" style="max-width:640px;">
+    <label for="homeTicketCategoryId">Ticket Category ID</label>
+    <input id="homeTicketCategoryId" type="text" value="<%= ticketCategory || '' %>" placeholder="Enter a category ID">
+
+    <label for="homeTicketButtonLabels" style="margin-top:12px;">Ticket Panel Buttons (one per line)</label>
+    <textarea id="homeTicketButtonLabels" rows="5" placeholder="Support&#10;Bug Report&#10;Feature Request"><% if (ticketTypes && ticketTypes.length > 0) { %><%= ticketTypes.map(t => t.label).join('\n') %><% } %></textarea>
+
+    <button type="button" class="btn btn-info" onclick="updateHomeTicketSystemSettings()">Save Ticket Settings</button>
+    <div id="home-ticket-settings-result" class="inline-result" style="display:none"></div>
+  </form>
+</div>
+<% } %>
+
 <!-- Open tickets summary -->
 <% if (openTickets > 0) { %>
 <div class="alert alert-info" style="margin-top:16px;">
   📨 There are <strong><%= openTickets %></strong> open ticket(s) currently active.
 </div>
 <% } %>
+
+<script>
+async function updateHomeTicketSystemSettings() {
+  const categoryId = document.getElementById("homeTicketCategoryId").value.trim();
+  const buttonLabels = document.getElementById("homeTicketButtonLabels").value
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const resultEl = document.getElementById("home-ticket-settings-result");
+  resultEl.style.display = "block";
+  resultEl.className = "inline-result";
+  resultEl.textContent = "Saving...";
+
+  try {
+    const r = await fetch("/api/settings/ticket-system", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoryId, buttonLabels })
+    });
+    const d = await r.json();
+    if (d.success) {
+      resultEl.textContent = "✅ Ticket settings saved!";
+      resultEl.classList.add("result-success");
+    } else {
+      resultEl.textContent = "❌ " + (d.error || "Failed");
+      resultEl.classList.add("result-error");
+    }
+  } catch (e) {
+    resultEl.textContent = "❌ Network error";
+    resultEl.classList.add("result-error");
+  }
+}
+</script>
 
 <%- include('partials/footer') %>
