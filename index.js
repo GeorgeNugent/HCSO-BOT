@@ -375,28 +375,9 @@ const STAFF_APPLICATION_QUESTIONS = [
     "Do you understand that your application can take up to 24 hours to get accepted?"
 ];
 
-function getApplicationTypeFromSelection(selectionValue) {
-    const normalizedSelection = String(selectionValue || "").trim().toLowerCase();
-
-    if (!normalizedSelection) {
-        return "staff";
-    }
-
-    if (normalizedSelection.startsWith("dept:") || /^\d{17,20}$/.test(normalizedSelection) || normalizedSelection.includes("department")) {
-        return "department";
-    }
-
-    if (normalizedSelection.includes("staff")) {
-        return "staff";
-    }
-
-    return "staff";
-}
-
 function getApplicationQuestionsForType(appType) {
-    return getApplicationTypeFromSelection(appType) === "staff"
-        ? STAFF_APPLICATION_QUESTIONS
-        : APPLICATION_QUESTIONS;
+    const normalizedType = String(appType || "").toLowerCase().trim();
+    return normalizedType === "staff" ? STAFF_APPLICATION_QUESTIONS : APPLICATION_QUESTIONS;
 }
 
 function getDepartmentApplicationChoices() {
@@ -517,17 +498,19 @@ function buildSuggestionEmbed(suggestion) {
 function buildApplicationRecord(user, selectionValue) {
     const departments = getAllDepartments();
     const normalizedSelection = String(selectionValue || "").trim();
-    const targetType = getApplicationTypeFromSelection(normalizedSelection);
+    let targetType = "staff";
     let departmentGuildId = null;
     let departmentName = "Staff Application";
 
-    if (targetType === "department") {
-        if (normalizedSelection.startsWith("dept:")) {
-            departmentGuildId = normalizedSelection.slice(5);
-        } else if (/^\d{17,20}$/.test(normalizedSelection)) {
-            departmentGuildId = normalizedSelection;
-        }
+    // Determine type based on selection
+    if (normalizedSelection.startsWith("dept:")) {
+        targetType = "department";
+        departmentGuildId = normalizedSelection.slice(5);
+    } else if (/^\d{17,20}$/.test(normalizedSelection)) {
+        targetType = "department";
+        departmentGuildId = normalizedSelection;
     }
+    // Otherwise defaults to staff
 
     if (targetType === "department" && departmentGuildId) {
         const dept = departments[String(departmentGuildId)] || null;
