@@ -185,7 +185,10 @@ if (!config.moduleRoleAccess.botOwner) {
     config.moduleRoleAccess.botOwner = [];
 }
 if (!config.ticketCategory) {
-    config.ticketCategory = 1533810405778915339;
+    config.ticketCategory = null;
+}
+if (!Array.isArray(config.ticketTypes)) {
+    config.ticketTypes = [{ label: "Open a Ticket", enabled: true }];
 }
 if (!config.blacklistJoinAction) {
     config.blacklistJoinAction = "ban";

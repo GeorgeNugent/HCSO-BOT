@@ -28,30 +28,42 @@ export const ticketCommands = [
 
 export function createTicketSystem({ config = {}, tickets = { tickets: {} }, saveTickets = () => {}, saveConfig = () => {}, getLogChannelId = () => null } = {}) {
     const ticketStore = tickets?.tickets || {};
-    const ticketCategory = String(config.ticketCategory || "").trim();
-    const ticketButtonLabels = Array.isArray(config.ticketTypes) && config.ticketTypes.length > 0
-        ? config.ticketTypes.map(t => String(t?.label || "").trim()).filter(Boolean)
-        : ["Open a Ticket"];
+
+    function getTicketCategoryId() {
+        return String(config.ticketCategory || "").trim();
+    }
+
+    function getTicketButtonLabels() {
+        return Array.isArray(config.ticketTypes) && config.ticketTypes.length > 0
+            ? config.ticketTypes.map(t => String(t?.label || "").trim()).filter(Boolean)
+            : ["Open a Ticket"];
+    }
 
     async function createTicketChannel(interaction) {
         if (!interaction.guild) {
             return { ok: false, message: "Tickets can only be created in a server." };
         }
 
+        const ticketCategory = getTicketCategoryId();
         if (!ticketCategory) {
+            return { ok: false, message: "ticket category not set up yet" };
+        }
+
+        const category = await interaction.guild.channels.fetch(ticketCategory).catch(() => null);
+        if (!category || category.type !== ChannelType.GuildCategory) {
             return { ok: false, message: "ticket category not set up yet" };
         }
 
         const nextCounter = Number(config.ticketCounter || 0) + 1;
         const channelName = `ticket-${nextCounter}`;
         const guild = interaction.guild;
-        const categoryId = ticketCategory || null;
+        const categoryId = category.id;
 
         try {
             const channel = await guild.channels.create({
                 name: channelName,
                 type: ChannelType.GuildText,
-                parent: categoryId || undefined,
+                parent: categoryId,
                 permissionOverwrites: [
                     {
                         id: guild.roles.everyone.id,
@@ -162,6 +174,9 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
                 return false;
             }
 
+            const ticketCategory = getTicketCategoryId();
+            const ticketButtonLabels = getTicketButtonLabels();
+
             if (interaction.commandName === "ticket") {
                 await interaction.reply({
                     content: "Ticket system is running in fallback mode. Use `/ticket-panel` to open a support ticket.",
@@ -201,6 +216,15 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
             }
 
             if (!ticketCategory) {
+                await interaction.reply({
+                    content: "ticket category not set up yet",
+                    flags: MessageFlags.Ephemeral
+                });
+                return true;
+            }
+
+            const category = await interaction.guild.channels.fetch(ticketCategory).catch(() => null);
+            if (!category || category.type !== ChannelType.GuildCategory) {
                 await interaction.reply({
                     content: "ticket category not set up yet",
                     flags: MessageFlags.Ephemeral
