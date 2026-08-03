@@ -324,7 +324,6 @@ const APPLICATION_START_PREFIX = "app_start_";
 const APPLICATION_CANCEL_PREFIX = "app_cancel_";
 const APPLICATION_REVIEW_ACCEPT_PREFIX = "app_review_accept_";
 const APPLICATION_REVIEW_DENY_PREFIX = "app_review_deny_";
-const APPLICATION_REVIEW_DENY_MODAL_PREFIX = "app_review_deny_modal_";
 const SUGGESTION_APPROVE_PREFIX = "suggestion_approve_";
 const SUGGESTION_DENY_PREFIX = "suggestion_deny_";
 
@@ -443,18 +442,9 @@ function buildApplicationRecord(user, selectionValue) {
     let departmentGuildId = null;
     let departmentName = "Staff Application";
 
-    if (selectionValue === "staff") {
-        targetType = "staff";
-        departmentGuildId = null;
-        departmentName = "Staff Application";
-    } else if (selectionValue.startsWith("dept:")) {
+    if (selectionValue.startsWith("dept:")) {
         targetType = "department";
         departmentGuildId = selectionValue.slice(5);
-        const dept = departments[departmentGuildId];
-        departmentName = dept?.name || dept?.shortName || departmentGuildId;
-    } else if (/^\d{17,20}$/.test(selectionValue) && departments[selectionValue]) {
-        targetType = "department";
-        departmentGuildId = selectionValue;
         const dept = departments[departmentGuildId];
         departmentName = dept?.name || dept?.shortName || departmentGuildId;
     }
@@ -552,240 +542,33 @@ async function sendApplicationDecisionDm(clientRef, app, acceptedBy, decision, r
     await targetUser.send(`❌ Application denied. Your application for **${app.departmentName}** was denied for the reason: ${reasonText || "No reason provided."}`).catch(() => {});
 }
 
-function getApplicationReviewChannelId(app) {
-    if (!config.applicationReviewChannelIds || typeof config.applicationReviewChannelIds !== "object") return null;
-    if (!app || !app.type) return null;
-    if (app.type === "staff") {
-        return config.applicationReviewChannelIds.staff || null;
-    }
-    if (app.type === "department" && app.departmentGuildId) {
-        return config.applicationReviewChannelIds[app.departmentGuildId] || null;
-    }
-    return null;
-}
+function getGuildStrikeStore(guildId) {
+    if (!guildId) return null;
 
-function setApplicationReviewChannel(departmentKey, channelId) {
-    if (!config.applicationReviewChannelIds || typeof config.applicationReviewChannelIds !== "object") {
-        config.applicationReviewChannelIds = {};
-    }
-    config.applicationReviewChannelIds[departmentKey] = channelId;
-    saveConfig();
-}
-
-function createApplicationReviewEmbed(app) {
-    const embed = new EmbedBuilder()
-        .setColor("#4ea8de")
-        .setTitle(`📄 Application ${app.id}`)
-        .setDescription(`Applicant: <@${app.applicantId}>\nType: ${app.type === "staff" ? "Staff" : "Department"}${app.departmentName ? `\nDepartment: ${app.departmentName}` : ""}`)
-        .addFields(
-            { name: "Application ID", value: app.id, inline: true },
-            { name: "Status", value: app.status || "pending", inline: true },
-            { name: "Submitted", value: app.submittedAt ? `<t:${Math.floor(new Date(app.submittedAt).getTime() / 1000)}:f>` : "Unknown", inline: false }
-        )
-        .setTimestamp(new Date(app.submittedAt || Date.now()));
-
-    if (Array.isArray(app.answers) && app.answers.length > 0) {
-        const answerText = app.answers.map(answer => {
-            const question = String(answer.question || "Question").trim();
-            const response = truncateForField(String(answer.answer || "(No answer)"), 250);
-            return `**${question}**\n${response}`;
-        }).join("\n\n");
-
-        embed.addFields({ name: "Answers", value: truncateForField(answerText, 1024), inline: false });
+    if (!strikes[guildId] || typeof strikes[guildId] !== "object" || Array.isArray(strikes[guildId])) {
+        strikes[guildId] = {};
     }
 
-    return embed;
-}
+    let migrated = false;
+    for (const [key, value] of Object.entries(strikes)) {
+        if (key === guildId) continue;
 
-function createApplicationReviewRow(appId, includeDeny = true) {
-    const components = [
-        new ButtonBuilder()
-            .setCustomId(`${APPLICATION_REVIEW_ACCEPT_PREFIX}${appId}`)
-            .setLabel("Accept")
-            .setStyle(ButtonStyle.Success)
-    ];
+        const isLegacyEntry = Array.isArray(value) || (value && typeof value === "object" && Array.isArray(value.strikes));
+        if (!isLegacyEntry) continue;
 
-    if (includeDeny) {
-        components.push(
-            new ButtonBuilder()
-                .setCustomId(`${APPLICATION_REVIEW_DENY_PREFIX}${appId}`)
-                .setLabel("Deny")
-                .setStyle(ButtonStyle.Danger)
-        );
+        if (!strikes[guildId][key]) {
+            strikes[guildId][key] = Array.isArray(value) ? value : value.strikes;
+        }
+
+        delete strikes[key];
+        migrated = true;
     }
 
-    return new ActionRowBuilder().addComponents(...components);
-}
-
-function getApplicationReviewChannelLabel(commandName) {
-    const mapping = {
-        applicationresultscpd: "1482501585803415572",
-        applicationresultshcso: "1482203107432595601",
-        applicationresultsfhp: "1482498655523962892",
-        applicationresultsstaff: "staff"
-    };
-    return mapping[commandName] || null;
-}
-
-function getApplicationReviewChannelName(commandName) {
-    const mapping = {
-        applicationresultscpd: "CPD",
-        applicationresultshcso: "HCSO",
-        applicationresultsfhp: "FHP",
-        applicationresultsstaff: "Staff"
-    };
-    return mapping[commandName] || null;
-}
-
-function getReviewChannelDescription(app) {
-    if (app.type === "staff") {
-        return "Staff application";
+    if (migrated) {
+        saveStrikes();
     }
-    return app.departmentName || "Department application";
-}
 
-function buildDisabledReviewRow() {
-    return new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId("disabled_accept")
-            .setLabel("Accept")
-            .setStyle(ButtonStyle.Success)
-            .setDisabled(true),
-        new ButtonBuilder()
-            .setCustomId("disabled_deny")
-            .setLabel("Deny")
-            .setStyle(ButtonStyle.Danger)
-            .setDisabled(true)
-    );
-}
-
-function cancelActiveApplicationSession(userId) {
-    const active = getOpenApplicationSession(userId);
-    if (!active) return null;
-    const { session, app } = active;
-    delete applicationsData.activeSessions[userId];
-    if (app && app.status === "in-progress") {
-        app.status = "cancelled";
-        app.reviewReason = "Cancelled by applicant";
-        app.reviewedAt = new Date().toISOString();
-    }
-    saveApplications();
-    return app;
-}
-
-function getReviewChannelInfoFromCommand(commandName) {
-    const reviewKey = getApplicationReviewChannelLabel(commandName);
-    const departmentName = getApplicationReviewChannelName(commandName);
-    return { reviewKey, departmentName };
-}
-
-function getApplicationReviewChannelKey(app) {
-    if (!app || !app.type) return null;
-    return app.type === "staff" ? "staff" : String(app.departmentGuildId || "");
-}
-
-function createReviewChannelUpdateMessage(app) {
-    return `✅ Application ${app.id} for ${app.departmentName || "Staff"} has been posted for review.`;
-}
-
-function getApplicationReviewTargetChannelName(key) {
-    if (key === "staff") return "Staff";
-    const dept = getAllDepartments()[key];
-    return dept?.shortName || dept?.name || key;
-}
-
-function getApplicationReviewChannelKeyName(key) {
-    return key === "staff" ? "Staff" : getAllDepartments()[key]?.shortName || getAllDepartments()[key]?.name || "Department";
-}
-
-function formatReviewChannelNotice(app) {
-    const target = getApplicationReviewChannelKeyName(getApplicationReviewChannelKey(app));
-    return `Your application was submitted and posted to the ${target} review channel.`;
-}
-
-function getReviewChannelForApp(app) {
-    const key = getApplicationReviewChannelKey(app);
-    if (!key) return null;
-    const channelId = config.applicationReviewChannelIds?.[key] || null;
-    if (channelId) return channelId;
-    if (app.type === "department") {
-        return config.applicationReviewChannelIds?.staff || null;
-    }
-    return null;
-}
-
-async function postApplicationToReviewChannel(clientRef, app) {
-    const channelId = getReviewChannelForApp(app);
-    if (!channelId) return null;
-
-    const channel = await clientRef.channels.fetch(channelId).catch(() => null);
-    if (!channel || !channel.isTextBased()) return null;
-
-    const embed = createApplicationReviewEmbed(app);
-    const row = createApplicationReviewRow(app.id, true);
-
-    const message = await channel.send({ embeds: [embed], components: [row] }).catch(() => null);
-    if (!message) return null;
-
-    app.reviewChannelId = channelId;
-    app.reviewMessageId = message.id;
-    app.status = "in-review";
-    saveApplications();
-    return message;
-}
-
-function isReviewCommand(commandName) {
-    return ["applicationresultscpd", "applicationresultshcso", "applicationresultsfhp", "applicationresultsstaff"].includes(commandName);
-}
-
-function getReviewCommandChannelKey(commandName) {
-    return {
-        applicationresultscpd: "1482501585803415572",
-        applicationresultshcso: "1482203107432595601",
-        applicationresultsfhp: "1482498655523962892",
-        applicationresultsstaff: "staff"
-    }[commandName] || null;
-}
-
-function getReviewCommandLabel(commandName) {
-    return {
-        applicationresultscpd: "CPD",
-        applicationresultshcso: "HCSO",
-        applicationresultsfhp: "FHP",
-        applicationresultsstaff: "Staff"
-    }[commandName] || null;
-}
-
-function formatActiveApplicationStatus(app) {
-    return app?.status ? String(app.status).replace(/\b\w/g, c => c.toUpperCase()) : "Unknown";
-}
-
-function buildReviewMessageResponse(app) {
-    return `📌 Application ${app.id} for ${app.departmentName || "Staff"} is ready for review.`;
-}
-
-function getReviewChannelKeyFromCommand(commandName) {
-    return getReviewCommandChannelKey(commandName);
-}
-
-function getReviewCommandDescription(commandName) {
-    return `Set this channel as the review channel for ${getReviewCommandLabel(commandName)} applications.`;
-}
-
-function buildApplicationReviewNotice(app) {
-    return `✅ ${app.departmentName || "Staff"} application submitted and posted for review.`;
-}
-
-function getApplicationReviewChannelIdFromCommand(commandName) {
-    return getReviewCommandChannelKey(commandName);
-}
-
-function getAppReviewChannelConfigKey(commandName) {
-    return getReviewCommandChannelKey(commandName);
-}
-
-function getAppReviewChannelConfigName(commandName) {
-    return getReviewCommandLabel(commandName);
+    return strikes[guildId];
 }
 
 function getGuildBlacklistStore(guildId) {
@@ -1994,27 +1777,23 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("staff-application-panel")
-        .setDescription("Post the application panel for staff candidates"),
+        .setDescription("Post the staff application panel"),
 
     new SlashCommandBuilder()
         .setName("applicationresultscpd")
-        .setDescription("Set this channel as the CPD application review channel"),
+        .setDescription("Post the CPD application panel"),
 
     new SlashCommandBuilder()
         .setName("applicationresultshcso")
-        .setDescription("Set this channel as the HCSO application review channel"),
+        .setDescription("Post the HCSO application panel"),
 
     new SlashCommandBuilder()
         .setName("applicationresultsfhp")
-        .setDescription("Set this channel as the FHP application review channel"),
+        .setDescription("Post the FHP application panel"),
 
     new SlashCommandBuilder()
         .setName("applicationresultsstaff")
-        .setDescription("Set this channel as the staff application review channel"),
-
-    new SlashCommandBuilder()
-        .setName("cancel-application")
-        .setDescription("Cancel your in-progress application"),
+        .setDescription("Post the staff application panel"),
 
     new SlashCommandBuilder()
         .setName("suggestion")
@@ -2348,16 +2127,8 @@ client.on("interactionCreate", async interaction => {
             }
 
             if (interaction.customId.startsWith(APPLICATION_CANCEL_PREFIX)) {
-                const app = cancelActiveApplicationSession(interaction.user.id);
-                if (!app) {
-                    return interaction.reply({
-                        content: "❌ No active application was found to cancel.",
-                        flags: MessageFlags.Ephemeral
-                    });
-                }
-
                 return interaction.reply({
-                    content: `✅ Application ${app.id} has been cancelled and will not be reviewed.`,
+                    content: "❌ Application cancelled.",
                     flags: MessageFlags.Ephemeral
                 });
             }
@@ -2387,7 +2158,7 @@ client.on("interactionCreate", async interaction => {
                     });
                 }
 
-                    app.status = "accepted";
+                app.status = "accepted";
                 app.reviewDecision = "accepted";
                 app.reviewedBy = interaction.user.id;
                 app.reviewedAt = new Date().toISOString();
@@ -2403,35 +2174,6 @@ client.on("interactionCreate", async interaction => {
                     .setTimestamp();
 
                 return interaction.update({ embeds: [acceptedEmbed], components: [] });
-            }
-
-            if (interaction.customId.startsWith(APPLICATION_REVIEW_DENY_PREFIX)) {
-                const appId = interaction.customId.replace(APPLICATION_REVIEW_DENY_PREFIX, "");
-                const app = applicationsData.applications[appId];
-                if (!app || (app.status !== "pending" && app.status !== "in-review")) {
-                    return interaction.reply({
-                        content: "⚠️ This application is no longer pending review.",
-                        flags: MessageFlags.Ephemeral
-                    });
-                }
-
-                const modal = new ModalBuilder()
-                    .setCustomId(`${APPLICATION_REVIEW_DENY_MODAL_PREFIX}${appId}`)
-                    .setTitle("Deny Application")
-                    .addComponents(
-                        new ActionRowBuilder().addComponents(
-                            new TextInputBuilder()
-                                .setCustomId("deny_reason")
-                                .setLabel("Denial Reason")
-                                .setStyle(TextInputStyle.Paragraph)
-                                .setRequired(true)
-                                .setMinLength(5)
-                                .setMaxLength(250)
-                                .setPlaceholder("Enter a reason for denying this application...")
-                        )
-                    );
-
-                return interaction.showModal(modal);
             }
 
             if (interaction.customId.startsWith(SUGGESTION_APPROVE_PREFIX) || interaction.customId.startsWith(SUGGESTION_DENY_PREFIX)) {
@@ -2996,32 +2738,6 @@ client.on("interactionCreate", async interaction => {
                     embeds: [embed],
                     flags: MessageFlags.Ephemeral
                 });
-            }
-
-            if (interaction.customId.startsWith(APPLICATION_REVIEW_DENY_MODAL_PREFIX)) {
-                const appId = interaction.customId.replace(APPLICATION_REVIEW_DENY_MODAL_PREFIX, "");
-                const app = applicationsData.applications[appId];
-                if (!app || (app.status !== "pending" && app.status !== "in-review")) {
-                    return interaction.reply({
-                        content: "⚠️ This application is no longer pending review.",
-                        flags: MessageFlags.Ephemeral
-                    });
-                }
-
-                const reason = interaction.fields.getTextInputValue("deny_reason")?.trim();
-                app.status = "denied";
-                app.reviewDecision = "denied";
-                app.reviewReason = reason || "No reason provided.";
-                app.reviewedBy = interaction.user.id;
-                app.reviewedAt = new Date().toISOString();
-                saveApplications();
-
-                await sendApplicationDecisionDm(client, app, interaction.user.id, "denied", app.reviewReason);
-
-                const deniedEmbed = createApplicationReviewEmbed(app);
-                const disabledRow = buildDisabledReviewRow();
-                await interaction.reply({ embeds: [deniedEmbed], components: [disabledRow] });
-                return;
             }
 
             if (interaction.customId === "training_addcert_modal" || interaction.customId === "training_removecert_modal") {
@@ -6528,12 +6244,19 @@ client.on("interactionCreate", async interaction => {
             .setDescription("Use the following commands to interact with the bot. Some commands require staff or admin permissions.");
 
         helpEmbed.addFields(
-            { name: "General — Everyone", value: "• /cancel-application — Cancel your in-progress application\n• /suggestion submit — Submit a suggestion\n• /onlinedash — Get the bot status dashboard (if enabled)", inline: false }
+            { name: "General — Everyone", value: "• /suggestion submit — Submit a suggestion\n• /applications — View applications\n• /onlinedash — Get the bot status dashboard (if enabled)", inline: false }
         );
 
         if (isStaff) {
-            helpEmbed.addFields({ name: "Staff — Requires Staff Role", value: "• /dashboard — Open the staff control panel\n• /set-log-channel — Configure log channels\n• /application-panel — Post the recruit application panel\n• /staff-application-panel — Post the staff application panel\n• /applicationresultscpd, /applicationresultshcso, /applicationresultsfhp, /applicationresultsstaff — Set application review channels", inline: false });
+            helpEmbed.addFields({ name: "Staff — Requires Staff Role", value: "• /dashboard — Open the staff control panel\n• /set-log-channel — Configure log channels\n• /application-panel — Post application panel for recruits\n• /staff-application-panel — Post the staff application panel", inline: false });
         }
+
+        if (isAdmin) {
+            helpEmbed.addFields({ name: "Admin — Administrators/Bot Owner", value: "• /set-status — Change bot presence/status\n• /set-module-access — Configure module role access\n• /set-log-channel — Set important log channels", inline: false });
+        }
+
+        helpEmbed.setFooter({ text: branding.fallback.footer || branding.communityName });
+        helpEmbed.setTimestamp();
 
         return interaction.reply({ embeds: [helpEmbed], flags: MessageFlags.Ephemeral });
     }
@@ -6613,7 +6336,7 @@ client.on("interactionCreate", async interaction => {
         });
     }
 
-    if (interaction.commandName === "application-panel" || interaction.commandName === "staff-application-panel") {
+    if (["application-panel", "staff-application-panel", "applicationresultscpd", "applicationresultshcso", "applicationresultsfhp", "applicationresultsstaff"].includes(interaction.commandName)) {
         if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
             return interaction.reply({
                 content: "❌ You don't have permission to post the application panel.",
@@ -6626,13 +6349,37 @@ client.on("interactionCreate", async interaction => {
                 title: "📝 Emergency Service Applications",
                 description: "To apply for a department or team, click **Apply** below.\n\nYour interview questions will be sent in DMs and your answers will be reviewed in the online dashboard by staff and command.",
                 buttonLabel: "Apply",
-                buttonId: APPLICATION_PANEL_BUTTON_ID
+                departmentId: null
             },
             "staff-application-panel": {
                 title: "📝 Staff Applications",
                 description: "Post the staff application panel here. Candidates will be reviewed by command-level staff.",
                 buttonLabel: "Apply for Staff",
-                buttonId: `${APPLICATION_START_PREFIX}staff`
+                departmentId: "staff"
+            },
+            applicationresultscpd: {
+                title: "📝 CPD Applications",
+                description: "Post the Clewiston Police Department application panel here. Candidates will be reviewed by CPD command and staff.",
+                buttonLabel: "Apply for CPD",
+                departmentId: "1482501585803415572"
+            },
+            applicationresultshcso: {
+                title: "📝 HCSO Applications",
+                description: "Post the Hendry County Sheriff's Office application panel here. Candidates will be reviewed by HCSO command and staff.",
+                buttonLabel: "Apply for HCSO",
+                departmentId: "1482203107432595601"
+            },
+            applicationresultsfhp: {
+                title: "📝 FHP Applications",
+                description: "Post the Florida Highway Patrol application panel here. Candidates will be reviewed by FHP command and staff.",
+                buttonLabel: "Apply for FHP",
+                departmentId: "1482498655523962892"
+            },
+            applicationresultsstaff: {
+                title: "📝 Staff Applications",
+                description: "Post the staff application panel here. Candidates will be reviewed by command-level staff.",
+                buttonLabel: "Apply for Staff",
+                departmentId: "staff"
             }
         };
 
@@ -6653,54 +6400,13 @@ client.on("interactionCreate", async interaction => {
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId(panelConfig.buttonId)
+                .setCustomId(panelConfig.departmentId === null ? APPLICATION_PANEL_BUTTON_ID : `${APPLICATION_START_PREFIX}${panelConfig.departmentId}`)
                 .setLabel(panelConfig.buttonLabel)
                 .setStyle(ButtonStyle.Primary)
         );
 
         await interaction.reply({ embeds: [panelEmbed], components: [row] });
         return;
-    }
-
-    if (isReviewCommand(interaction.commandName)) {
-        if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
-            return interaction.reply({
-                content: "❌ You don't have permission to configure application review channels.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
-        const channelKey = getReviewCommandChannelKey(interaction.commandName);
-        if (!channelKey) {
-            return interaction.reply({
-                content: "❌ Invalid review channel command.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
-        setApplicationReviewChannel(channelKey, interaction.channel.id);
-        saveConfig();
-
-        return interaction.reply({
-            content: `✅ ${getReviewCommandLabel(interaction.commandName)} review channel set to <#${interaction.channel.id}>.`,
-            flags: MessageFlags.Ephemeral
-        });
-    }
-
-    if (interaction.commandName === "cancel-application") {
-        const active = getOpenApplicationSession(interaction.user.id);
-        if (!active) {
-            return interaction.reply({
-                content: "⚠️ You do not have an active application to cancel.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
-        cancelActiveApplicationSession(interaction.user.id);
-        return interaction.reply({
-            content: "✅ Your active application has been cancelled.",
-            flags: MessageFlags.Ephemeral
-        });
     }
 
     if (interaction.commandName === "suggestion") {
@@ -7088,13 +6794,7 @@ client.on("messageCreate", async message => {
         app.submittedAt = new Date().toISOString();
         delete applicationsData.activeSessions[message.author.id];
         saveApplications();
-
-        const reviewMessage = await postApplicationToReviewChannel(client, app);
-        if (reviewMessage) {
-            await message.channel.send(`${formatReviewChannelNotice(app)} Staff can review it now.`).catch(() => {});
-        } else {
-            await message.channel.send("✅ Application submitted. Staff and command can now review it from the online dashboard.").catch(() => {});
-        }
+        await message.channel.send("✅ Application submitted. Staff and command can now review it from the online dashboard.").catch(() => {});
         return;
     }
 
