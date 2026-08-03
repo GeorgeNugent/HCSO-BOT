@@ -345,18 +345,26 @@ const APPLICATION_QUESTIONS = [
 
 function getDepartmentApplicationChoices() {
     const departments = getAllDepartments();
-    const choices = [{ label: "Staff Application", value: "staff", description: "Apply for staff position" }];
+    const shortOrder = ["CPD", "HCSO", "FHP"];
+    const choices = [];
 
-    for (const [guildId, dept] of Object.entries(departments || {})) {
-        if (!dept || dept.type === "main") continue;
+    for (const shortName of shortOrder) {
+        const matchingEntry = Object.entries(departments || {}).find(([, dept]) =>
+            String(dept?.shortName || "").toUpperCase() === shortName
+        );
+
+        if (!matchingEntry) continue;
+        const [guildId, dept] = matchingEntry;
         if (!/^\d{17,20}$/.test(String(guildId))) continue;
+
         choices.push({
-            label: dept.name || dept.shortName || guildId,
+            label: dept.shortName || dept.name || shortName,
             value: `dept:${guildId}`,
-            description: `Apply for ${dept.shortName || "department"}`
+            description: `Apply for ${dept.shortName || dept.name || "department"}`
         });
     }
 
+    choices.push({ label: "Staff Application", value: "staff", description: "Apply for staff position" });
     return choices.slice(0, 25);
 }
 
@@ -2141,10 +2149,13 @@ client.on("interactionCreate", async interaction => {
             }
 
             if (interaction.customId.startsWith(APPLICATION_CANCEL_PREFIX)) {
-                return interaction.reply({
-                    content: "❌ Application cancelled.",
-                    flags: MessageFlags.Ephemeral
-                });
+                const cancelEmbed = new EmbedBuilder()
+                    .setColor("#8b0000")
+                    .setTitle("Application Cancelled")
+                    .setDescription("Your application has been cancelled. If this was a mistake, restart your application from the application panel.")
+                    .setTimestamp();
+
+                return interaction.reply({ embeds: [cancelEmbed], flags: MessageFlags.Ephemeral });
             }
 
             if (interaction.customId.startsWith(APPLICATION_REVIEW_ACCEPT_PREFIX) || interaction.customId.startsWith(APPLICATION_REVIEW_DENY_PREFIX)) {
@@ -2478,7 +2489,7 @@ client.on("interactionCreate", async interaction => {
         const confirmEmbed = new EmbedBuilder()
             .setColor("#4ea8de")
             .setTitle(label)
-            .setDescription("Are you sure you want to apply?\n\nOnce you start the application I will send you a series of questions in DMs. You will have 60 minutes to complete it.")
+            .setDescription("Are you sure you want to apply?\n\nOnce you start the application I will send you a series of questions in DMs. You will have 60 minutes to complete it. If you do not finish the application in time, you will need to restart. If you wish to stop the application, click Cancel application.")
             .setTimestamp();
 
         const row = new ActionRowBuilder().addComponents(
@@ -6360,8 +6371,8 @@ client.on("interactionCreate", async interaction => {
         const panelEmbed = new EmbedBuilder()
             .setColor("#4ea8de")
             .setTitle("📝 Emergency Service Applications")
-            .setDescription("To apply for a department or team, click **Apply** below.\n\nYour interview questions will be sent in DMs and your answers will be reviewed in the online dashboard by staff and command.")
-            .addFields({ name: "Apply", value: "Click the button below to begin your application." })
+            .setDescription("Click Apply to choose your application type. Once you confirm, I will send your application questions in DMs and route the completed application to the correct dashboard department.")
+            .addFields({ name: "Apply", value: "Choose from CPD, HCSO, FHP, or Staff, then confirm to begin." })
             .setTimestamp();
 
         const row = new ActionRowBuilder().addComponents(
