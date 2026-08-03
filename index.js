@@ -199,6 +199,9 @@ if (typeof config.ticketPanelDescription !== "string") {
 if (typeof config.ticketPanelImageUrl !== "string") {
     config.ticketPanelImageUrl = null;
 }
+if (typeof config.ticketPanelEphemeral !== "boolean") {
+    config.ticketPanelEphemeral = false;
+}
 if (!config.blacklistJoinAction) {
     config.blacklistJoinAction = "ban";
 }

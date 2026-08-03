@@ -802,7 +802,8 @@ ${results.join("\n")}` }).catch(() => {});
                 );
             }
 
-            await interaction.reply({ embeds: [panelEmbed], components: [row], ephemeral: false }).catch(() => {});
+            const shouldBeEphemeral = Boolean(config.ticketPanelEphemeral);
+            await interaction.reply({ embeds: [panelEmbed], components: [row], ephemeral: shouldBeEphemeral }).catch(() => {});
             return true;
         }
 

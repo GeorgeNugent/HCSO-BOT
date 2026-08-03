@@ -114,8 +114,8 @@
   <div class="quick-grid">
     <a href="/servers" class="quick-btn">🌐 All Servers</a>
     <% var visibleDepartmentIds = Array.isArray(accessibleDepartmentIds) ? accessibleDepartmentIds.map(String) : []; %>
-    <% Object.entries(departments).filter(function(entry){ return (entry[1] || {}).type === 'department' && (visibleDepartmentIds.length === 0 || visibleDepartmentIds.includes(String(entry[0]))); }).forEach(function(entry){ var gId = entry[0]; var dept = entry[1]; %>
-      <a href="/departments/<%= gId %>" class="quick-btn" style="border-color:<%= dept.color %>44;"><%= dept.shortName || dept.name %></a>
+    <% Object.entries(departments).filter(function(entry){ return (entry[1] || {}).type === 'department' && (visibleDepartmentIds.length === 0 || visibleDepartmentIds.includes(String(entry[0]))); }).forEach(function(entry){ var gId = entry[0]; var dept = entry[1]; var deptColor = dept && dept.color ? dept.color : '#5865F2'; %>
+      <a href="/departments/<%= gId %>" class="quick-btn" data-dept-color="<%= deptColor %>"><%= dept.shortName || dept.name %></a>
     <% }); %>
   </div>
 </div>
@@ -140,6 +140,11 @@
 
     <label for="homeTicketButtonLabels" style="margin-top:12px;">Ticket Panel Buttons (one per line)</label>
     <textarea id="homeTicketButtonLabels" rows="5" placeholder="Support&#10;Bug Report&#10;Feature Request"><% if (ticketTypes && ticketTypes.length > 0) { %><%= ticketTypes.map(t => t.label).join('\n') %><% } %></textarea>
+
+    <label style="margin-top:12px; display:flex; align-items:center; gap:10px; cursor:pointer;">
+      <input id="homeTicketPanelEphemeral" type="checkbox" <%= ticketPanelEphemeral ? 'checked' : '' %>>
+      <span>Make ticket panel replies ephemeral</span>
+    </label>
 
     <button type="button" class="btn btn-primary" onclick="updateHomeTicketSystemSettings()">Save Ticket Settings</button>
     <div id="home-ticket-settings-result" class="inline-result" style="display:none"></div>
@@ -175,6 +180,7 @@ async function updateHomeTicketSystemSettings() {
   const ticketPanelTitle = document.getElementById("homeTicketPanelTitle").value.trim();
   const ticketPanelDescription = document.getElementById("homeTicketPanelDescription").value.trim();
   const ticketPanelImageUrl = document.getElementById("homeTicketPanelImageUrl").value.trim();
+  const ticketPanelEphemeral = document.getElementById("homeTicketPanelEphemeral").checked;
   const buttonLabels = document.getElementById("homeTicketButtonLabels").value
     .split(/\r?\n/)
     .map(line => line.trim())
@@ -188,7 +194,7 @@ async function updateHomeTicketSystemSettings() {
     const r = await fetch("/api/settings/ticket-system", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId, ticketPanelTitle, ticketPanelDescription, ticketPanelImageUrl, buttonLabels })
+      body: JSON.stringify({ categoryId, ticketPanelTitle, ticketPanelDescription, ticketPanelImageUrl, ticketPanelEphemeral, buttonLabels })
     });
     const d = await r.json();
     if (d.success) {
@@ -203,6 +209,11 @@ async function updateHomeTicketSystemSettings() {
     resultEl.classList.add("result-error");
   }
 }
+
+document.querySelectorAll('[data-dept-color]').forEach((el) => {
+  const color = el.getAttribute('data-dept-color');
+  if (color) el.style.borderColor = color;
+});
 
 function toggleCloseTicketPanel() {
   const panel = document.getElementById("close-ticket-panel");

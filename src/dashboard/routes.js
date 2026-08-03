@@ -230,7 +230,8 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             ticketTypes: config.ticketTypes || [],
             ticketPanelTitle: config.ticketPanelTitle || null,
             ticketPanelDescription: config.ticketPanelDescription || null,
-            ticketPanelImageUrl: config.ticketPanelImageUrl || null
+            ticketPanelImageUrl: config.ticketPanelImageUrl || null,
+            ticketPanelEphemeral: Boolean(config.ticketPanelEphemeral)
         });
     });
 
@@ -1555,12 +1556,15 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             const rawTitle = String(req.body?.ticketPanelTitle || "").trim();
             const rawDescription = String(req.body?.ticketPanelDescription || "").trim();
             const rawImageUrl = String(req.body?.ticketPanelImageUrl || "").trim();
+            const rawEphemeral = req.body?.ticketPanelEphemeral;
+            const ticketPanelEphemeral = rawEphemeral === true || rawEphemeral === "true" || rawEphemeral === 1 || rawEphemeral === "1";
 
             config.ticketCategory = categoryId;
             config.ticketTypes = normalizedButtons.length > 0 ? normalizedButtons : [{ label: "Open a Ticket", enabled: true }];
             config.ticketPanelTitle = rawTitle || null;
             config.ticketPanelDescription = rawDescription || null;
             config.ticketPanelImageUrl = rawImageUrl || null;
+            config.ticketPanelEphemeral = Boolean(ticketPanelEphemeral);
             saveConfig();
 
             res.json({ success: true, message: "Ticket system settings saved." });
