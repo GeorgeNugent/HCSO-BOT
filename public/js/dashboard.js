@@ -119,4 +119,49 @@ document.addEventListener("DOMContentLoaded", () => {
             await submitForm(form);
         });
     });
+
+    const hamburger = document.getElementById("hamburgerBtn");
+    const sidebar = document.getElementById("mainSidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+
+    if (hamburger && sidebar && overlay) {
+        const openSidebar = () => {
+            sidebar.classList.add("sidebar--open");
+            overlay.classList.add("sidebar-overlay--visible");
+            hamburger.setAttribute("aria-expanded", "true");
+            document.body.style.overflow = "hidden";
+        };
+
+        const closeSidebar = () => {
+            sidebar.classList.remove("sidebar--open");
+            overlay.classList.remove("sidebar-overlay--visible");
+            hamburger.setAttribute("aria-expanded", "false");
+            document.body.style.overflow = "";
+        };
+
+        hamburger.addEventListener("click", () => {
+            sidebar.classList.contains("sidebar--open") ? closeSidebar() : openSidebar();
+        });
+        overlay.addEventListener("click", closeSidebar);
+        sidebar.querySelectorAll(".nav-link").forEach(link => {
+            link.addEventListener("click", () => {
+                if (window.innerWidth <= 1180) closeSidebar();
+            });
+        });
+        window.addEventListener("resize", () => {
+            if (window.innerWidth > 1180) closeSidebar();
+        });
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const target = button.dataset.tab;
+            if (!target) return;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+            button.classList.add('active');
+            const panel = document.getElementById(`tab-${target}`);
+            if (panel) panel.classList.add('active');
+        });
+    });
 });
