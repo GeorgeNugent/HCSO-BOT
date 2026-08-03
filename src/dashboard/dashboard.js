@@ -285,6 +285,12 @@ export function startDashboard(context) {
             segmentAccess[segment] = userId ? canAccessSegment(userId, roleIds, segment, GUILD_ID || MAIN_ROLE_GUILD_ID) : false;
         }
 
+        if (userId && BOT_OWNER_IDS.includes(String(userId))) {
+            for (const segment of DASHBOARD_SEGMENTS) {
+                segmentAccess[segment] = true;
+            }
+        }
+
         const accessibleDepartmentIds = [];
         const departmentAccessByGuild = context.config?.departmentAccessByGuild && typeof context.config.departmentAccessByGuild === "object"
             ? context.config.departmentAccessByGuild

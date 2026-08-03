@@ -128,10 +128,32 @@ a {
   background: rgba(92, 249, 255, 0.14);
 }
 
+.topbar-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .topbar-title {
   font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.03em;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+
+.topbar-brand-mark {
+  background: rgba(92, 249, 255, 0.15);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.08em;
 }
 
 .topbar-subtitle {

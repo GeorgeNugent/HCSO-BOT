@@ -25,9 +25,12 @@
     <% } else { %>
       <div class="topbar-avatar topbar-avatar--placeholder">H</div>
     <% } %>
-    <div>
-      <div class="topbar-title"><%= typeof branding !== 'undefined' ? branding.dashboardTitle : 'HCP Control Panel' %></div>
-      <div class="topbar-subtitle"><%= typeof branding !== 'undefined' ? branding.communityName : 'Hendry County Project' %></div>
+    <div class="topbar-title-wrap">
+      <div class="topbar-title">
+        <%= typeof branding !== 'undefined' ? branding.communityName : 'Hendry County Project' %>
+        <span class="topbar-brand-mark">V2</span>
+      </div>
+      <div class="topbar-subtitle">Control Panel</div>
     </div>
   </div>
 
@@ -51,41 +54,41 @@
   <aside class="sidebar" id="mainSidebar">
     <nav class="sidebar-nav">
       <div class="sidebar-section-label">Main</div>
-      <% if (!segmentAccess || segmentAccess.home) { %>
+      <% if (isBotOwner || !segmentAccess || segmentAccess.home) { %>
         <a href="/" class="nav-link <%= page === 'home' ? 'active' : '' %>">
           <span class="nav-icon">🏠</span>
           <span class="nav-label">Home</span>
         </a>
       <% } %>
 
-      <% var canSeeStaffSection = (!segmentAccess || segmentAccess.settings); %>
+      <% var canSeeStaffSection = isBotOwner || (!segmentAccess || segmentAccess.status || segmentAccess.commands || segmentAccess.logs || segmentAccess.applications || segmentAccess.settings); %>
       <% if (canSeeStaffSection) { %>
         <div class="sidebar-section-label">Staff</div>
-        <% if (!segmentAccess || segmentAccess.status) { %>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.status) { %>
           <a href="/status" class="nav-link <%= page === 'status' ? 'active' : '' %>">
             <span class="nav-icon">📊</span>
             <span class="nav-label">Bot Status</span>
           </a>
         <% } %>
-        <% if (!segmentAccess || segmentAccess.commands) { %>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.commands) { %>
           <a href="/commands" class="nav-link <%= page === 'commands' ? 'active' : '' %>">
             <span class="nav-icon">⚡</span>
             <span class="nav-label">Commands</span>
           </a>
         <% } %>
-        <% if (!segmentAccess || segmentAccess.logs) { %>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.logs) { %>
           <a href="/logs" class="nav-link <%= page === 'logs' ? 'active' : '' %>">
             <span class="nav-icon">📋</span>
             <span class="nav-label">Logs</span>
           </a>
         <% } %>
-        <% if (!segmentAccess || segmentAccess.applications) { %>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.applications) { %>
           <a href="/applications" class="nav-link <%= page === 'applications' ? 'active' : '' %>">
             <span class="nav-icon">📝</span>
             <span class="nav-label">Applications</span>
           </a>
         <% } %>
-        <% if (!segmentAccess || segmentAccess.settings) { %>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.settings) { %>
           <a href="/settings" class="nav-link <%= page === 'settings' ? 'active' : '' %>">
             <span class="nav-icon">⚙️</span>
             <span class="nav-label">Settings</span>
@@ -99,7 +102,7 @@
         <% } %>
       <% } %>
 
-      <% if (!segmentAccess || segmentAccess.departments) { %>
+      <% if (isBotOwner || !segmentAccess || segmentAccess.departments) { %>
         <% var visibleDepartmentIds = Array.isArray(accessibleDepartmentIds) ? accessibleDepartmentIds.map(String) : []; %>
         <% var deptServers = Object.entries(typeof departments !== 'undefined' ? departments : {}).filter(function(entry){
              var dept = entry[1] || {};
