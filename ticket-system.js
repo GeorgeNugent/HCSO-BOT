@@ -34,12 +34,7 @@ export const ticketCommands = [
                 .setDescription("Category to create ticket channels under")
                 .addChannelTypes(ChannelType.GuildCategory)
                 .setRequired(true)
-        ),
-
-    new SlashCommandBuilder()
-        .setName("ticketmanagement")
-        .setDescription("Open the ticket management panel for this ticket channel")
-        .setDMPermission(false)
+        )
 ];
 
 export function createTicketSystem({ config = {}, tickets = { tickets: {} }, saveTickets = () => {}, saveConfig = () => {}, getLogChannelId = () => null, isStaffMember = () => false } = {}) {

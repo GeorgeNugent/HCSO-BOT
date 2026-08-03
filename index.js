@@ -1810,6 +1810,11 @@ const commands = [
     ...ticketCommands,
 
     new SlashCommandBuilder()
+        .setName("ticketmanagement")
+        .setDescription("Open the ticket management panel for this ticket channel")
+        .setDMPermission(false),
+
+    new SlashCommandBuilder()
         .setName("set-status")
         .setDescription("Change the bot's status to a preset")
         .addStringOption(o => o
