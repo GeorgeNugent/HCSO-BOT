@@ -2254,22 +2254,23 @@ client.on("interactionCreate", async interaction => {
                     try {
                         await sendApplicationInstructionsDm(interaction.user, app);
                         await sendApplicationQuestionDm(interaction.user, app, 0);
-                    } catch {
+                        
+                        await interaction.reply({
+                            content: "✅ Application started. Check your DMs and answer each question there. You have 60 minutes to complete it.",
+                            flags: MessageFlags.Ephemeral
+                        });
+                    } catch (err) {
                         delete applicationsData.activeSessions[interaction.user.id];
                         delete applicationsData.applications[app.id];
                         saveApplications();
-                        applicationsBeingStarted.delete(interaction.user.id);
-                        return interaction.reply({
+                        await interaction.reply({
                             content: "❌ I could not DM you. Please enable DMs and try again.",
                             flags: MessageFlags.Ephemeral
                         });
                     }
-
+                    
+                    // Remove lock after everything is complete
                     applicationsBeingStarted.delete(interaction.user.id);
-                    return interaction.reply({
-                        content: "✅ Application started. Check your DMs and answer each question there. You have 60 minutes to complete it.",
-                        flags: MessageFlags.Ephemeral
-                    });
                 } catch (error) {
                     applicationsBeingStarted.delete(interaction.user.id);
                     throw error;
