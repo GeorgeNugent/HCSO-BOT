@@ -1859,10 +1859,18 @@ const commands = [
 
 // Register commands
 const rest = new REST({ version: "10" }).setToken(TOKEN);
-const TARGET_COMMAND_GUILD_IDS = String(process.env.COMMAND_GUILD_IDS || `${process.env.GUILD_ID || ""},1533869053729571027` || "")
-    .split(",")
-    .map(id => String(id || "").trim())
-    .filter(Boolean);
+const EXTRA_COMMAND_GUILD_IDS = ["1533869053729571027"];
+const TARGET_COMMAND_GUILD_IDS = [...new Set([
+    ...String(process.env.COMMAND_GUILD_IDS || "")
+        .split(",")
+        .map(id => String(id || "").trim())
+        .filter(Boolean),
+    ...String(process.env.GUILD_ID || "")
+        .split(",")
+        .map(id => String(id || "").trim())
+        .filter(Boolean),
+    ...EXTRA_COMMAND_GUILD_IDS
+])];
 
 const STALE_APPLICATION_COMMAND_NAMES = new Set([
     "applicationresultscpd",
