@@ -702,6 +702,7 @@ const ticketSystem = createTicketSystem({
     saveConfig,
     saveTickets,
     getLogChannelId,
+    isStaffMember: isTicketStaffMember,
     transcriptsDir: TRANSCRIPTS_DIR
 });
 
@@ -1451,24 +1452,28 @@ async function sendLoaReviewLog(guildId, { userId, startDate, endDate, reason, r
 // Dashboard permission functions
 const MAIN_GUILD_ID = process.env.GUILD_ID || "1533590255603810334";
 const MAIN_FULL_ACCESS_ROLE_ID = "1318018654662692956";
+const BOT_OWNER_IDS = ["967375704486449222", "327951443090735104"];
 
 function hasMainFullAccessRole(member) {
     return String(member?.guild?.id || "") === MAIN_GUILD_ID
         && member.roles?.cache?.has(MAIN_FULL_ACCESS_ROLE_ID);
 }
 
+function isBotOwner(member) {
+    return Boolean(member?.id && BOT_OWNER_IDS.includes(member.id));
+}
+
 function canAccessDashboard(member) {
-    const botOwnerId = "967375704486449222";
-    return member.id === botOwnerId ||
+    return isBotOwner(member) ||
            hasMainFullAccessRole(member) ||
            canAccessBotOwner(member) ||
-           member.permissions.has(PermissionFlagsBits.Administrator) || 
+           member.permissions.has(PermissionFlagsBits.Administrator) ||
            member.roles.cache.some(r => ["admin", "administrator", "supervisor", "ia", "investigator", "sheriff"].some(role => r.name.toLowerCase().includes(role)));
 }
 
 function canAccessModule(member, moduleType) {
     // Bot owner has access to everything
-    if (member.id === "967375704486449222") {
+    if (isBotOwner(member)) {
         return true;
     }
 
@@ -1513,8 +1518,7 @@ function canAccessModule(member, moduleType) {
 }
 
 function canAccessBotOwner(member) {
-    const botOwnerId = "967375704486449222";
-    if (member.id === botOwnerId) {
+    if (isBotOwner(member)) {
         return true;
     }
 
@@ -1531,6 +1535,10 @@ function canAccessBotOwner(member) {
     }
 
     return customRoleIds.length > 0 && member.roles.cache.some(r => customRoleIds.includes(r.id));
+}
+
+function isTicketStaffMember(member) {
+    return isBotOwner(member) || canAccessModule(member, "tickets") || canAccessModule(member, "supervisor");
 }
 
 // Build dashboard button rows showing only modules the user can access
@@ -6735,6 +6743,8 @@ client.on("messageCreate", async message => {
     // Ignore bot messages
     if (message.author.bot) return;
 
+    ticketSystem.logTicketMessage(message);
+
     // Check if this is a ticket channel
     const ticketEntry = Object.entries(tickets.tickets).find(
         ([_, ticket]) => ticket.channel === message.channelId && ticket.status === "open"
@@ -6832,10 +6842,28 @@ client.on("messageCreate", async message => {
     }
 });
 
-// Handle DM application interview answers
+// Handle DM application interview answers and ticket review submissions
 client.on("messageCreate", async message => {
     if (message.author.bot) return;
     if (message.guild) return;
+
+    // Ticket review DM flow
+    const pendingTicket = ticketSystem.getPendingReviewByOpener(message.author.id);
+    if (pendingTicket) {
+        const reviewText = String(message.content || "").trim();
+        if (!reviewText) return;
+
+        const submittedTicket = ticketSystem.submitTicketReview(message.author.id, reviewText);
+        if (submittedTicket) {
+            const guild = await client.guilds.fetch(submittedTicket.guild).catch(() => null);
+            if (guild) {
+                await ticketSystem.sendReviewEmbed(guild, submittedTicket, reviewText, "User Review DM");
+            }
+        }
+
+        await message.channel.send("✅ Thank you! Your ticket review has been submitted.").catch(() => {});
+        return;
+    }
 
     const active = getOpenApplicationSession(message.author.id);
     if (!active) return;
