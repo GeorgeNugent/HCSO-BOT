@@ -115,12 +115,22 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         const interviewRoleId = APPLICATION_NEEDS_INTERVIEW_ROLE_IDS[roleKey];
         if (!pendingRoleId && !interviewRoleId) return;
 
-        const guild = app.guildId
+        let guild = app.guildId
             ? client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null)
             : null;
+        if (!guild && GUILD_ID) {
+            guild = client.guilds.cache.get(GUILD_ID) || await client.guilds.fetch(GUILD_ID).catch(() => null);
+        }
         if (!guild) return;
 
-        const member = await guild.members.fetch(targetUserId).catch(() => null);
+        let member = await guild.members.fetch(targetUserId).catch(() => null);
+        if (!member && GUILD_ID && guild.id !== GUILD_ID) {
+            const fallbackGuild = client.guilds.cache.get(GUILD_ID) || await client.guilds.fetch(GUILD_ID).catch(() => null);
+            if (fallbackGuild) {
+                member = await fallbackGuild.members.fetch(targetUserId).catch(() => null);
+                guild = fallbackGuild;
+            }
+        }
         if (!member) return;
 
         const roleIdsToRemove = [];
