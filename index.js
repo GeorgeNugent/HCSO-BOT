@@ -323,6 +323,8 @@ const APPLICATION_PANEL_BUTTON_ID = "app_open_apply";
 const APPLICATION_DEPT_SELECT_ID = "app_select_department";
 const APPLICATION_START_PREFIX = "app_start_";
 const APPLICATION_CANCEL_PREFIX = "app_cancel_";
+const APPLICATION_CANCEL_CONFIRM_PREFIX = "app_cancel_confirm_";
+const APPLICATION_CANCEL_KEEP_PREFIX = "app_cancel_keep_";
 const APPLICATION_REVIEW_ACCEPT_PREFIX = "app_review_accept_";
 const APPLICATION_REVIEW_DENY_PREFIX = "app_review_deny_";
 const SUGGESTION_APPROVE_PREFIX = "suggestion_approve_";
@@ -2191,11 +2193,52 @@ client.on("interactionCreate", async interaction => {
             if (interaction.customId.startsWith(APPLICATION_CANCEL_PREFIX)) {
                 const cancelEmbed = new EmbedBuilder()
                     .setColor("#8b0000")
-                    .setTitle("Application Cancelled")
-                    .setDescription("Your application has been cancelled. If this was a mistake, restart your application from the application panel.")
+                    .setTitle("Cancel Application?")
+                    .setDescription("Are you sure you want to cancel this application? If you choose Yes, the application will be stopped and no further questions will be sent. If you choose No, the interview will continue normally.")
                     .setTimestamp();
 
-                return interaction.reply({ embeds: [cancelEmbed], flags: MessageFlags.Ephemeral });
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`${APPLICATION_CANCEL_CONFIRM_PREFIX}${interaction.user.id}`)
+                        .setLabel("Yes, cancel application")
+                        .setStyle(ButtonStyle.Danger),
+                    new ButtonBuilder()
+                        .setCustomId(`${APPLICATION_CANCEL_KEEP_PREFIX}${interaction.user.id}`)
+                        .setLabel("No, continue application")
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+                return interaction.reply({ embeds: [cancelEmbed], components: [row], flags: MessageFlags.Ephemeral });
+            }
+
+            if (interaction.customId.startsWith(APPLICATION_CANCEL_CONFIRM_PREFIX)) {
+                const active = getOpenApplicationSession(interaction.user.id);
+                if (active?.app) {
+                    active.app.status = "cancelled";
+                    active.app.reviewDecision = "cancelled";
+                    active.app.reviewReason = "Application cancelled by applicant.";
+                    active.app.submittedAt = new Date().toISOString();
+                    delete applicationsData.activeSessions[interaction.user.id];
+                    saveApplications();
+                }
+
+                const cancelEmbed = new EmbedBuilder()
+                    .setColor("#8b0000")
+                    .setTitle("Application Cancelled")
+                    .setDescription("Your application has been stopped. No further questions will be sent. If you want to start over later, use the application panel again.")
+                    .setTimestamp();
+
+                return interaction.update({ embeds: [cancelEmbed], components: [] });
+            }
+
+            if (interaction.customId.startsWith(APPLICATION_CANCEL_KEEP_PREFIX)) {
+                const keepEmbed = new EmbedBuilder()
+                    .setColor("#4ea8de")
+                    .setTitle("Application Continued")
+                    .setDescription("Your application will continue. Please check your DMs for the next question.")
+                    .setTimestamp();
+
+                return interaction.update({ embeds: [keepEmbed], components: [] });
             }
 
             if (interaction.customId.startsWith(APPLICATION_REVIEW_ACCEPT_PREFIX) || interaction.customId.startsWith(APPLICATION_REVIEW_DENY_PREFIX)) {
