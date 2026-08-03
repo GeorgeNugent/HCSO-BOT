@@ -417,6 +417,8 @@ async function syncApplicationDepartmentRoleState(app, targetUserId, state, guil
         return false;
     }
 
+    console.log("[ApplicationRole] start sync", { appId: app.id, targetUserId, state, roleKey, departmentGuildId: app.departmentGuildId, departmentName: app.departmentName, mainGuildId: MAIN_ROLE_GUILD_ID, pendingRoleId, interviewRoleId });
+
     const guild = guildContext
         || client.guilds.cache.get(MAIN_ROLE_GUILD_ID)
         || await client.guilds.fetch(MAIN_ROLE_GUILD_ID).catch(() => null)
@@ -464,6 +466,7 @@ async function syncApplicationDepartmentRoleState(app, targetUserId, state, guil
 
     const removeRoles = resolvedRoles.filter(role => roleIdsToRemove.includes(role.id));
     const addRoles = resolvedRoles.filter(role => roleIdsToAdd.includes(role.id));
+    console.log("[ApplicationRole] role update plan", { appId: app.id, guildId: guild.id, targetUserId, addRoles: addRoles.map(r => r.id), removeRoles: removeRoles.map(r => r.id) });
 
     if (removeRoles.length > 0) {
         await member.roles.remove(removeRoles).catch(err => {
@@ -7130,7 +7133,12 @@ client.on("messageCreate", async message => {
         app.submittedAt = new Date().toISOString();
         delete applicationsData.activeSessions[message.author.id];
         saveApplications();
-        await syncApplicationDepartmentRoleState(app, message.author.id, "pending");
+
+        const syncOk = await syncApplicationDepartmentRoleState(app, message.author.id, "pending");
+        if (!syncOk) {
+            console.error("[ApplicationSubmit] Department role sync failed for submitted application", { appId: app.id, applicantId: message.author.id, departmentGuildId: app.departmentGuildId });
+        }
+
         await message.channel.send("✅ Your application was submitted successfully.").catch(() => {});
         return;
     }
