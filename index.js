@@ -2203,13 +2203,17 @@ client.on("ready", () => {
 
 // Handle commands
 client.on("interactionCreate", async interaction => {
-    // Debug: Log ALL interactions
-    if (interaction.commandName === "ticket-panel" || interaction.commandName === "ticketpanel-public") {
-        console.log(`[INTERCEPT] ticket-panel interaction detected, type: ${interaction.type}, isChatInputCommand: ${interaction.isChatInputCommand()}`);
-    }
-    
-    if (interaction.isChatInputCommand()) {
-        console.log(`[command] /${interaction.commandName} by ${interaction.user.tag} in guild ${interaction.guildId || "DM"}`);
+    try {
+        // Debug: Log ALL interactions
+        if (interaction.commandName === "ticket-panel" || interaction.commandName === "ticketpanel-public") {
+            console.log(`[INTERCEPT] ticket-panel interaction detected, type: ${interaction.type}, isChatInputCommand: ${interaction.isChatInputCommand()}`);
+        }
+        
+        if (interaction.isChatInputCommand()) {
+            console.log(`[command] /${interaction.commandName} by ${interaction.user.tag} in guild ${interaction.guildId || "DM"}`);
+        }
+    } catch (e) {
+        console.error(`[ERROR] Early interactionCreate error:`, e.message);
     }
 
     // Handle button clicks
@@ -5950,13 +5954,17 @@ client.on("interactionCreate", async interaction => {
     }
 
     console.log(`[DEBUG] About to call ticketSystem.handleChatInputCommand`);
-    const ticketSystemHandled = await ticketSystem.handleChatInputCommand(interaction);
-    console.log(`[DEBUG] ticketSystem.handleChatInputCommand returned:`, ticketSystemHandled);
-    if (ticketSystemHandled) {
-        console.log(`[DEBUG] ticketSystem handled the command`);
-        return;
+    try {
+        const ticketSystemHandled = await ticketSystem.handleChatInputCommand(interaction);
+        console.log(`[DEBUG] ticketSystem.handleChatInputCommand returned:`, ticketSystemHandled);
+        if (ticketSystemHandled) {
+            console.log(`[DEBUG] ticketSystem handled the command`);
+            return;
+        }
+        console.log(`[DEBUG] ticketSystem did not handle, continuing`);
+    } catch (err) {
+        console.error(`[DEBUG] ERROR in ticketSystem.handleChatInputCommand:`, err.message);
     }
-    console.log(`[DEBUG] ticketSystem did not handle, continuing`);
 
     // /set-status
     if (interaction.commandName === "set-status") {
