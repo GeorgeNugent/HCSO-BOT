@@ -21,7 +21,7 @@ export function createAuthRouter(context, { getDashboardGuild, requireAuth, hasS
 
     const CLIENT_ID     = process.env.CLIENT_ID;
     const CLIENT_SECRET = process.env.CLIENT_SECRET;
-    const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${process.env.PORT || 8100}`;
+    const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://localhost:${process.env.PORT || 8199}`;
     const REDIRECT_URI  = `${DASHBOARD_URL}/auth/discord/callback`;
 
     async function isStaffMember(userId) {
