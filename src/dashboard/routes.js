@@ -41,7 +41,8 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         MAX_STRIKES,
     } = context;
 
-    const GUILD_ID = process.env.GUILD_ID || "1533590255603810334";
+    const MAIN_ROLE_GUILD_ID = process.env.GUILD_ID || "1533590255603810334";
+    const GUILD_ID = MAIN_ROLE_GUILD_ID;
     const LOA_ROLE_ID = "1482203107806150668";
     const APPLICATION_PENDING_ROLE_IDS = {
         cpd: "1533590255783907463",
@@ -106,32 +107,41 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
     }
 
     async function syncApplicationDepartmentRoleState(app, targetUserId, state) {
-        if (!app || app.type !== "department" || !targetUserId) return;
+        if (!app || app.type !== "department" || !targetUserId) return false;
 
         const roleKey = getDepartmentRoleKey(app);
-        if (!roleKey) return;
+        if (!roleKey) {
+            console.error("[ApplicationRole] Unknown department role key for app", app?.id, app?.departmentGuildId, app?.departmentName);
+            return false;
+        }
 
         const pendingRoleId = APPLICATION_PENDING_ROLE_IDS[roleKey];
         const interviewRoleId = APPLICATION_NEEDS_INTERVIEW_ROLE_IDS[roleKey];
-        if (!pendingRoleId && !interviewRoleId) return;
-
-        let guild = app.guildId
-            ? client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null)
-            : null;
-        if (!guild && GUILD_ID) {
-            guild = client.guilds.cache.get(GUILD_ID) || await client.guilds.fetch(GUILD_ID).catch(() => null);
+        if (!pendingRoleId && !interviewRoleId) {
+            console.error("[ApplicationRole] No configured role IDs for department key", roleKey, app.id);
+            return false;
         }
-        if (!guild) return;
+
+        let guild = await getMainRoleGuild();
+        if (!guild && app.guildId) {
+            guild = client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null);
+        }
+        if (!guild) {
+            console.error("[ApplicationRole] Could not resolve main role guild for app", app.id, "expected guild id", GUILD_ID);
+            return false;
+        }
 
         let member = await guild.members.fetch(targetUserId).catch(() => null);
-        if (!member && GUILD_ID && guild.id !== GUILD_ID) {
-            const fallbackGuild = client.guilds.cache.get(GUILD_ID) || await client.guilds.fetch(GUILD_ID).catch(() => null);
+        if (!member && app.guildId && guild.id !== app.guildId) {
+            const fallbackGuild = client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null);
             if (fallbackGuild) {
                 member = await fallbackGuild.members.fetch(targetUserId).catch(() => null);
-                guild = fallbackGuild;
             }
         }
-        if (!member) return;
+        if (!member) {
+            console.error("[ApplicationRole] Applicant not found in guilds", targetUserId, "main guild", guild.id, "app guild", app.guildId, "app", app.id);
+            return false;
+        }
 
         const roleIdsToRemove = [];
         const roleIdsToAdd = [];
@@ -149,21 +159,33 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         const resolvedRoles = [];
         for (const roleId of [...new Set([...roleIdsToRemove, ...roleIdsToAdd].filter(Boolean))]) {
             const resolvedRole = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(() => null);
-            if (resolvedRole) {
-                resolvedRoles.push(resolvedRole);
+            if (!resolvedRole) {
+                console.error("[ApplicationRole] Could not resolve role ID", roleId, "in guild", guild.id, "app", app.id);
+                continue;
             }
+            resolvedRoles.push(resolvedRole);
         }
 
         const removeRoles = resolvedRoles.filter(role => roleIdsToRemove.includes(role.id));
         const addRoles = resolvedRoles.filter(role => roleIdsToAdd.includes(role.id));
 
         if (removeRoles.length > 0) {
-            await member.roles.remove(removeRoles).catch(() => {});
+            await member.roles.remove(removeRoles).catch(err => {
+                console.error("[ApplicationRole] Failed to remove roles", removeRoles.map(r => r.id), "from", targetUserId, err?.message || err);
+            });
         }
 
         if (addRoles.length > 0) {
-            await member.roles.add(addRoles).catch(() => {});
+            await member.roles.add(addRoles).catch(err => {
+                console.error("[ApplicationRole] Failed to add roles", addRoles.map(r => r.id), "to", targetUserId, err?.message || err);
+            });
         }
+
+        if (removeRoles.length === 0 && addRoles.length === 0) {
+            console.warn("[ApplicationRole] No role changes were required for app", app.id, "state", state);
+        }
+
+        return true;
     }
 
     function getDashboardLogChannelId(guildId, logType) {

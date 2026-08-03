@@ -11,6 +11,7 @@ import { getAllDepartments, getBranding } from "./src/embeds/departmentThemes.js
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
+const MAIN_ROLE_GUILD_ID = process.env.GUILD_ID || "1533590255603810334";
 const PORT = Number(process.env.PORT) || 8100;
 const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://51.79.43.184:${PORT}`;
 
@@ -401,29 +402,42 @@ function getApplicationDepartmentRoleKey(app) {
 }
 
 async function syncApplicationDepartmentRoleState(app, targetUserId, state, guildContext = null) {
-    if (!app || app.type !== "department" || !targetUserId) return;
+    if (!app || app.type !== "department" || !targetUserId) return false;
 
     const roleKey = getApplicationDepartmentRoleKey(app);
-    if (!roleKey) return;
+    if (!roleKey) {
+        console.error("[ApplicationRole] Unknown department role key for app", app?.id, app?.departmentGuildId, app?.departmentName);
+        return false;
+    }
 
     const pendingRoleId = APPLICATION_PENDING_ROLE_IDS[roleKey];
     const interviewRoleId = APPLICATION_NEEDS_INTERVIEW_ROLE_IDS[roleKey];
-    if (!pendingRoleId && !interviewRoleId) return;
+    if (!pendingRoleId && !interviewRoleId) {
+        console.error("[ApplicationRole] No configured role IDs for department key", roleKey, app.id);
+        return false;
+    }
 
     const guild = guildContext
+        || client.guilds.cache.get(MAIN_ROLE_GUILD_ID)
+        || await client.guilds.fetch(MAIN_ROLE_GUILD_ID).catch(() => null)
         || (app.guildId ? client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null) : null)
-        || (GUILD_ID ? client.guilds.cache.get(GUILD_ID) || await client.guilds.fetch(GUILD_ID).catch(() => null) : null)
         || (client.guilds.cache.first() || null);
-    if (!guild) return;
+    if (!guild) {
+        console.error("[ApplicationRole] Could not resolve main role guild for app", app.id, "expected guild", MAIN_ROLE_GUILD_ID);
+        return false;
+    }
 
     let member = await guild.members.fetch(targetUserId).catch(() => null);
-    if (!member && GUILD_ID && guild.id !== GUILD_ID) {
-        const fallbackGuild = client.guilds.cache.get(GUILD_ID) || await client.guilds.fetch(GUILD_ID).catch(() => null);
+    if (!member && app.guildId && guild.id !== app.guildId) {
+        const fallbackGuild = client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null);
         if (fallbackGuild) {
             member = await fallbackGuild.members.fetch(targetUserId).catch(() => null);
         }
     }
-    if (!member) return;
+    if (!member) {
+        console.error("[ApplicationRole] Applicant not found in guilds", targetUserId, "main guild", guild.id, "app guild", app.guildId, "app", app.id);
+        return false;
+    }
 
     const roleIdsToRemove = [];
     const roleIdsToAdd = [];
@@ -441,21 +455,33 @@ async function syncApplicationDepartmentRoleState(app, targetUserId, state, guil
     const resolvedRoles = [];
     for (const roleId of [...new Set([...roleIdsToRemove, ...roleIdsToAdd].filter(Boolean))]) {
         const resolvedRole = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(() => null);
-        if (resolvedRole) {
-            resolvedRoles.push(resolvedRole);
+        if (!resolvedRole) {
+            console.error("[ApplicationRole] Could not resolve role ID", roleId, "in guild", guild.id, "app", app.id);
+            continue;
         }
+        resolvedRoles.push(resolvedRole);
     }
 
     const removeRoles = resolvedRoles.filter(role => roleIdsToRemove.includes(role.id));
     const addRoles = resolvedRoles.filter(role => roleIdsToAdd.includes(role.id));
 
     if (removeRoles.length > 0) {
-        await member.roles.remove(removeRoles).catch(() => {});
+        await member.roles.remove(removeRoles).catch(err => {
+            console.error("[ApplicationRole] Failed to remove roles", removeRoles.map(r => r.id), "from", targetUserId, err?.message || err);
+        });
     }
 
     if (addRoles.length > 0) {
-        await member.roles.add(addRoles).catch(() => {});
+        await member.roles.add(addRoles).catch(err => {
+            console.error("[ApplicationRole] Failed to add roles", addRoles.map(r => r.id), "to", targetUserId, err?.message || err);
+        });
     }
+
+    if (removeRoles.length === 0 && addRoles.length === 0) {
+        console.warn("[ApplicationRole] No role changes were required for app", app.id, "state", state);
+    }
+
+    return true;
 }
 
 const APPLICATION_QUESTIONS = [
