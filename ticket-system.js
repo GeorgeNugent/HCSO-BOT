@@ -476,7 +476,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         });
 
         if (!closedTicket) {
-            await interaction.reply({ content: "❌ This ticket is already closed or not recognized.", flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
             return { ok: false };
         }
 
@@ -505,7 +505,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
             await sendReviewEmbed(interaction.guild, closedTicket, options.reviewText || reason || "No review text provided.", options.reviewSource || "Ticket Closure");
         }
 
-        await interaction.reply({ content: `✅ Ticket closed. Transcript generated and sent to the configured transcript channel.`, flags: MessageFlags.Ephemeral }).catch(() => {});
+        await interaction.reply({ content: `✅ Ticket closed. Transcript generated and sent to the configured transcript channel.` }).catch(() => {});
         return { ok: true };
     }
 
@@ -515,18 +515,18 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         if (interaction.customId.startsWith(PANEL_BUTTON_PREFIX)) {
             const label = decodeURIComponent(interaction.customId.slice(PANEL_BUTTON_PREFIX.length));
             const result = await createTicketChannel(interaction, label);
-            await interaction.reply({ content: result.message, flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: result.message }).catch(() => {});
             return true;
         }
 
         if (interaction.customId === USER_CLOSE_BUTTON_ID) {
             const ticket = getOpenTicketByChannel(interaction.channelId);
             if (!ticket) {
-                await interaction.reply({ content: "❌ This ticket is already closed or not recognized.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
                 return true;
             }
             if (interaction.user.id !== ticket.opener) {
-                await interaction.reply({ content: "❌ Only the ticket opener may close this ticket.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ Only the ticket opener may close this ticket." }).catch(() => {});
                 return true;
             }
 
@@ -553,12 +553,12 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
 
         const ticket = getOpenTicketByChannel(interaction.channelId);
         if (!ticket) {
-            await interaction.reply({ content: "❌ This ticket is already closed or not recognized.", flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
             return true;
         }
 
         if (!isStaffMember(interaction.member)) {
-            await interaction.reply({ content: "❌ You do not have permission to manage tickets.", flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: "❌ You do not have permission to manage tickets." }).catch(() => {});
             return true;
         }
 
@@ -597,7 +597,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
                         .setTimestamp()
                 ]
             }).catch(() => {});
-            await interaction.reply({ content: `✅ Ticket claimed by <@${interaction.user.id}>.`, flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: `✅ Ticket claimed by <@${interaction.user.id}>.` }).catch(() => {});
             return true;
         }
 
@@ -623,7 +623,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         if (interaction.customId === STAFF_LAR_BUTTON_ID) {
             const opener = await interaction.client.users.fetch(ticket.opener).catch(() => null);
             if (!opener) {
-                await interaction.reply({ content: "❌ Could not find the ticket opener.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ Could not find the ticket opener." }).catch(() => {});
                 return true;
             }
 
@@ -640,10 +640,10 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
 
             await opener.send({ embeds: [dmEmbed] }).catch(async err => {
                 console.error("Could not DM ticket opener for review:", err);
-                await interaction.reply({ content: "❌ Could not DM the ticket opener. They may have DMs disabled.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ Could not DM the ticket opener. They may have DMs disabled." }).catch(() => {});
             });
 
-            await interaction.reply({ content: "✅ Review request sent to the ticket opener.", flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: "✅ Review request sent to the ticket opener." }).catch(() => {});
             return true;
         }
 
@@ -656,11 +656,11 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         if (interaction.customId === "ticket_user_close_modal") {
             const ticket = getOpenTicketByChannel(interaction.channelId);
             if (!ticket) {
-                await interaction.reply({ content: "❌ This ticket is already closed or not recognized.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
                 return true;
             }
             if (interaction.user.id !== ticket.opener) {
-                await interaction.reply({ content: "❌ Only the ticket opener may close this ticket.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ Only the ticket opener may close this ticket." }).catch(() => {});
                 return true;
             }
 
@@ -676,11 +676,11 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         if (interaction.customId === "ticket_close_reason_modal") {
             const ticket = getOpenTicketByChannel(interaction.channelId);
             if (!ticket) {
-                await interaction.reply({ content: "❌ This ticket is already closed or not recognized.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
                 return true;
             }
             if (!isStaffMember(interaction.member)) {
-                await interaction.reply({ content: "❌ You do not have permission to close this ticket.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ You do not have permission to close this ticket." }).catch(() => {});
                 return true;
             }
 
@@ -697,11 +697,11 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         if (interaction.customId === "ticket_add_users_modal" || interaction.customId === "ticket_remove_users_modal") {
             const ticket = getOpenTicketByChannel(interaction.channelId);
             if (!ticket) {
-                await interaction.reply({ content: "❌ This ticket is already closed or not recognized.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
                 return true;
             }
             if (!isStaffMember(interaction.member)) {
-                await interaction.reply({ content: "❌ You do not have permission to manage this ticket.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ You do not have permission to manage this ticket." }).catch(() => {});
                 return true;
             }
 
@@ -709,7 +709,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
             const allow = interaction.customId === "ticket_add_users_modal";
             const channel = interaction.guild?.channels.cache.get(ticket.channel) || await interaction.guild?.channels.fetch(ticket.channel).catch(() => null);
             if (!channel || !channel.isTextBased()) {
-                await interaction.reply({ content: "❌ Could not find the ticket channel.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ Could not find the ticket channel." }).catch(() => {});
                 return true;
             }
 
@@ -736,7 +736,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
             }
 
             await interaction.reply({ content: `✅ ${allow ? "Users added" : "Users removed"}:
-${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
+${results.join("\n")}` }).catch(() => {});
             return true;
         }
 
@@ -749,7 +749,7 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
         if (interaction.commandName === "ticket") {
             const ticket = getTicketByChannel(interaction.channelId);
             if (!ticket) {
-                await interaction.reply({ content: "❌ This channel is not a recognized ticket channel.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ This channel is not a recognized ticket channel." }).catch(() => {});
                 return true;
             }
 
@@ -764,25 +764,25 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
                     { name: "Created At", value: formatTicketTimestamp(ticket.createdAt), inline: false }
                 )
                 .setTimestamp();
-            await interaction.reply({ embeds: [statusEmbed], flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ embeds: [statusEmbed] }).catch(() => {});
             return true;
         }
 
         if (interaction.commandName === "ticketcat") {
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                await interaction.reply({ content: "❌ Administrator permission required.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ Administrator permission required." }).catch(() => {});
                 return true;
             }
 
             const category = interaction.options.getChannel("category");
             if (!category || category.type !== ChannelType.GuildCategory) {
-                await interaction.reply({ content: "❌ Please select a valid category.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ Please select a valid category." }).catch(() => {});
                 return true;
             }
 
             config.ticketCategory = category.id;
             saveConfig();
-            await interaction.reply({ content: `✅ Ticket category set to <#${category.id}>.`, flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: `✅ Ticket category set to <#${category.id}>.` }).catch(() => {});
             return true;
         }
 
@@ -808,7 +808,7 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
 
         if (interaction.commandName === "ticket-panel-config") {
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                await interaction.reply({ content: "❌ Administrator permission required.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ Administrator permission required." }).catch(() => {});
                 return true;
             }
 
@@ -816,7 +816,7 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
             const description = interaction.options.getString("description");
 
             if (!title && !description) {
-                await interaction.reply({ content: "❌ Please provide a title and/or description to update.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ Please provide a title and/or description to update." }).catch(() => {});
                 return true;
             }
 
@@ -828,7 +828,7 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
             }
 
             saveConfig();
-            await interaction.reply({ content: "✅ Ticket panel configuration updated.", flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: "✅ Ticket panel configuration updated." }).catch(() => {});
             return true;
         }
 
@@ -836,12 +836,12 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
             const targetChannel = interaction.options.getChannel("channel") || interaction.channel;
             const ticket = targetChannel ? getOpenTicketByChannel(targetChannel.id) : null;
             if (!ticket) {
-                await interaction.reply({ content: "❌ No open ticket was found in that channel. Run this in a ticket channel or specify a ticket channel with the `channel` option.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ No open ticket was found in that channel. Run this in a ticket channel or specify a ticket channel with the `channel` option." }).catch(() => {});
                 return true;
             }
 
             if (!isStaffMember(interaction.member)) {
-                await interaction.reply({ content: "❌ You do not have permission to manage this ticket.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ You do not have permission to manage this ticket." }).catch(() => {});
                 return true;
             }
 
@@ -857,7 +857,7 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
                 new ButtonBuilder().setCustomId(STAFF_LAR_BUTTON_ID).setLabel("Request Review").setStyle(ButtonStyle.Success)
             );
 
-            await interaction.reply({ embeds: [buildTicketManagementEmbed(ticket)], components: [row1, row2], flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ embeds: [buildTicketManagementEmbed(ticket)], components: [row1, row2] }).catch(() => {});
             return true;
         }
 
