@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } from "discord.js";
+import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits } from "discord.js";
 
 // Minimal fallback ticket system.
 // Keeps the bot bootable while still providing a usable ticket panel.
@@ -13,7 +13,17 @@ export const ticketCommands = [
 
     new SlashCommandBuilder()
         .setName("ticket-panel")
-        .setDescription("Deploy the ticket creation panel")
+        .setDescription("Deploy the ticket creation panel"),
+
+    new SlashCommandBuilder()
+        .setName("ticketcat")
+        .setDescription("Set the category where new tickets will be created")
+        .addChannelOption(o => o
+            .setName("category")
+            .setDescription("Category to create ticket channels under")
+            .addChannelTypes(ChannelType.GuildCategory)
+            .setRequired(true)
+        )
 ];
 
 export function createTicketSystem({ config = {}, tickets = { tickets: {} }, saveTickets = () => {}, saveConfig = () => {}, getLogChannelId = () => null } = {}) {
@@ -26,6 +36,10 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
     async function createTicketChannel(interaction) {
         if (!interaction.guild) {
             return { ok: false, message: "Tickets can only be created in a server." };
+        }
+
+        if (!ticketCategory) {
+            return { ok: false, message: "ticket category not set up yet" };
         }
 
         const nextCounter = Number(config.ticketCounter || 0) + 1;
@@ -144,7 +158,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
                 return false;
             }
 
-            if (interaction.commandName !== "ticket" && interaction.commandName !== "ticket-panel") {
+            if (interaction.commandName !== "ticket" && interaction.commandName !== "ticket-panel" && interaction.commandName !== "ticketcat") {
                 return false;
             }
 
@@ -154,6 +168,43 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
                     flags: MessageFlags.Ephemeral
                 });
 
+                return true;
+            }
+
+            if (interaction.commandName === "ticketcat") {
+                if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                    await interaction.reply({
+                        content: "❌ You need administrator permissions to use `/ticketcat`.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                    return true;
+                }
+
+                const category = interaction.options.getChannel("category");
+                if (!category || category.type !== ChannelType.GuildCategory) {
+                    await interaction.reply({
+                        content: "❌ Please select a valid category channel.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                    return true;
+                }
+
+                config.ticketCategory = category.id;
+                saveConfig();
+
+                await interaction.reply({
+                    content: `✅ Ticket category set to <#${category.id}> for this guild.`,
+                    flags: MessageFlags.Ephemeral
+                });
+
+                return true;
+            }
+
+            if (!ticketCategory) {
+                await interaction.reply({
+                    content: "ticket category not set up yet",
+                    flags: MessageFlags.Ephemeral
+                });
                 return true;
             }
 
