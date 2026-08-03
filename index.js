@@ -185,7 +185,7 @@ if (!config.moduleRoleAccess.botOwner) {
     config.moduleRoleAccess.botOwner = [];
 }
 if (!config.ticketCategory) {
-    config.ticketCategory = null;
+    config.ticketCategory = 1533810405778915339;
 }
 if (!config.blacklistJoinAction) {
     config.blacklistJoinAction = "ban";
