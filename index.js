@@ -31,6 +31,19 @@ process.on("uncaughtException", error => {
     console.error("Uncaught exception:", error);
 });
 
+// Graceful shutdown handlers
+process.on("SIGTERM", async () => {
+    console.log("SIGTERM received, shutting down gracefully...");
+    if (client) await client.destroy();
+    process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+    console.log("SIGINT received, shutting down gracefully...");
+    if (client) await client.destroy();
+    process.exit(0);
+});
+
 const PROJECT_ROOT = process.cwd();
 const DATA_DIR = process.env.DATA_DIR
     ? path.resolve(process.env.DATA_DIR)
