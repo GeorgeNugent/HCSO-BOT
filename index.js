@@ -1803,6 +1803,28 @@ const commands = [
 
 // Register commands
 const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+async function removeStaleApplicationCommands(guildId) {
+    const staleNames = new Set([
+        "applicationresultscpd",
+        "applicationresultshcso",
+        "applicationresultsfhp",
+        "applicationresultsstaff"
+    ]);
+
+    try {
+        const existingCommands = await rest.get(Routes.applicationGuildCommands(CLIENT_ID, guildId));
+        for (const command of existingCommands) {
+            if (staleNames.has(command.name)) {
+                await rest.delete(Routes.applicationGuildCommand(CLIENT_ID, guildId, command.id));
+                console.log(`Deleted stale command '${command.name}' from guild ${guildId}`);
+            }
+        }
+    } catch (err) {
+        console.error(`Failed to remove stale commands for guild ${guildId}:`, err?.message || err);
+    }
+}
+
 try {
     // Force guild-only command mode for multi-server operation.
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
@@ -1822,8 +1844,9 @@ try {
     } else {
         for (const guildId of commandGuildIds) {
             try {
+                await removeStaleApplicationCommands(guildId);
                 await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body: commands });
-                console.log(`Registered ${commands.length} guild commands for guild ${guildId}`);
+                console.log(`Registered ${commands.length} guild commands for guild ${guildId}: ${commands.map(c => c.name).join(", ")}`);
             } catch (gerr) {
                 // Log and continue registering other guilds. Missing Access is common when
                 // the bot or application isn't present in a specific guild.
