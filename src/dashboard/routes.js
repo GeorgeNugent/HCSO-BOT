@@ -493,18 +493,42 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
 
         // Build per-department application lists
         const departmentAppsByGuildId = {};
-        
+
+        const seededDepartmentIds = new Set();
         for (const [guildId, dept] of Object.entries(departments)) {
             if (!dept || dept.type !== "department") continue;
             if (!scope.canViewStaffApplications && !scope.allowedDepartmentGuildIds.includes(guildId)) continue;
-            
+
+            seededDepartmentIds.add(guildId);
             departmentAppsByGuildId[guildId] = {
                 name: dept.name,
                 shortName: dept.shortName,
-                apps: allApplications.filter(a => 
-                    a.type === "department" && a.departmentGuildId === guildId
-                )
+                apps: []
             };
+        }
+
+        for (const app of allApplications) {
+            if (app.type !== "department" || !app.departmentGuildId) continue;
+            const guildId = String(app.departmentGuildId);
+            if (!scope.canViewStaffApplications && !scope.allowedDepartmentGuildIds.includes(guildId)) continue;
+
+            if (!departmentAppsByGuildId[guildId]) {
+                departmentAppsByGuildId[guildId] = {
+                    name: app.departmentName || guildId,
+                    shortName: app.departmentName || guildId,
+                    apps: []
+                };
+            }
+
+            departmentAppsByGuildId[guildId].apps.push(app);
+        }
+
+        for (const guildId of seededDepartmentIds) {
+            const dept = departmentAppsByGuildId[guildId];
+            if (!dept) continue;
+            dept.apps = allApplications.filter(a =>
+                a.type === "department" && String(a.departmentGuildId || "") === guildId
+            );
         }
 
         const visibleApplications = [

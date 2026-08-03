@@ -348,17 +348,25 @@ function getDepartmentApplicationChoices() {
     const shortOrder = ["CPD", "HCSO", "FHP"];
     const choices = [];
 
-    for (const shortName of shortOrder) {
-        const matchingEntry = Object.entries(departments || {}).find(([, dept]) =>
-            String(dept?.shortName || "").toUpperCase() === shortName
-        );
+    const departmentEntries = Object.entries(departments || {})
+        .filter(([guildId, dept]) => dept && dept.type === "department" && /^\d{17,20}$/.test(String(guildId)));
 
-        if (!matchingEntry) continue;
-        const [guildId, dept] = matchingEntry;
-        if (!/^\d{17,20}$/.test(String(guildId))) continue;
+    const orderedEntries = departmentEntries.sort(([, a], [, b]) => {
+        const aRank = shortOrder.indexOf(String(a?.shortName || "").toUpperCase());
+        const bRank = shortOrder.indexOf(String(b?.shortName || "").toUpperCase());
 
+        if (aRank !== -1 || bRank !== -1) {
+            if (aRank === -1) return 1;
+            if (bRank === -1) return -1;
+            return aRank - bRank;
+        }
+
+        return String(a?.shortName || a?.name || "").localeCompare(String(b?.shortName || b?.name || ""));
+    });
+
+    for (const [guildId, dept] of orderedEntries) {
         choices.push({
-            label: dept.shortName || dept.name || shortName,
+            label: dept.shortName || dept.name || guildId,
             value: `dept:${guildId}`,
             description: `Apply for ${dept.shortName || dept.name || "department"}`
         });
@@ -447,14 +455,21 @@ function buildSuggestionEmbed(suggestion) {
 
 function buildApplicationRecord(user, selectionValue) {
     const departments = getAllDepartments();
+    const normalizedSelection = String(selectionValue || "").trim();
     let targetType = "staff";
     let departmentGuildId = null;
     let departmentName = "Staff Application";
 
-    if (selectionValue.startsWith("dept:")) {
+    if (normalizedSelection.startsWith("dept:")) {
         targetType = "department";
-        departmentGuildId = selectionValue.slice(5);
-        const dept = departments[departmentGuildId];
+        departmentGuildId = normalizedSelection.slice(5);
+    } else if (/^\d{17,20}$/.test(normalizedSelection)) {
+        targetType = "department";
+        departmentGuildId = normalizedSelection;
+    }
+
+    if (targetType === "department" && departmentGuildId) {
+        const dept = departments[String(departmentGuildId)] || null;
         departmentName = dept?.name || dept?.shortName || departmentGuildId;
     }
 
@@ -6371,16 +6386,20 @@ client.on("interactionCreate", async interaction => {
         const panelEmbed = new EmbedBuilder()
             .setColor("#4ea8de")
             .setTitle("📝 Emergency Service Applications")
-            .setDescription("Click Apply to choose your application type. Once you confirm, I will send your application questions in DMs and route the completed application to the correct dashboard department.")
-            .addFields({ name: "Apply", value: "Choose from CPD, HCSO, FHP, or Staff, then confirm to begin." })
+            .setDescription("Use the dropdown below to choose your application type. Once you confirm, I will send your application questions in DMs and route the completed application to the correct dashboard department.")
+            .addFields({ name: "Select", value: "Choose from CPD, HCSO, FHP, or Staff, then confirm to begin." })
             .setTimestamp();
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId(APPLICATION_PANEL_BUTTON_ID)
-                .setLabel("Apply")
-                .setStyle(ButtonStyle.Primary)
-        );
+        const select = new StringSelectMenuBuilder()
+            .setCustomId(APPLICATION_DEPT_SELECT_ID)
+            .setPlaceholder("Select your application type...")
+            .addOptions(getDepartmentApplicationChoices().map(option => ({
+                label: option.label,
+                value: option.value,
+                description: option.description
+            })));
+
+        const row = new ActionRowBuilder().addComponents(select);
 
         await interaction.reply({ embeds: [panelEmbed], components: [row] });
         return;
