@@ -153,9 +153,14 @@ export function createDepartmentRoutes({ requireAuth, requireStaff, segmentGuard
         try {
             const requesterId = req.session.user?.id || "";
             const allServers  = await serverStats.getAllServers();
+            const singleGuildId = String(process.env.GUILD_ID || "1533590255603810334").trim();
             const servers = [];
 
             for (const server of allServers) {
+                if (!singleGuildId || String(server.id) !== singleGuildId) {
+                    continue;
+                }
+
                 if (server.departmentType !== "department") {
                     servers.push(server);
                     continue;

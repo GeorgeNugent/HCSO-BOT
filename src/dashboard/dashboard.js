@@ -260,10 +260,8 @@ export function startDashboard(context) {
         const servers      = await serverStats.getAllServers().catch(() => []);
         const singleGuildId = String(GUILD_ID || MAIN_ROLE_GUILD_ID || "").trim();
         const departments  = {};
-        for (const [guildId, dept] of Object.entries(configuredDepartments || {})) {
-            if (!singleGuildId || String(guildId) === singleGuildId) {
-                departments[guildId] = dept;
-            }
+        if (singleGuildId && configuredDepartments[singleGuildId]) {
+            departments[singleGuildId] = configuredDepartments[singleGuildId];
         }
         const userId       = req.session.user?.id || null;
         const roleIds      = userId ? await getViewerRoleIds(userId, GUILD_ID || MAIN_ROLE_GUILD_ID) : [];
