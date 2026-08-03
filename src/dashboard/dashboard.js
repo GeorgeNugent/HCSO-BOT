@@ -379,8 +379,13 @@ export function startDashboard(context) {
     });
 
     // ── Start listening ───────────────────────────────────────────────────────
+    // Add a simple health endpoint to verify Express is responding
+    app.get("/health", (req, res) => res.status(200).json({ ok: true, timestamp: Date.now() }));
+
     app.listen(port, "0.0.0.0", () => {
-        console.log(`[Dashboard] ${getBranding().dashboardTitle} listening on http://0.0.0.0:${port}`);
+        const branding = getBranding();
+        console.log(`[Dashboard] ${branding.dashboardTitle} listening on http://0.0.0.0:${port}`);
+        console.log(`[Dashboard] Health check available at http://0.0.0.0:${port}/health`);
     });
 
     return app;
