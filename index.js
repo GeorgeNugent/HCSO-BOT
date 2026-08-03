@@ -6341,7 +6341,7 @@ client.on("interactionCreate", async interaction => {
         }
 
         const availablePanels = {
-            application-panel: {
+            "application-panel": {
                 title: "📝 Emergency Service Applications",
                 description: "To apply for a department or team, click **Apply** below.\n\nYour interview questions will be sent in DMs and your answers will be reviewed in the online dashboard by staff and command.",
                 buttonLabel: "Apply",
@@ -6873,4 +6873,13 @@ startDashboard({
     STRIKE_ROLE_IDS,
 });
 
-client.login(TOKEN);
+async function startBot() {
+    try {
+        await client.login(TOKEN);
+    } catch (loginError) {
+        console.error("Bot login failed:", loginError);
+        console.error("The dashboard remains running, but the Discord bot could not connect. Check TOKEN and CLIENT_ID.");
+    }
+}
+
+startBot();
