@@ -79,6 +79,9 @@ let tickets = readJsonData("tickets.json", { tickets: {} });
 const applicationsData = readJsonData("applications.json", { counter: 0, applications: {}, activeSessions: {} });
 const suggestionsData = readJsonData("suggestions.json", { counter: 0, suggestions: {} });
 
+// Track users currently starting applications to prevent race conditions
+const applicationsBeingStarted = new Set();
+
 function isCaseClosed(entry) {
     if (!entry) return false;
     if (typeof entry.closed === "boolean") return entry.closed;
@@ -2219,6 +2222,14 @@ client.on("interactionCreate", async interaction => {
             if (interaction.customId.startsWith(APPLICATION_START_PREFIX)) {
                 const selection = interaction.customId.slice(APPLICATION_START_PREFIX.length);
 
+                // Prevent concurrent application starts
+                if (applicationsBeingStarted.has(interaction.user.id)) {
+                    return interaction.reply({
+                        content: "⏳ Your application is already being started. Please wait a moment.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+
                 const existing = getOpenApplicationSession(interaction.user.id);
                 if (existing) {
                     return interaction.reply({
@@ -2227,32 +2238,42 @@ client.on("interactionCreate", async interaction => {
                     });
                 }
 
-                const app = buildApplicationRecord(interaction.user, selection);
-                applicationsData.applications[app.id] = app;
-                applicationsData.activeSessions[interaction.user.id] = {
-                    applicationId: app.id,
-                    currentQuestionIndex: 0,
-                    createdAt: new Date().toISOString()
-                };
-                saveApplications();
+                // Mark that we're starting an application for this user
+                applicationsBeingStarted.add(interaction.user.id);
 
                 try {
-                    await sendApplicationInstructionsDm(interaction.user, app);
-                    await sendApplicationQuestionDm(interaction.user, app, 0);
-                } catch {
-                    delete applicationsData.activeSessions[interaction.user.id];
-                    delete applicationsData.applications[app.id];
+                    const app = buildApplicationRecord(interaction.user, selection);
+                    applicationsData.applications[app.id] = app;
+                    applicationsData.activeSessions[interaction.user.id] = {
+                        applicationId: app.id,
+                        currentQuestionIndex: 0,
+                        createdAt: new Date().toISOString()
+                    };
                     saveApplications();
+
+                    try {
+                        await sendApplicationInstructionsDm(interaction.user, app);
+                        await sendApplicationQuestionDm(interaction.user, app, 0);
+                    } catch {
+                        delete applicationsData.activeSessions[interaction.user.id];
+                        delete applicationsData.applications[app.id];
+                        saveApplications();
+                        applicationsBeingStarted.delete(interaction.user.id);
+                        return interaction.reply({
+                            content: "❌ I could not DM you. Please enable DMs and try again.",
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+
+                    applicationsBeingStarted.delete(interaction.user.id);
                     return interaction.reply({
-                        content: "❌ I could not DM you. Please enable DMs and try again.",
+                        content: "✅ Application started. Check your DMs and answer each question there. You have 60 minutes to complete it.",
                         flags: MessageFlags.Ephemeral
                     });
+                } catch (error) {
+                    applicationsBeingStarted.delete(interaction.user.id);
+                    throw error;
                 }
-
-                return interaction.reply({
-                    content: "✅ Application started. Check your DMs and answer each question there. You have 60 minutes to complete it.",
-                    flags: MessageFlags.Ephemeral
-                });
             }
 
             if (interaction.customId.startsWith(APPLICATION_CANCEL_PREFIX)) {
