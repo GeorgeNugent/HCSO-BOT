@@ -1776,6 +1776,22 @@ const commands = [
         .setDescription("Post the application panel for recruits"),
 
     new SlashCommandBuilder()
+        .setName("applicationresultscpd")
+        .setDescription("Post the CPD application panel"),
+
+    new SlashCommandBuilder()
+        .setName("applicationresultshcso")
+        .setDescription("Post the HCSO application panel"),
+
+    new SlashCommandBuilder()
+        .setName("applicationresultsfhp")
+        .setDescription("Post the FHP application panel"),
+
+    new SlashCommandBuilder()
+        .setName("applicationresultsstaff")
+        .setDescription("Post the staff application panel"),
+
+    new SlashCommandBuilder()
         .setName("suggestion")
         .setDescription("Submit a server suggestion")
         .addSubcommand(sub =>
@@ -6316,7 +6332,7 @@ client.on("interactionCreate", async interaction => {
         });
     }
 
-    if (interaction.commandName === "application-panel") {
+    if (["application-panel", "applicationresultscpd", "applicationresultshcso", "applicationresultsfhp", "applicationresultsstaff"].includes(interaction.commandName)) {
         if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
             return interaction.reply({
                 content: "❌ You don't have permission to post the application panel.",
@@ -6324,17 +6340,58 @@ client.on("interactionCreate", async interaction => {
             });
         }
 
+        const availablePanels = {
+            application-panel: {
+                title: "📝 Emergency Service Applications",
+                description: "To apply for a department or team, click **Apply** below.\n\nYour interview questions will be sent in DMs and your answers will be reviewed in the online dashboard by staff and command.",
+                buttonLabel: "Apply",
+                departmentId: null
+            },
+            applicationresultscpd: {
+                title: "📝 CPD Applications",
+                description: "Post the Clewiston Police Department application panel here. Candidates will be reviewed by CPD command and staff.",
+                buttonLabel: "Apply for CPD",
+                departmentId: "1482501585803415572"
+            },
+            applicationresultshcso: {
+                title: "📝 HCSO Applications",
+                description: "Post the Hendry County Sheriff's Office application panel here. Candidates will be reviewed by HCSO command and staff.",
+                buttonLabel: "Apply for HCSO",
+                departmentId: "1482203107432595601"
+            },
+            applicationresultsfhp: {
+                title: "📝 FHP Applications",
+                description: "Post the Florida Highway Patrol application panel here. Candidates will be reviewed by FHP command and staff.",
+                buttonLabel: "Apply for FHP",
+                departmentId: "1482498655523962892"
+            },
+            applicationresultsstaff: {
+                title: "📝 Staff Applications",
+                description: "Post the staff application panel here. Candidates will be reviewed by command-level staff.",
+                buttonLabel: "Apply for Staff",
+                departmentId: "staff"
+            }
+        };
+
+        const panelConfig = availablePanels[interaction.commandName];
+        if (!panelConfig) {
+            return interaction.reply({
+                content: "❌ Invalid application panel command.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
         const panelEmbed = new EmbedBuilder()
             .setColor("#4ea8de")
-            .setTitle("📝 Emergency Service Applications")
-            .setDescription("To apply for a department or team, click **Apply** below.\n\nYour interview questions will be sent in DMs and your answers will be reviewed in the online dashboard by staff and command.")
+            .setTitle(panelConfig.title)
+            .setDescription(panelConfig.description)
             .addFields({ name: "Apply", value: "Click the button below to begin your application." })
             .setTimestamp();
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId(APPLICATION_PANEL_BUTTON_ID)
-                .setLabel("Apply")
+                .setCustomId(`${APPLICATION_START_PREFIX}${panelConfig.departmentId}`)
+                .setLabel(panelConfig.buttonLabel)
                 .setStyle(ButtonStyle.Primary)
         );
 
