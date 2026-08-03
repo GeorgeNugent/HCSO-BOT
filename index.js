@@ -1776,22 +1776,6 @@ const commands = [
         .setDescription("Post the application panel for recruits"),
 
     new SlashCommandBuilder()
-        .setName("applicationresultscpd")
-        .setDescription("Post the CPD application panel"),
-
-    new SlashCommandBuilder()
-        .setName("applicationresultshcso")
-        .setDescription("Post the HCSO application panel"),
-
-    new SlashCommandBuilder()
-        .setName("applicationresultsfhp")
-        .setDescription("Post the FHP application panel"),
-
-    new SlashCommandBuilder()
-        .setName("applicationresultsstaff")
-        .setDescription("Post the staff application panel"),
-
-    new SlashCommandBuilder()
         .setName("suggestion")
         .setDescription("Submit a server suggestion")
         .addSubcommand(sub =>
@@ -1815,28 +1799,6 @@ const commands = [
 
 // Register commands
 const rest = new REST({ version: "10" }).setToken(TOKEN);
-
-async function removeStaleApplicationCommands(guildId) {
-    const staleNames = new Set([
-        "applicationresultscpd",
-        "applicationresultshcso",
-        "applicationresultsfhp",
-        "applicationresultsstaff"
-    ]);
-
-    try {
-        const existingCommands = await rest.get(Routes.applicationGuildCommands(CLIENT_ID, guildId));
-        for (const command of existingCommands) {
-            if (staleNames.has(command.name)) {
-                await rest.delete(Routes.applicationGuildCommand(CLIENT_ID, guildId, command.id));
-                console.log(`Deleted stale command '${command.name}' from guild ${guildId}`);
-            }
-        }
-    } catch (err) {
-        console.error(`Failed to remove stale commands for guild ${guildId}:`, err?.message || err);
-    }
-}
-
 try {
     // Force guild-only command mode for multi-server operation.
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
@@ -1856,9 +1818,8 @@ try {
     } else {
         for (const guildId of commandGuildIds) {
             try {
-                await removeStaleApplicationCommands(guildId);
                 await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body: commands });
-                console.log(`Registered ${commands.length} guild commands for guild ${guildId}: ${commands.map(c => c.name).join(", ")}`);
+                console.log(`Registered ${commands.length} guild commands for guild ${guildId}`);
             } catch (gerr) {
                 // Log and continue registering other guilds. Missing Access is common when
                 // the bot or application isn't present in a specific guild.
@@ -2476,39 +2437,22 @@ client.on("interactionCreate", async interaction => {
             return interaction.reply({ content: "❌ No option selected.", flags: MessageFlags.Ephemeral });
         }
 
-        const existing = getOpenApplicationSession(interaction.user.id);
-        if (existing) {
-            return interaction.reply({
-                content: `⚠️ You already have an active application (${existing.app.id}). Please finish or wait for review.`,
-                flags: MessageFlags.Ephemeral
-            });
-        }
+        const choices = getDepartmentApplicationChoices();
+        const selectedChoice = choices.find(c => c.value === selected);
+        const label = selectedChoice?.label || selected;
 
-        const app = buildApplicationRecord(interaction.user, selected);
-        applicationsData.applications[app.id] = app;
-        applicationsData.activeSessions[interaction.user.id] = {
-            applicationId: app.id,
-            currentQuestionIndex: 0,
-            createdAt: new Date().toISOString()
-        };
-        saveApplications();
+        const confirmEmbed = new EmbedBuilder()
+            .setColor("#4ea8de")
+            .setTitle(label)
+            .setDescription("Are you sure you want to apply?\n\nOnce you start the application I will send you a series of questions in DMs. You will have 60 minutes to complete it.")
+            .setTimestamp();
 
-        try {
-            await sendApplicationQuestionDm(interaction.user, app, 0);
-        } catch {
-            delete applicationsData.activeSessions[interaction.user.id];
-            delete applicationsData.applications[app.id];
-            saveApplications();
-            return interaction.reply({
-                content: "❌ I could not DM you. Please enable DMs and try again.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`${APPLICATION_START_PREFIX}${selected}`).setLabel("Start application").setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`${APPLICATION_CANCEL_PREFIX}${selected}`).setLabel("Cancel application").setStyle(ButtonStyle.Danger)
+        );
 
-        return interaction.reply({
-            content: "✅ Application started. Check your DMs and answer each question there. You have 60 minutes to complete it.",
-            flags: MessageFlags.Ephemeral
-        });
+        return interaction.reply({ embeds: [confirmEmbed], components: [row], flags: MessageFlags.Ephemeral });
     }
 
     // Force End Patrol button handler
@@ -6262,7 +6206,7 @@ client.on("interactionCreate", async interaction => {
 
     // /dashboard command
     if (interaction.commandName === "onlinedash") {
-        const webUrl = process.env.DASHBOARD_URL || "http://51.79.43.184:8199";
+        const webUrl = process.env.DASHBOARD_URL || "http://45.143.198.46:8100";
         return interaction.reply({
             content: `🌐 **Web Dashboard:** ${webUrl}`,
             ephemeral: true
@@ -6372,7 +6316,7 @@ client.on("interactionCreate", async interaction => {
         });
     }
 
-    if (["application-panel", "applicationresultscpd", "applicationresultshcso", "applicationresultsfhp", "applicationresultsstaff"].includes(interaction.commandName)) {
+    if (interaction.commandName === "application-panel") {
         if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
             return interaction.reply({
                 content: "❌ You don't have permission to post the application panel.",
@@ -6380,75 +6324,21 @@ client.on("interactionCreate", async interaction => {
             });
         }
 
-        const availablePanels = {
-            "application-panel": {
-                title: "📝 Emergency Service Applications",
-                description: "To apply for a department or team, click **Apply** below.\n\nYour interview questions will be sent in DMs and your answers will be reviewed in the online dashboard by staff and command.",
-                buttonLabel: "Apply",
-                departmentId: null
-            },
-            "applicationresultscpd": {
-                title: "📝 CPD Applications",
-                description: "Post the Clewiston Police Department application panel here. Candidates will be reviewed by CPD command and staff.",
-                buttonLabel: "Apply for CPD",
-                departmentId: "1482501585803415572"
-            },
-            "applicationresultshcso": {
-                title: "📝 HCSO Applications",
-                description: "Post the Hendry County Sheriff's Office application panel here. Candidates will be reviewed by HCSO command and staff.",
-                buttonLabel: "Apply for HCSO",
-                departmentId: "1482203107432595601"
-            },
-            "applicationresultsfhp": {
-                title: "📝 FHP Applications",
-                description: "Post the Florida Highway Patrol application panel here. Candidates will be reviewed by FHP command and staff.",
-                buttonLabel: "Apply for FHP",
-                departmentId: "1482498655523962892"
-            },
-            "applicationresultsstaff": {
-                title: "📝 Staff Applications",
-                description: "Post the staff application panel here. Candidates will be reviewed by command-level staff.",
-                buttonLabel: "Apply for Staff",
-                departmentId: "staff"
-            }
-        };
-
-        const panelConfig = availablePanels[interaction.commandName];
-        if (!panelConfig) {
-            return interaction.reply({
-                content: "❌ Invalid application panel command.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
         const panelEmbed = new EmbedBuilder()
             .setColor("#4ea8de")
-            .setTitle(panelConfig.title)
-            .setDescription(panelConfig.description)
+            .setTitle("📝 Emergency Service Applications")
+            .setDescription("To apply for a department or team, click **Apply** below.\n\nYour interview questions will be sent in DMs and your answers will be reviewed in the online dashboard by staff and command.")
+            .addFields({ name: "Apply", value: "Click the button below to begin your application." })
             .setTimestamp();
 
-        let components;
-        if (panelConfig.buttons) {
-            const row = new ActionRowBuilder().addComponents(
-                panelConfig.buttons.map(b =>
-                    new ButtonBuilder()
-                        .setCustomId(`${APPLICATION_START_PREFIX}${b.departmentId}`)
-                        .setLabel(b.label)
-                        .setStyle(ButtonStyle.Primary)
-                )
-            );
-            components = [row];
-        } else {
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`${APPLICATION_START_PREFIX}${panelConfig.departmentId}`)
-                    .setLabel(panelConfig.buttonLabel)
-                    .setStyle(ButtonStyle.Primary)
-            );
-            components = [row];
-        }
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(APPLICATION_PANEL_BUTTON_ID)
+                .setLabel("Apply")
+                .setStyle(ButtonStyle.Primary)
+        );
 
-        await interaction.reply({ embeds: [panelEmbed], components });
+        await interaction.reply({ embeds: [panelEmbed], components: [row] });
         return;
     }
 
@@ -6926,13 +6816,4 @@ startDashboard({
     STRIKE_ROLE_IDS,
 });
 
-async function startBot() {
-    try {
-        await client.login(TOKEN);
-    } catch (loginError) {
-        console.error("Bot login failed:", loginError);
-        console.error("The dashboard remains running, but the Discord bot could not connect. Check TOKEN and CLIENT_ID.");
-    }
-}
-
-startBot();
+client.login(TOKEN);
