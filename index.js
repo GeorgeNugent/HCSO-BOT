@@ -1849,6 +1849,7 @@ const commands = [
 
 // Register commands
 const rest = new REST({ version: "10" }).setToken(TOKEN);
+const TARGET_COMMAND_GUILD_ID = String(process.env.GUILD_ID || "1533590255603810334");
 
 const STALE_APPLICATION_COMMAND_NAMES = new Set([
     "applicationresultscpd",
@@ -1882,18 +1883,11 @@ async function cleanupAndLogGuildCommands(guildId) {
 }
 
 try {
-    // Force guild-only command mode for multi-server operation.
+    // Force guild-only command mode for this single guild.
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
     console.log("Cleared global application commands (guild-only mode enabled).");
 
-    // If using a single server setup, only register commands in the configured GUILD_ID.
-    // Fall back to department-configured guilds only if GUILD_ID is not set.
-    const configuredGuildIds = Object.keys(getAllDepartments())
-        .filter(id => /^\d{17,20}$/.test(String(id)));
-
-    const commandGuildIds = GUILD_ID
-        ? [String(GUILD_ID)]
-        : Array.from(new Set(configuredGuildIds));
+    const commandGuildIds = [TARGET_COMMAND_GUILD_ID];
 
     if (commandGuildIds.length === 0) {
         console.warn("No guild IDs available for guild command registration.");
@@ -1904,13 +1898,11 @@ try {
                 console.log(`Registered ${commands.length} guild commands for guild ${guildId}`);
                 await cleanupAndLogGuildCommands(guildId);
             } catch (gerr) {
-                // Log and continue registering other guilds. Missing Access is common when
-                // the bot or application isn't present in a specific guild.
                 console.error(`Failed to register commands for guild ${guildId}:`, gerr?.message || gerr);
                 if (gerr?.rawError) {
                     console.error('Discord API error:', gerr.rawError);
                 }
-                console.warn(`Skipping guild ${guildId} and continuing registration for remaining guilds.`);
+                console.warn(`Skipping guild ${guildId} and continuing startup.`);
             }
         }
     }
