@@ -6626,13 +6626,13 @@ client.on("interactionCreate", async interaction => {
                 title: "📝 Emergency Service Applications",
                 description: "To apply for a department or team, click **Apply** below.\n\nYour interview questions will be sent in DMs and your answers will be reviewed in the online dashboard by staff and command.",
                 buttonLabel: "Apply",
-                departmentId: null
+                buttonId: APPLICATION_PANEL_BUTTON_ID
             },
             "staff-application-panel": {
                 title: "📝 Staff Applications",
                 description: "Post the staff application panel here. Candidates will be reviewed by command-level staff.",
                 buttonLabel: "Apply for Staff",
-                departmentId: "staff"
+                buttonId: `${APPLICATION_START_PREFIX}staff`
             }
         };
 
@@ -6653,7 +6653,7 @@ client.on("interactionCreate", async interaction => {
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId(`${APPLICATION_START_PREFIX}${panelConfig.departmentId}`)
+                .setCustomId(panelConfig.buttonId)
                 .setLabel(panelConfig.buttonLabel)
                 .setStyle(ButtonStyle.Primary)
         );
