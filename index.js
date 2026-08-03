@@ -360,6 +360,28 @@ const APPLICATION_QUESTIONS = [
     "Do you understand if your application gets accepted, you have 14 days to complete your interview or your process will be terminated?"
 ];
 
+const STAFF_APPLICATION_QUESTIONS = [
+    "What is your Discord tag (itscrizpy)?",
+    "What is your name, how old are you, and what is your time zone?",
+    "What is Random Death match and you see someone RDMing and you are the only trial staff what would you do? (30+ words)",
+    "What is the definition of Vehicle Death Match?",
+    "What is the definition of FailRP?",
+    "What is the definition of Meta Gaming?",
+    "Why would you like to join the staff team? (30+ words)",
+    "What makes you a better candidate than other applicants? (30+ words)",
+    "What are your past experiences | list the Server name, rank, and how long you were there.",
+    "You hear/see a higher staff member breaking rules what do you do? (20+ words)",
+    "You and a staff member are arguing, how do you go about resolving the situation? (15+ words)",
+    "Do you understand that your application can take up to 24 hours to get accepted?"
+];
+
+function getApplicationQuestionsForType(appType) {
+    if (String(appType || "").toLowerCase() === "staff") {
+        return STAFF_APPLICATION_QUESTIONS;
+    }
+    return APPLICATION_QUESTIONS;
+};
+
 function getDepartmentApplicationChoices() {
     const departments = getAllDepartments();
     const shortOrder = ["CPD", "HCSO", "FHP"];
@@ -574,15 +596,16 @@ async function sendApplicationInstructionsDm(user, app) {
 }
 
 async function sendApplicationQuestionDm(user, app, index) {
-    const question = APPLICATION_QUESTIONS[index];
+    const questions = getApplicationQuestionsForType(app?.type);
+    const question = questions[index];
     if (!question) {
-        throw new Error(`Invalid question index: ${index} (total: ${APPLICATION_QUESTIONS.length})`);
+        throw new Error(`Invalid question index: ${index} (total: ${questions.length})`);
     }
 
     const embed = new EmbedBuilder()
         .setColor("#4ea8de")
         .setTitle(app.departmentName)
-        .setDescription(`${index + 1}/${APPLICATION_QUESTIONS.length}. ${question}`)
+        .setDescription(`${index + 1}/${questions.length}. ${question}`)
         .addFields({ name: "How to answer", value: "Send your answer in this DM. I will automatically move you to the next question." })
         .setTimestamp();
 
@@ -6922,7 +6945,8 @@ client.on("messageCreate", async message => {
     }
 
     const questionIndex = Number(session.currentQuestionIndex) || 0;
-    const question = APPLICATION_QUESTIONS[questionIndex];
+    const questions = getApplicationQuestionsForType(app?.type);
+    const question = questions[questionIndex];
     if (!question) {
         app.status = "pending";
         app.submittedAt = new Date().toISOString();
@@ -6932,16 +6956,28 @@ client.on("messageCreate", async message => {
         return;
     }
 
+    const normalizedAnswer = String(answer).trim();
+    const alreadyAnsweredThisQuestion = app.answers.some(item => {
+        const sameIndex = Number(item.index) === questionIndex + 1;
+        const sameAnswer = String(item.answer || "").trim().toLowerCase() === normalizedAnswer.toLowerCase();
+        return sameIndex && sameAnswer;
+    });
+
+    if (alreadyAnsweredThisQuestion) {
+        await message.channel.send("✅ That answer was already recorded. Please wait for the next question or send a new answer if you need to change it.").catch(() => {});
+        return;
+    }
+
     app.answers.push({
         index: questionIndex + 1,
         question,
-        answer,
+        answer: normalizedAnswer,
         answeredAt: new Date().toISOString()
     });
 
     session.currentQuestionIndex = questionIndex + 1;
 
-    if (session.currentQuestionIndex >= APPLICATION_QUESTIONS.length) {
+    if (session.currentQuestionIndex >= questions.length) {
         app.status = "pending";
         app.submittedAt = new Date().toISOString();
         delete applicationsData.activeSessions[message.author.id];
