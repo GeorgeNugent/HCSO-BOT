@@ -77,6 +77,17 @@ export const ticketCommands = [
                 .addChannelTypes(ChannelType.GuildText)
                 .setRequired(false)
         ),
+
+    new SlashCommandBuilder()
+        .setName("deleteticket")
+        .setDescription("Delete a closed ticket channel and remove it from the ticket registry")
+        .setDMPermission(false)
+        .addChannelOption(option =>
+            option.setName("channel")
+                .setDescription("Closed ticket channel to delete")
+                .addChannelTypes(ChannelType.GuildText)
+                .setRequired(true)
+        ),
 ];
 
 export function createTicketSystem({ config = {}, tickets = { tickets: {} }, saveTickets = () => {}, saveConfig = () => {}, getLogChannelId = () => null, isStaffMember = () => false } = {}) {
@@ -106,8 +117,61 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         return ticket;
     }
 
-    function getOpenTicketByChannel(channelId) {
-        const ticket = getTicketByChannel(channelId);
+    function recoverTicketFromChannel(channel) {
+        if (!channel || !channel.id || !channel.name) return null;
+        if (!/^ticket-/i.test(String(channel.name || ""))) return null;
+
+        const existing = ticketStore[String(channel.id)];
+        if (existing) {
+            ensureTicketDefaults(existing);
+            return existing;
+        }
+
+        const channelName = String(channel.name || "");
+        const match = channelName.match(/ticket-(\d+)/i);
+        const ticketId = match ? `TICKET-${String(match[1]).padStart(6, "0")}` : `TICKET-${Date.now().toString().slice(-6)}`;
+
+        const staffRoleIds = new Set(getStaffRoleIds());
+        let openerId = null;
+        if (channel.permissionOverwrites?.cache) {
+            for (const overwrite of channel.permissionOverwrites.cache.values()) {
+                const candidateId = String(overwrite.id);
+                if (candidateId === channel.guild?.roles?.everyone?.id) continue;
+                if (staffRoleIds.has(candidateId)) continue;
+                const allowed = overwrite.allow?.toArray?.() || [];
+                if (allowed.includes("ViewChannel") || allowed.includes("SendMessages")) {
+                    openerId = candidateId;
+                    break;
+                }
+            }
+        }
+
+        const recoveredTicket = {
+            id: ticketId,
+            opener: openerId || "unknown",
+            openerTag: openerId ? `<@${openerId}>` : "unknown",
+            guild: channel.guild?.id || null,
+            channel: channel.id,
+            status: "open",
+            type: "Support Ticket",
+            createdAt: new Date().toISOString(),
+            closed: false,
+            closedBy: null,
+            closedAt: null,
+            closeReason: null,
+            claimedBy: null,
+            pendingReviewRequest: false,
+            reviewRequest: null,
+            messages: []
+        };
+
+        ticketStore[String(channel.id)] = recoveredTicket;
+        saveTicketState();
+        return recoveredTicket;
+    }
+
+    function getOpenTicketByChannel(channelId, fallbackChannel = null) {
+        const ticket = getTicketByChannel(channelId) || (fallbackChannel ? recoverTicketFromChannel(fallbackChannel) : null);
         return ticket && String(ticket.status).toLowerCase() === "open" ? ticket : null;
     }
 
@@ -246,6 +310,21 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
                 { name: "Claimed By", value: ticket.claimedBy ? `<@${ticket.claimedBy}>` : "Unclaimed", inline: true }
             )
             .setTimestamp();
+    }
+
+    async function hideClosedTicketFromOpener(guild, ticket) {
+        if (!guild || !ticket?.channel || !ticket?.opener || ticket.opener === "unknown") return;
+
+        const channel = guild.channels.cache.get(ticket.channel) || await guild.channels.fetch(ticket.channel).catch(() => null);
+        if (!channel || !channel.isTextBased()) return;
+
+        await channel.permissionOverwrites.edit(ticket.opener, {
+            ViewChannel: false,
+            SendMessages: false,
+            ReadMessageHistory: false,
+            AttachFiles: false,
+            EmbedLinks: false
+        }).catch(() => {});
     }
 
     function getStaffRoleIds() {
@@ -476,7 +555,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         });
 
         if (!closedTicket) {
-            await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+            await interaction.reply({ content: "❌ This ticket is already closed. A moderator can delete it after the transcript is sent." }).catch(() => {});
             return { ok: false };
         }
 
@@ -494,6 +573,7 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
                 .setTimestamp();
 
             await ticketChannel.send({ embeds: [closeEmbed], components: [] }).catch(() => {});
+            await hideClosedTicketFromOpener(interaction.guild, closedTicket).catch(() => {});
         }
 
         const transcriptResult = await sendTranscriptToChannel(interaction.guild, closedTicket);
@@ -520,9 +600,14 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         }
 
         if (interaction.customId === USER_CLOSE_BUTTON_ID) {
-            const ticket = getOpenTicketByChannel(interaction.channelId);
+            const ticket = getOpenTicketByChannel(interaction.channelId, interaction.channel);
+            const closedTicket = getTicketByChannel(interaction.channelId);
             if (!ticket) {
-                await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+                if (closedTicket && String(closedTicket.status).toLowerCase() === "closed") {
+                    await interaction.reply({ content: "❌ This ticket is closed. A moderator can delete it after the transcript is sent." }).catch(() => {});
+                } else {
+                    await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+                }
                 return true;
             }
             if (interaction.user.id !== ticket.opener) {
@@ -551,9 +636,14 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
             return false;
         }
 
-        const ticket = getOpenTicketByChannel(interaction.channelId);
+        const ticket = getOpenTicketByChannel(interaction.channelId, interaction.channel);
+        const closedTicket = getTicketByChannel(interaction.channelId);
         if (!ticket) {
-            await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+            if (closedTicket && String(closedTicket.status).toLowerCase() === "closed") {
+                await interaction.reply({ content: "❌ This ticket is closed. A moderator can delete it after the transcript is sent." }).catch(() => {});
+            } else {
+                await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+            }
             return true;
         }
 
@@ -654,9 +744,14 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         if (!interaction.isModalSubmit()) return false;
 
         if (interaction.customId === "ticket_user_close_modal") {
-            const ticket = getOpenTicketByChannel(interaction.channelId);
+            const ticket = getOpenTicketByChannel(interaction.channelId, interaction.channel);
+            const closedTicket = getTicketByChannel(interaction.channelId);
             if (!ticket) {
-                await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+                if (closedTicket && String(closedTicket.status).toLowerCase() === "closed") {
+                    await interaction.reply({ content: "❌ This ticket is closed. A moderator can delete it after the transcript is sent." }).catch(() => {});
+                } else {
+                    await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+                }
                 return true;
             }
             if (interaction.user.id !== ticket.opener) {
@@ -674,9 +769,14 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         }
 
         if (interaction.customId === "ticket_close_reason_modal") {
-            const ticket = getOpenTicketByChannel(interaction.channelId);
+            const ticket = getOpenTicketByChannel(interaction.channelId, interaction.channel);
+            const closedTicket = getTicketByChannel(interaction.channelId);
             if (!ticket) {
-                await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+                if (closedTicket && String(closedTicket.status).toLowerCase() === "closed") {
+                    await interaction.reply({ content: "❌ This ticket is closed. A moderator can delete it after the transcript is sent." }).catch(() => {});
+                } else {
+                    await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+                }
                 return true;
             }
             if (!isStaffMember(interaction.member)) {
@@ -695,9 +795,14 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
         }
 
         if (interaction.customId === "ticket_add_users_modal" || interaction.customId === "ticket_remove_users_modal") {
-            const ticket = getOpenTicketByChannel(interaction.channelId);
+            const ticket = getOpenTicketByChannel(interaction.channelId, interaction.channel);
+            const closedTicket = getTicketByChannel(interaction.channelId);
             if (!ticket) {
-                await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+                if (closedTicket && String(closedTicket.status).toLowerCase() === "closed") {
+                    await interaction.reply({ content: "❌ This ticket is closed. A moderator can delete it after the transcript is sent." }).catch(() => {});
+                } else {
+                    await interaction.reply({ content: "❌ This ticket is already closed or not recognized." }).catch(() => {});
+                }
                 return true;
             }
             if (!isStaffMember(interaction.member)) {
@@ -747,7 +852,7 @@ ${results.join("\n")}` }).catch(() => {});
         if (!interaction.isChatInputCommand()) return false;
 
         if (interaction.commandName === "ticket") {
-            const ticket = getTicketByChannel(interaction.channelId);
+            const ticket = getTicketByChannel(interaction.channelId) || recoverTicketFromChannel(interaction.channel);
             if (!ticket) {
                 await interaction.reply({ content: "❌ This channel is not a recognized ticket channel." }).catch(() => {});
                 return true;
@@ -807,6 +912,36 @@ ${results.join("\n")}` }).catch(() => {});
             return true;
         }
 
+        if (interaction.commandName === "deleteticket") {
+            if (!isStaffMember(interaction.member)) {
+                await interaction.reply({ content: "❌ You do not have permission to delete ticket channels." }).catch(() => {});
+                return true;
+            }
+
+            const targetChannel = interaction.options.getChannel("channel");
+            if (!targetChannel || !targetChannel.isTextBased()) {
+                await interaction.reply({ content: "❌ Please select a valid text channel." }).catch(() => {});
+                return true;
+            }
+
+            const ticket = getTicketByChannel(targetChannel.id);
+            if (!ticket) {
+                await interaction.reply({ content: "❌ That channel is not a tracked ticket channel." }).catch(() => {});
+                return true;
+            }
+
+            if (String(ticket.status).toLowerCase() !== "closed") {
+                await interaction.reply({ content: "❌ You can only delete a closed ticket channel." }).catch(() => {});
+                return true;
+            }
+
+            delete ticketStore[targetChannel.id];
+            saveTicketState();
+            await targetChannel.delete("Closed ticket removed by moderator").catch(() => {});
+            await interaction.reply({ content: `✅ Closed ticket channel ${targetChannel} was deleted.` }).catch(() => {});
+            return true;
+        }
+
         if (interaction.commandName === "ticket-panel-config") {
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
                 await interaction.reply({ content: "❌ Administrator permission required." }).catch(() => {});
@@ -835,9 +970,14 @@ ${results.join("\n")}` }).catch(() => {});
 
         if (interaction.commandName === "ticket-management" || interaction.commandName === "ticketmanagement") {
             const targetChannel = interaction.options.getChannel("channel") || interaction.channel;
-            const ticket = targetChannel ? getOpenTicketByChannel(targetChannel.id) : null;
+            const ticket = targetChannel ? getOpenTicketByChannel(targetChannel.id, targetChannel) : null;
             if (!ticket) {
-                await interaction.reply({ content: "❌ No open ticket was found in that channel. Run this in a ticket channel or specify a ticket channel with the `channel` option." }).catch(() => {});
+                const existingTicket = targetChannel ? getTicketByChannel(targetChannel.id) : null;
+                if (existingTicket && String(existingTicket.status).toLowerCase() === "closed") {
+                    await interaction.reply({ content: "❌ This ticket is closed. Ask a moderator to delete it after the transcript is sent." }).catch(() => {});
+                } else {
+                    await interaction.reply({ content: "❌ No open ticket was found in that channel. Run this in a ticket channel or specify a ticket channel with the `channel` option." }).catch(() => {});
+                }
                 return true;
             }
 

@@ -256,6 +256,10 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             .filter(t => String(t.status).toLowerCase() === "open")
             .map(t => ({ id: t.id, channel: t.channel, type: t.type || "Ticket" }));
 
+        const closedTicketList = Object.values(tickets.tickets || {})
+            .filter(t => String(t.status).toLowerCase() === "closed")
+            .map(t => ({ id: t.id, channel: t.channel, type: t.type || "Ticket" }));
+
         res.render("home", {
             page:         "home",
             uptime:       `${h}h ${m}m ${s}s`,
@@ -268,6 +272,7 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             openCases,
             openTickets,
             openTicketList,
+            closedTicketList,
             ticketCategory: config.ticketCategory || null,
             ticketTypes: config.ticketTypes || [],
             ticketPanelTitle: config.ticketPanelTitle || null,
@@ -1655,6 +1660,53 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             return res.json({ success: true, message: "Ticket closed successfully." });
         } catch (err) {
             console.error("[Dashboard API] tickets/close:", err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    router.post("/api/tickets/delete-closed", requireStaff, segmentGuard("settings"), async (req, res) => {
+        try {
+            const ticketId = String(req.body?.ticketId || "").trim();
+            if (!ticketId) {
+                return res.status(400).json({ error: "Ticket ID is required." });
+            }
+
+            const ticket = Object.values(tickets.tickets || {}).find(t => String(t.id) === ticketId && String(t.status).toLowerCase() === "closed");
+            if (!ticket) {
+                return res.status(404).json({ error: "Closed ticket not found." });
+            }
+
+            const channelId = String(ticket.channel || "").trim();
+            const guild = client.guilds.cache.get(GUILD_ID) || await client.guilds.fetch(GUILD_ID).catch(() => null);
+            if (channelId && guild) {
+                const channel = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
+                if (channel && channel.deletable) {
+                    await channel.delete("Closed ticket removed by moderator from dashboard").catch(() => {});
+                }
+            }
+
+            if (channelId && tickets.tickets[channelId]) {
+                delete tickets.tickets[channelId];
+            }
+
+            saveTickets();
+
+            await sendDashboardActionLog({
+                guildId: GUILD_ID,
+                logType: "ticket",
+                title: "🗑️ Closed Ticket Channel Deleted",
+                fields: [
+                    { name: "Ticket ID", value: ticket.id, inline: true },
+                    { name: "Channel", value: channelId || "Unknown", inline: true },
+                    { name: "Deleted By", value: `<@${req.session.user?.id || "unknown"}>`, inline: true },
+                    { name: "Reason", value: "Closed ticket channel deleted via dashboard", inline: false }
+                ],
+                color: 0xED4245
+            });
+
+            return res.json({ success: true, message: "Closed ticket channel removed." });
+        } catch (err) {
+            console.error("[Dashboard API] tickets/delete-closed:", err.message);
             res.status(500).json({ error: err.message });
         }
     });
