@@ -122,6 +122,8 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             return false;
         }
 
+        console.log("[Dashboard ApplicationRole] start sync", { appId: app.id, targetUserId, state, roleKey, departmentGuildId: app.departmentGuildId, departmentName: app.departmentName, mainGuildId: GUILD_ID, pendingRoleId, interviewRoleId });
+
         let guild = await getMainRoleGuild();
         if (!guild && app.guildId) {
             guild = client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null);
@@ -168,6 +170,7 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
 
         const removeRoles = resolvedRoles.filter(role => roleIdsToRemove.includes(role.id));
         const addRoles = resolvedRoles.filter(role => roleIdsToAdd.includes(role.id));
+        console.log("[Dashboard ApplicationRole] role update plan", { appId: app.id, guildId: guild.id, targetUserId, addRoles: addRoles.map(r => r.id), removeRoles: removeRoles.map(r => r.id) });
 
         if (removeRoles.length > 0) {
             await member.roles.remove(removeRoles).catch(err => {
@@ -889,7 +892,11 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             saveApplications();
 
             if (app.type === "department") {
-                await syncApplicationDepartmentRoleState(app, app.applicantId, decision === "accepted" ? "interview" : "none");
+                console.log("[Dashboard Review] application object before role sync", app);
+                const syncOk = await syncApplicationDepartmentRoleState(app, app.applicantId, decision === "accepted" ? "interview" : "none");
+                if (!syncOk) {
+                    console.error("[Dashboard API] Application review role sync failed", { appId: app.id, decision, applicantId: app.applicantId, departmentGuildId: app.departmentGuildId });
+                }
             }
 
             const applicant = await client.users.fetch(app.applicantId).catch(() => null);
