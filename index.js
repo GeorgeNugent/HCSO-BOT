@@ -1860,7 +1860,7 @@ const commands = [
 
 // Register commands
 const rest = new REST({ version: "10" }).setToken(TOKEN);
-const TARGET_COMMAND_GUILD_ID = String(process.env.GUILD_ID || "1533590255603810334");
+const TARGET_COMMAND_GUILD_ID = String(process.env.GUILD_ID || "1533590255603810334").trim();
 
 const STALE_APPLICATION_COMMAND_NAMES = new Set([
     "applicationresultscpd",
@@ -1894,24 +1894,24 @@ async function cleanupAndLogGuildCommands(guildId) {
 }
 
 try {
-    // Force guild-only command mode for this single guild.
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
-    console.log("Cleared global application commands (guild-only mode enabled).");
-
-    const commandGuildIds = [TARGET_COMMAND_GUILD_ID];
+    const commandGuildIds = TARGET_COMMAND_GUILD_ID ? [TARGET_COMMAND_GUILD_ID] : [];
 
     if (commandGuildIds.length === 0) {
         console.warn("No guild IDs available for guild command registration.");
     } else {
+        await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
+        console.log("Cleared global application commands (guild-only mode enabled).");
+
         for (const guildId of commandGuildIds) {
             try {
                 await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body: commands });
                 console.log(`Registered ${commands.length} guild commands for guild ${guildId}`);
+                console.log(`Registered command names: ${commands.map(command => command.name).join(", ")}`);
                 await cleanupAndLogGuildCommands(guildId);
             } catch (gerr) {
                 console.error(`Failed to register commands for guild ${guildId}:`, gerr?.message || gerr);
                 if (gerr?.rawError) {
-                    console.error('Discord API error:', gerr.rawError);
+                    console.error("Discord API error:", gerr.rawError);
                 }
                 console.warn(`Skipping guild ${guildId} and continuing startup.`);
             }
