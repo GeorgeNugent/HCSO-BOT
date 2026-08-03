@@ -26,6 +26,11 @@ export const ticketCommands = [
         .setDMPermission(false),
 
     new SlashCommandBuilder()
+        .setName("ticketmanagement")
+        .setDescription("Open the ticket management panel for this ticket channel")
+        .setDMPermission(false),
+
+    new SlashCommandBuilder()
         .setName("ticketcat")
         .setDescription("Set the category where new tickets will be created")
         .setDMPermission(false)

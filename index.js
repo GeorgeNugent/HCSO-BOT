@@ -1798,23 +1798,6 @@ const commands = [
         )),
 
     new SlashCommandBuilder()
-        .setName("suggestionschannel")
-        .setDescription("Set the channel where approved suggestions are posted")
-        .addChannelOption(o => o
-            .setName("channel")
-            .setDescription("Channel to post approved suggestions to (defaults to current channel)")
-            .addChannelTypes(ChannelType.GuildText)
-            .setRequired(false)
-        ),
-
-    ...ticketCommands,
-
-    new SlashCommandBuilder()
-        .setName("ticketmanagement")
-        .setDescription("Open the ticket management panel for this ticket channel")
-        .setDMPermission(false),
-
-    new SlashCommandBuilder()
         .setName("set-status")
         .setDescription("Change the bot's status to a preset")
         .addStringOption(o => o
@@ -1837,6 +1820,8 @@ const commands = [
     new SlashCommandBuilder()
         .setName("dashboard")
         .setDescription(`Open the ${branding.dashboardTitle} (staff only)`),
+
+    ...ticketCommands,
 
     new SlashCommandBuilder()
         .setName("help")
