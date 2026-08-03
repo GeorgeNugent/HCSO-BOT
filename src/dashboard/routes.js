@@ -83,6 +83,46 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         return null;
     }
 
+    function pruneStaleTicketEntries() {
+        let changed = false;
+        const ticketEntries = Object.values(tickets.tickets || {});
+
+        for (const ticket of ticketEntries) {
+            if (!ticket || String(ticket.status || "").toLowerCase() !== "open") continue;
+            const channelId = String(ticket.channel || "").trim();
+            if (!channelId) {
+                ticket.status = "closed";
+                ticket.closed = true;
+                ticket.closedAt = new Date().toISOString();
+                ticket.closedBy = "system";
+                ticket.closeReason = "Ticket record was stale and had no channel.";
+                ticket.closedByStaff = true;
+                ticket.pendingReviewRequest = false;
+                changed = true;
+                continue;
+            }
+
+            const knownChannel = client.channels.cache.get(channelId)
+                || client.channels.cache.find(channel => channel.id === channelId);
+            if (!knownChannel) {
+                ticket.status = "closed";
+                ticket.closed = true;
+                ticket.closedAt = new Date().toISOString();
+                ticket.closedBy = "system";
+                ticket.closeReason = "Discord channel no longer exists.";
+                ticket.closedByStaff = true;
+                ticket.pendingReviewRequest = false;
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            saveTickets();
+        }
+
+        return changed;
+    }
+
     async function sendDashboardActionLog({ guildId, logType, title, fields, color = 0xF8B637 }) {
         try {
             const channelId = getDashboardLogChannelId(guildId, logType);
@@ -208,7 +248,9 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         const activeLoas    = Object.values(loa).filter(l => l.onLOA).length;
         const openCases     = Object.values(casesData.cases || {})
             .filter(c => !isCaseClosed(c)).length;
-        const openTickets   = Object.values(tickets.tickets || {}).filter(t => t.status === "open").length;
+        pruneStaleTicketEntries();
+
+        const openTickets   = Object.values(tickets.tickets || {}).filter(t => String(t.status).toLowerCase() === "open").length;
 
         const openTicketList = Object.values(tickets.tickets || {})
             .filter(t => String(t.status).toLowerCase() === "open")
@@ -1613,6 +1655,25 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             return res.json({ success: true, message: "Ticket closed successfully." });
         } catch (err) {
             console.error("[Dashboard API] tickets/close:", err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    router.post("/api/tickets/cleanup-stale", requireStaff, segmentGuard("settings"), async (req, res) => {
+        try {
+            const countBefore = Object.values(tickets.tickets || {}).filter(t => String(t.status).toLowerCase() === "open").length;
+            const changed = pruneStaleTicketEntries();
+            const countAfter = Object.values(tickets.tickets || {}).filter(t => String(t.status).toLowerCase() === "open").length;
+
+            res.json({
+                success: true,
+                changed,
+                removed: Math.max(0, countBefore - countAfter),
+                remainingOpen: countAfter,
+                message: changed ? "Stale ticket records were cleared." : "No stale ticket records needed cleanup."
+            });
+        } catch (err) {
+            console.error("[Dashboard API] tickets/cleanup-stale:", err.message);
             res.status(500).json({ error: err.message });
         }
     });
