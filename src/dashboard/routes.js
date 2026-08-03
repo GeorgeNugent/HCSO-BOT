@@ -106,18 +106,12 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
     }
 
     function getCommandEligibleServerIds() {
-        const departments = getAllDepartments();
-        const ids = new Set();
-
-        for (const guildId of Object.keys(departments || {})) {
-            const normalized = String(guildId || "").trim();
-            if (/^\d{17,20}$/.test(normalized)) ids.add(normalized);
+        const defaultGuildId = String(GUILD_ID || "").trim();
+        if (/^\d{17,20}$/.test(defaultGuildId)) {
+            return [defaultGuildId];
         }
 
-        const defaultGuildId = String(GUILD_ID || "").trim();
-        if (/^\d{17,20}$/.test(defaultGuildId)) ids.add(defaultGuildId);
-
-        return [...ids];
+        return [];
     }
 
     async function resolveCommandGuild(serverIdRaw) {
@@ -274,29 +268,31 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             }
         }
 
-        // Collect all accessible servers for announcement form
+        // Collect only the configured main guild for the single-server dashboard.
         const depts = getAllDepartments();
-        for (const [guildId, deptInfo] of Object.entries(depts)) {
+        const singleGuildId = String(GUILD_ID || "").trim();
+        if (singleGuildId) {
+            const deptInfo = depts[singleGuildId] || { shortName: "MAIN" };
             try {
-                const g = client.guilds.cache.get(guildId)
-                    || await client.guilds.fetch(guildId);
+                const g = client.guilds.cache.get(singleGuildId)
+                    || await client.guilds.fetch(singleGuildId);
                 if (g) {
-                    servers.push({ id: guildId, name: g.name, shortName: deptInfo.shortName });
+                    servers.push({ id: singleGuildId, name: g.name, shortName: deptInfo.shortName || "MAIN" });
                     await g.members.fetch();
                     await g.channels.fetch();
 
-                    membersByServer[guildId] = [...g.members.cache.values()]
+                    membersByServer[singleGuildId] = [...g.members.cache.values()]
                         .filter(m => !m.user.bot)
                         .map(m => ({ id: m.id, name: m.displayName || m.user.username }))
                         .sort((a, b) => a.name.localeCompare(b.name));
 
-                    channelsByServer[guildId] = [...g.channels.cache.values()]
+                    channelsByServer[singleGuildId] = [...g.channels.cache.values()]
                         .filter(c => c?.isTextBased() && !c.isDMBased() && c.type !== 4)
-                        .map(c => ({ id: c.id, name: c.name, parent: c.parent?.name || "Uncategorized", guildId: guildId }))
+                        .map(c => ({ id: c.id, name: c.name, parent: c.parent?.name || "Uncategorized", guildId: singleGuildId }))
                         .sort((a, b) => a.name.localeCompare(b.name));
                 }
             } catch (e) {
-                console.error(`[Dashboard] Failed to fetch guild ${guildId}:`, e.message);
+                console.error(`[Dashboard] Failed to fetch guild ${singleGuildId}:`, e.message);
             }
         }
 
