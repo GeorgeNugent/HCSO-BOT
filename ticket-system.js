@@ -53,13 +53,25 @@ export const ticketCommands = [
 
     new SlashCommandBuilder()
         .setName("ticket-management")
-        .setDescription("Open the ticket management panel for this ticket channel")
-        .setDMPermission(false),
+        .setDescription("Open the ticket management panel for a ticket channel")
+        .setDMPermission(false)
+        .addChannelOption(option =>
+            option.setName("channel")
+                .setDescription("Ticket channel to manage (optional)")
+                .addChannelTypes(ChannelType.GuildText)
+                .setRequired(false)
+        ),
 
     new SlashCommandBuilder()
         .setName("ticketmanagement")
-        .setDescription("Open the ticket management panel for this ticket channel")
-        .setDMPermission(false),
+        .setDescription("Open the ticket management panel for a ticket channel")
+        .setDMPermission(false)
+        .addChannelOption(option =>
+            option.setName("channel")
+                .setDescription("Ticket channel to manage (optional)")
+                .addChannelTypes(ChannelType.GuildText)
+                .setRequired(false)
+        ),
 ];
 
 export function createTicketSystem({ config = {}, tickets = { tickets: {} }, saveTickets = () => {}, saveConfig = () => {}, getLogChannelId = () => null, isStaffMember = () => false } = {}) {
@@ -816,9 +828,10 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
         }
 
         if (interaction.commandName === "ticket-management" || interaction.commandName === "ticketmanagement") {
-            const ticket = getOpenTicketByChannel(interaction.channelId);
+            const targetChannel = interaction.options.getChannel("channel") || interaction.channel;
+            const ticket = targetChannel ? getOpenTicketByChannel(targetChannel.id) : null;
             if (!ticket) {
-                await interaction.reply({ content: "❌ No open ticket was found in this channel.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.reply({ content: "❌ No open ticket was found in that channel. Run this in a ticket channel or specify a ticket channel with the `channel` option.", flags: MessageFlags.Ephemeral }).catch(() => {});
                 return true;
             }
 
