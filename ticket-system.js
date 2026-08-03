@@ -179,13 +179,23 @@ export function createTicketSystem({ config = {}, tickets = { tickets: {} }, sav
     }
 
     function buildTicketPanelEmbed(categoryId) {
-        return new EmbedBuilder()
+        const title = String(config.ticketPanelTitle || "").trim() || "🎫 Open a Support Ticket";
+        const customDescription = String(config.ticketPanelDescription || "").trim();
+        const defaultDescription = categoryId
+            ? `Click the button below to open a ticket. New tickets will be created under <#${categoryId}>.`
+            : "A ticket category has not been configured. Use `/ticketcat` to set one.";
+
+        const embed = new EmbedBuilder()
             .setColor("#4ea8de")
-            .setTitle("🎫 Open a Support Ticket")
-            .setDescription(categoryId
-                ? `Click the button below to open a ticket. New tickets will be created under <#${categoryId}>.`
-                : "A ticket category has not been configured. Use `/ticketcat` to set one.")
+            .setTitle(title)
+            .setDescription(customDescription || defaultDescription)
             .setTimestamp();
+
+        if (config.ticketPanelImageUrl && String(config.ticketPanelImageUrl).trim()) {
+            embed.setImage(String(config.ticketPanelImageUrl).trim());
+        }
+
+        return embed;
     }
 
     function buildTicketManagementEmbed(ticket) {

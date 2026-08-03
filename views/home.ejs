@@ -129,6 +129,15 @@
     <label for="homeTicketCategoryId">Ticket Category ID</label>
     <input id="homeTicketCategoryId" type="text" value="<%= ticketCategory || '' %>" placeholder="Enter a category ID">
 
+    <label for="homeTicketPanelTitle" style="margin-top:12px;">Ticket Panel Title</label>
+    <input id="homeTicketPanelTitle" type="text" value="<%= ticketPanelTitle || '' %>" placeholder="🎫 Open a Support Ticket">
+
+    <label for="homeTicketPanelDescription" style="margin-top:12px;">Ticket Panel Description</label>
+    <textarea id="homeTicketPanelDescription" rows="4" placeholder="Describe what tickets are for"><%= ticketPanelDescription || '' %></textarea>
+
+    <label for="homeTicketPanelImageUrl" style="margin-top:12px;">Ticket Panel Image URL</label>
+    <input id="homeTicketPanelImageUrl" type="text" value="<%= ticketPanelImageUrl || '' %>" placeholder="https://example.com/image.png">
+
     <label for="homeTicketButtonLabels" style="margin-top:12px;">Ticket Panel Buttons (one per line)</label>
     <textarea id="homeTicketButtonLabels" rows="5" placeholder="Support&#10;Bug Report&#10;Feature Request"><% if (ticketTypes && ticketTypes.length > 0) { %><%= ticketTypes.map(t => t.label).join('\n') %><% } %></textarea>
 
@@ -139,14 +148,33 @@
 <% } %>
 
 <% if (openTickets > 0) { %>
-<div class="alert alert-info" style="margin-top:16px;">
-  📨 There are <strong><%= openTickets %></strong> open ticket(s) currently active.
+<div class="alert alert-info" style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+  <div>📨 There are <strong><%= openTickets %></strong> open ticket(s) currently active.</div>
+  <button type="button" class="btn btn-danger" onclick="toggleCloseTicketPanel()">Close a Ticket</button>
+</div>
+<div id="close-ticket-panel" style="display:none; margin-top:16px; padding:16px; border:1px solid #b0c4de; border-radius:8px; background:#f7fbff; max-width:720px;">
+  <label for="closeTicketId">Select ticket to close</label>
+  <select id="closeTicketId" style="width:100%; padding:10px; margin-top:8px;">
+    <% openTicketList.forEach(ticket => { %>
+      <option value="<%= ticket.id %>"><%= ticket.id %> - <%= ticket.type %> (<%= ticket.channel %>)</option>
+    <% }); %>
+  </select>
+  <label for="closeTicketReason" style="margin-top:12px;">Reason (optional)</label>
+  <input id="closeTicketReason" type="text" style="width:100%; padding:10px; margin-top:8px;" placeholder="Reason for closing this ticket">
+  <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+    <button type="button" class="btn btn-danger" onclick="submitCloseTicket()">Close Selected Ticket</button>
+    <button type="button" class="btn btn-secondary" onclick="toggleCloseTicketPanel()">Cancel</button>
+  </div>
+  <div id="close-ticket-result" class="inline-result" style="display:none; margin-top:10px;"></div>
 </div>
 <% } %>
 
 <script>
 async function updateHomeTicketSystemSettings() {
   const categoryId = document.getElementById("homeTicketCategoryId").value.trim();
+  const ticketPanelTitle = document.getElementById("homeTicketPanelTitle").value.trim();
+  const ticketPanelDescription = document.getElementById("homeTicketPanelDescription").value.trim();
+  const ticketPanelImageUrl = document.getElementById("homeTicketPanelImageUrl").value.trim();
   const buttonLabels = document.getElementById("homeTicketButtonLabels").value
     .split(/\r?\n/)
     .map(line => line.trim())
@@ -160,7 +188,7 @@ async function updateHomeTicketSystemSettings() {
     const r = await fetch("/api/settings/ticket-system", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId, buttonLabels })
+      body: JSON.stringify({ categoryId, ticketPanelTitle, ticketPanelDescription, ticketPanelImageUrl, buttonLabels })
     });
     const d = await r.json();
     if (d.success) {
@@ -168,6 +196,52 @@ async function updateHomeTicketSystemSettings() {
       resultEl.classList.add("result-success");
     } else {
       resultEl.textContent = "❌ " + (d.error || "Failed");
+      resultEl.classList.add("result-error");
+    }
+  } catch (e) {
+    resultEl.textContent = "❌ Network error";
+    resultEl.classList.add("result-error");
+  }
+}
+
+function toggleCloseTicketPanel() {
+  const panel = document.getElementById("close-ticket-panel");
+  if (!panel) return;
+  panel.style.display = panel.style.display === "block" ? "none" : "block";
+}
+
+async function submitCloseTicket() {
+  const ticketId = document.getElementById("closeTicketId")?.value;
+  const reason = document.getElementById("closeTicketReason")?.value || "";
+  const resultEl = document.getElementById("close-ticket-result");
+  if (!ticketId) return;
+  resultEl.style.display = "block";
+  resultEl.className = "inline-result";
+  resultEl.textContent = "Closing ticket...";
+
+  try {
+    const r = await fetch("/api/tickets/close", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId, reason })
+    });
+    const d = await r.json();
+    if (d.success) {
+      resultEl.textContent = "✅ Ticket closed successfully. Reload the page to refresh the open ticket list.";
+      resultEl.classList.add("result-success");
+    } else {
+      resultEl.textContent = "❌ " + (d.error || "Failed to close ticket");
+      resultEl.classList.add("result-error");
+    }
+  } catch (e) {
+    resultEl.textContent = "❌ Network error";
+    resultEl.classList.add("result-error");
+  }
+}
+</script>
+      resultEl.classList.add("result-success");
+    } else {
+      resultEl.textContent = "❌ " + (d.error || "Failed to close ticket");
       resultEl.classList.add("result-error");
     }
   } catch (e) {

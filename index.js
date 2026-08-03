@@ -190,6 +190,15 @@ if (!config.ticketCategory) {
 if (!Array.isArray(config.ticketTypes)) {
     config.ticketTypes = [{ label: "Open a Ticket", enabled: true }];
 }
+if (typeof config.ticketPanelTitle !== "string") {
+    config.ticketPanelTitle = null;
+}
+if (typeof config.ticketPanelDescription !== "string") {
+    config.ticketPanelDescription = null;
+}
+if (typeof config.ticketPanelImageUrl !== "string") {
+    config.ticketPanelImageUrl = null;
+}
 if (!config.blacklistJoinAction) {
     config.blacklistJoinAction = "ban";
 }

@@ -210,6 +210,10 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             .filter(c => !isCaseClosed(c)).length;
         const openTickets   = Object.values(tickets.tickets || {}).filter(t => t.status === "open").length;
 
+        const openTicketList = Object.values(tickets.tickets || {})
+            .filter(t => String(t.status).toLowerCase() === "open")
+            .map(t => ({ id: t.id, channel: t.channel, type: t.type || "Ticket" }));
+
         res.render("home", {
             page:         "home",
             uptime:       `${h}h ${m}m ${s}s`,
@@ -221,8 +225,12 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             activeLoas,
             openCases,
             openTickets,
+            openTicketList,
             ticketCategory: config.ticketCategory || null,
-            ticketTypes: config.ticketTypes || []
+            ticketTypes: config.ticketTypes || [],
+            ticketPanelTitle: config.ticketPanelTitle || null,
+            ticketPanelDescription: config.ticketPanelDescription || null,
+            ticketPanelImageUrl: config.ticketPanelImageUrl || null
         });
     });
 
@@ -1541,13 +1549,63 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
                     .filter(Boolean)
             )].slice(0, 5).map(label => ({ label, enabled: true }));
 
+            const rawTitle = String(req.body?.ticketPanelTitle || "").trim();
+            const rawDescription = String(req.body?.ticketPanelDescription || "").trim();
+            const rawImageUrl = String(req.body?.ticketPanelImageUrl || "").trim();
+
             config.ticketCategory = categoryId;
             config.ticketTypes = normalizedButtons.length > 0 ? normalizedButtons : [{ label: "Open a Ticket", enabled: true }];
+            config.ticketPanelTitle = rawTitle || null;
+            config.ticketPanelDescription = rawDescription || null;
+            config.ticketPanelImageUrl = rawImageUrl || null;
             saveConfig();
 
             res.json({ success: true, message: "Ticket system settings saved." });
         } catch (err) {
             console.error("[Dashboard API] settings/ticket-system:", err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    router.post("/api/tickets/close", requireStaff, segmentGuard("settings"), async (req, res) => {
+        try {
+            const ticketId = String(req.body?.ticketId || "").trim();
+            const closeReason = String(req.body?.reason || "").trim() || "Closed via dashboard";
+
+            if (!ticketId) {
+                return res.status(400).json({ error: "Ticket ID is required." });
+            }
+
+            const ticket = Object.values(tickets.tickets || {}).find(t => String(t.id) === ticketId && String(t.status).toLowerCase() === "open");
+            if (!ticket) {
+                return res.status(404).json({ error: "Open ticket not found." });
+            }
+
+            ticket.status = "closed";
+            ticket.closed = true;
+            ticket.closedAt = new Date().toISOString();
+            ticket.closedBy = req.session.user?.id || "dashboard";
+            ticket.closeReason = closeReason;
+            ticket.closedByStaff = true;
+            ticket.pendingReviewRequest = false;
+            saveTickets();
+
+            await sendDashboardActionLog({
+                guildId: GUILD_ID,
+                logType: "ticket",
+                title: "✅ Ticket Closed via Dashboard",
+                fields: [
+                    { name: "Ticket ID", value: ticket.id, inline: true },
+                    { name: "Channel", value: ticket.channel || "Unknown", inline: true },
+                    { name: "Closed By", value: `<@${req.session.user?.id || "unknown"}>`, inline: true },
+                    { name: "Reason", value: closeReason, inline: false }
+                ],
+                color: 0x5865F2
+            });
+
+            return res.json({ success: true, message: "Ticket closed successfully." });
+        } catch (err) {
+            console.error("[Dashboard API] tickets/close:", err.message);
             res.status(500).json({ error: err.message });
         }
     });
