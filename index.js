@@ -1780,22 +1780,6 @@ const commands = [
         .setDescription("Post the staff application panel"),
 
     new SlashCommandBuilder()
-        .setName("applicationresultscpd")
-        .setDescription("Post the CPD application panel"),
-
-    new SlashCommandBuilder()
-        .setName("applicationresultshcso")
-        .setDescription("Post the HCSO application panel"),
-
-    new SlashCommandBuilder()
-        .setName("applicationresultsfhp")
-        .setDescription("Post the FHP application panel"),
-
-    new SlashCommandBuilder()
-        .setName("applicationresultsstaff")
-        .setDescription("Post the staff application panel"),
-
-    new SlashCommandBuilder()
         .setName("suggestion")
         .setDescription("Submit a server suggestion")
         .addSubcommand(sub =>
@@ -2069,21 +2053,46 @@ client.on("interactionCreate", async interaction => {
             const patrolLogChannelId = getLogChannelId(interaction.guildId, "patrol");
             const logChannel = patrolLogChannelId ? client.channels.cache.get(patrolLogChannelId) : null;
 
-            if (interaction.customId === APPLICATION_PANEL_BUTTON_ID) {
-                const options = getDepartmentApplicationChoices();
-                const select = new StringSelectMenuBuilder()
-                    .setCustomId(APPLICATION_DEPT_SELECT_ID)
-                    .setPlaceholder("Select what you want to apply for...")
-                    .addOptions(options.map(o => ({
-                        label: o.label,
-                        value: o.value,
-                        description: o.description
-                    })));
+            if (interaction.isStringSelectMenu() && interaction.customId === APPLICATION_DEPT_SELECT_ID) {
+                const selection = interaction.values?.[0];
+                if (!selection) {
+                    return interaction.reply({
+                        content: "⚠️ Please select a valid application department.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
 
-                const row = new ActionRowBuilder().addComponents(select);
+                const existing = getOpenApplicationSession(interaction.user.id);
+                if (existing) {
+                    return interaction.reply({
+                        content: `⚠️ You already have an active application (${existing.app.id}). Please finish or wait for review.`,
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+
+                const app = buildApplicationRecord(interaction.user, selection);
+                applicationsData.applications[app.id] = app;
+                applicationsData.activeSessions[interaction.user.id] = {
+                    applicationId: app.id,
+                    currentQuestionIndex: 0,
+                    createdAt: new Date().toISOString()
+                };
+                saveApplications();
+
+                try {
+                    await sendApplicationQuestionDm(interaction.user, app, 0);
+                } catch {
+                    delete applicationsData.activeSessions[interaction.user.id];
+                    delete applicationsData.applications[app.id];
+                    saveApplications();
+                    return interaction.reply({
+                        content: "❌ I could not DM you. Please enable DMs and try again.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+
                 return interaction.reply({
-                    content: "Select the application type/department below.",
-                    components: [row],
+                    content: "✅ Application started. Check your DMs and answer each question there. You have 60 minutes to complete it.",
                     flags: MessageFlags.Ephemeral
                 });
             }
@@ -6336,7 +6345,7 @@ client.on("interactionCreate", async interaction => {
         });
     }
 
-    if (["application-panel", "staff-application-panel", "applicationresultscpd", "applicationresultshcso", "applicationresultsfhp", "applicationresultsstaff"].includes(interaction.commandName)) {
+    if (["application-panel", "staff-application-panel"].includes(interaction.commandName)) {
         if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
             return interaction.reply({
                 content: "❌ You don't have permission to post the application panel.",
@@ -6356,30 +6365,6 @@ client.on("interactionCreate", async interaction => {
                 description: "Post the staff application panel here. Candidates will be reviewed by command-level staff.",
                 buttonLabel: "Apply for Staff",
                 departmentId: "staff"
-            },
-            applicationresultscpd: {
-                title: "📝 CPD Applications",
-                description: "Post the Clewiston Police Department application panel here. Candidates will be reviewed by CPD command and staff.",
-                buttonLabel: "Apply for CPD",
-                departmentId: "1482501585803415572"
-            },
-            applicationresultshcso: {
-                title: "📝 HCSO Applications",
-                description: "Post the Hendry County Sheriff's Office application panel here. Candidates will be reviewed by HCSO command and staff.",
-                buttonLabel: "Apply for HCSO",
-                departmentId: "1482203107432595601"
-            },
-            applicationresultsfhp: {
-                title: "📝 FHP Applications",
-                description: "Post the Florida Highway Patrol application panel here. Candidates will be reviewed by FHP command and staff.",
-                buttonLabel: "Apply for FHP",
-                departmentId: "1482498655523962892"
-            },
-            applicationresultsstaff: {
-                title: "📝 Staff Applications",
-                description: "Post the staff application panel here. Candidates will be reviewed by command-level staff.",
-                buttonLabel: "Apply for Staff",
-                departmentId: "staff"
             }
         };
 
@@ -6395,17 +6380,33 @@ client.on("interactionCreate", async interaction => {
             .setColor("#4ea8de")
             .setTitle(panelConfig.title)
             .setDescription(panelConfig.description)
-            .addFields({ name: "Apply", value: "Click the button below to begin your application." })
             .setTimestamp();
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId(panelConfig.departmentId === null ? APPLICATION_PANEL_BUTTON_ID : `${APPLICATION_START_PREFIX}${panelConfig.departmentId}`)
-                .setLabel(panelConfig.buttonLabel)
-                .setStyle(ButtonStyle.Primary)
-        );
+        let components;
+        if (panelConfig.departmentId === null) {
+            const options = getDepartmentApplicationChoices();
+            const select = new StringSelectMenuBuilder()
+                .setCustomId(APPLICATION_DEPT_SELECT_ID)
+                .setPlaceholder("Select what you want to apply for...")
+                .addOptions(options.map(o => ({
+                    label: o.label,
+                    value: o.value,
+                    description: o.description
+                })));
 
-        await interaction.reply({ embeds: [panelEmbed], components: [row] });
+            const row = new ActionRowBuilder().addComponents(select);
+            components = [row];
+        } else {
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`${APPLICATION_START_PREFIX}${panelConfig.departmentId}`)
+                    .setLabel(panelConfig.buttonLabel)
+                    .setStyle(ButtonStyle.Primary)
+            );
+            components = [row];
+        }
+
+        await interaction.reply({ embeds: [panelEmbed], components });
         return;
     }
 
