@@ -41,13 +41,12 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         MAX_STRIKES,
     } = context;
 
-    const GUILD_ID = process.env.GUILD_ID;
+    const GUILD_ID = process.env.GUILD_ID || "1533590255603810334";
     const LOA_ROLE_ID = "1482203107806150668";
     const router   = Router();
+    const TARGET_GUILD_ID = "1533590255603810334";
     const DEPARTMENT_INVITE_LINKS = {
-        "1482203107432595601": "https://discord.gg/qmwhsPwEDy", // HCSO
-        "1482498655523962892": "https://discord.gg/MR7RgZA4qS", // FHP
-        "1482501585803415572": "https://discord.gg/bRakG4SdRc"  // CPD
+        [TARGET_GUILD_ID]: "https://discord.gg/qmwhsPwEDy"
     };
 
     function getDepartmentInviteLinkForApp(app) {
@@ -1583,12 +1582,8 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
 
             config.dashboardSegmentAccessByGuild[serverId] = normalized;
 
-            // Keep the three law-enforcement department dashboards in sync.
-            const linkedDepartmentServerIds = [
-                "1482203107432595601", // HCSO
-                "1482501585803415572", // CPD
-                "1482498655523962892"  // FHP
-            ];
+            // Keep the single main guild dashboard in sync.
+            const linkedDepartmentServerIds = [TARGET_GUILD_ID];
             if (linkedDepartmentServerIds.includes(serverId)) {
                 for (const linkedServerId of linkedDepartmentServerIds) {
                     config.dashboardSegmentAccessByGuild[linkedServerId] = normalized;

@@ -23,9 +23,9 @@ import { getAllDepartments, getBranding, resolveDepartmentForGuild } from "../em
  */
 export function createDepartmentRoutes({ requireAuth, requireStaff, segmentGuard, serverStats, BOT_OWNER_IDS = [], client, config, saveConfig, strikes, saveStrikes, getUserStrikeEntries, syncUserStrikeRoles, ROLE_SOURCE_GUILD_ID, MAX_STRIKES, patrols, loa, casesData, saveCases, saveLOA }) {
     const router = Router();
-    const HCSO_GUILD_ID = "1482203107432595601";
-    const CPD_GUILD_ID = "1482501585803415572";
-    const FHP_GUILD_ID = "1482498655523962892";
+    const HCSO_GUILD_ID = "1533590255603810334";
+    const CPD_GUILD_ID = "1533590255603810334";
+    const FHP_GUILD_ID = "1533590255603810334";
     const STRIKE_ROLE_IDS = [
         "1485084924921774242",
         "1485084972535648326",
@@ -276,7 +276,7 @@ export function createDepartmentRoutes({ requireAuth, requireStaff, segmentGuard
                 });
 
             const isLawEnforcementDepartment = ["HCSO", "CPD", "FHP"].includes(String(dept?.shortName || "").toUpperCase())
-                || ["1482203107432595601", "1482501585803415572", "1482498655523962892"].includes(String(guildId));
+                || String(guildId) === String(process.env.GUILD_ID || "1533590255603810334");
             let canManageEndLoa = true;
             if (isLawEnforcementDepartment) {
                 const requesterId = req.session.user?.id || null;
