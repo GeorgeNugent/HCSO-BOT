@@ -344,7 +344,7 @@ const APPLICATION_QUESTIONS = [
 
 function getDepartmentApplicationChoices() {
     const departments = getAllDepartments();
-    const choices = [];
+    const choices = [{ label: "Staff Application", value: "staff", description: "Apply for staff position" }];
 
     for (const [guildId, dept] of Object.entries(departments || {})) {
         if (!dept || dept.type === "main") continue;
@@ -1776,7 +1776,19 @@ const commands = [
         .setDescription("Post the application panel for recruits"),
 
     new SlashCommandBuilder()
-        .setName("staff-application-panel")
+        .setName("applicationresultscpd")
+        .setDescription("Post the CPD application panel"),
+
+    new SlashCommandBuilder()
+        .setName("applicationresultshcso")
+        .setDescription("Post the HCSO application panel"),
+
+    new SlashCommandBuilder()
+        .setName("applicationresultsfhp")
+        .setDescription("Post the FHP application panel"),
+
+    new SlashCommandBuilder()
+        .setName("applicationresultsstaff")
         .setDescription("Post the staff application panel"),
 
     new SlashCommandBuilder()
@@ -2075,6 +2087,25 @@ client.on("interactionCreate", async interaction => {
         try {
             const patrolLogChannelId = getLogChannelId(interaction.guildId, "patrol");
             const logChannel = patrolLogChannelId ? client.channels.cache.get(patrolLogChannelId) : null;
+
+            if (interaction.customId === APPLICATION_PANEL_BUTTON_ID) {
+                const options = getDepartmentApplicationChoices();
+                const select = new StringSelectMenuBuilder()
+                    .setCustomId(APPLICATION_DEPT_SELECT_ID)
+                    .setPlaceholder("Select what you want to apply for...")
+                    .addOptions(options.map(o => ({
+                        label: o.label,
+                        value: o.value,
+                        description: o.description
+                    })));
+
+                const row = new ActionRowBuilder().addComponents(select);
+                return interaction.reply({
+                    content: "Select the application type/department below.",
+                    components: [row],
+                    flags: MessageFlags.Ephemeral
+                });
+            }
 
             if (interaction.customId.startsWith(APPLICATION_START_PREFIX)) {
                 const selection = interaction.customId.slice(APPLICATION_START_PREFIX.length);
@@ -6253,7 +6284,7 @@ client.on("interactionCreate", async interaction => {
         );
 
         if (isStaff) {
-            helpEmbed.addFields({ name: "Staff — Requires Staff Role", value: "• /dashboard — Open the staff control panel\n• /set-log-channel — Configure log channels\n• /application-panel — Post application panel for recruits\n• /staff-application-panel — Post the staff application panel", inline: false });
+            helpEmbed.addFields({ name: "Staff — Requires Staff Role", value: "• /dashboard — Open the staff control panel\n• /set-log-channel — Configure log channels\n• /application-panel — Post application panel for recruits", inline: false });
         }
 
         if (isAdmin) {
@@ -6341,7 +6372,7 @@ client.on("interactionCreate", async interaction => {
         });
     }
 
-    if (["application-panel", "staff-application-panel"].includes(interaction.commandName)) {
+    if (["application-panel", "applicationresultscpd", "applicationresultshcso", "applicationresultsfhp", "applicationresultsstaff"].includes(interaction.commandName)) {
         if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
             return interaction.reply({
                 content: "❌ You don't have permission to post the application panel.",
@@ -6356,7 +6387,25 @@ client.on("interactionCreate", async interaction => {
                 buttonLabel: "Apply",
                 departmentId: null
             },
-            "staff-application-panel": {
+            "applicationresultscpd": {
+                title: "📝 CPD Applications",
+                description: "Post the Clewiston Police Department application panel here. Candidates will be reviewed by CPD command and staff.",
+                buttonLabel: "Apply for CPD",
+                departmentId: "1482501585803415572"
+            },
+            "applicationresultshcso": {
+                title: "📝 HCSO Applications",
+                description: "Post the Hendry County Sheriff's Office application panel here. Candidates will be reviewed by HCSO command and staff.",
+                buttonLabel: "Apply for HCSO",
+                departmentId: "1482203107432595601"
+            },
+            "applicationresultsfhp": {
+                title: "📝 FHP Applications",
+                description: "Post the Florida Highway Patrol application panel here. Candidates will be reviewed by FHP command and staff.",
+                buttonLabel: "Apply for FHP",
+                departmentId: "1482498655523962892"
+            },
+            "applicationresultsstaff": {
                 title: "📝 Staff Applications",
                 description: "Post the staff application panel here. Candidates will be reviewed by command-level staff.",
                 buttonLabel: "Apply for Staff",
@@ -6379,18 +6428,15 @@ client.on("interactionCreate", async interaction => {
             .setTimestamp();
 
         let components;
-        if (panelConfig.departmentId === null) {
-            const options = getDepartmentApplicationChoices();
-            const select = new StringSelectMenuBuilder()
-                .setCustomId(APPLICATION_DEPT_SELECT_ID)
-                .setPlaceholder("Select what you want to apply for...")
-                .addOptions(options.map(o => ({
-                    label: o.label,
-                    value: o.value,
-                    description: o.description
-                })));
-
-            const row = new ActionRowBuilder().addComponents(select);
+        if (panelConfig.buttons) {
+            const row = new ActionRowBuilder().addComponents(
+                panelConfig.buttons.map(b =>
+                    new ButtonBuilder()
+                        .setCustomId(`${APPLICATION_START_PREFIX}${b.departmentId}`)
+                        .setLabel(b.label)
+                        .setStyle(ButtonStyle.Primary)
+                )
+            );
             components = [row];
         } else {
             const row = new ActionRowBuilder().addComponents(
