@@ -378,7 +378,6 @@ function getDepartmentApplicationChoices() {
         });
     }
 
-    choices.push({ label: "Staff Application", value: "staff", description: "Apply for staff position" });
     return choices.slice(0, 25);
 }
 
@@ -1803,7 +1802,11 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("application-panel")
-        .setDescription("Post the application panel for recruits"),
+        .setDescription("Post the department application panel for recruits"),
+
+    new SlashCommandBuilder()
+        .setName("staff-application")
+        .setDescription("Post the staff application panel"),
 
     new SlashCommandBuilder()
         .setName("suggestion")
@@ -6392,13 +6395,13 @@ client.on("interactionCreate", async interaction => {
         const panelEmbed = new EmbedBuilder()
             .setColor("#4ea8de")
             .setTitle("📝 Emergency Service Applications")
-            .setDescription("Use the dropdown below to choose your application type. Once you confirm, I will send your application questions in DMs and route the completed application to the correct dashboard department.")
-            .addFields({ name: "Select", value: "Choose from Clewiston Police Department, Hendry County Sheriff's Office, Florida Highway Patrol, or Staff, then confirm to begin." })
+            .setDescription("Use the dropdown below to choose your department application. Once you confirm, I will send your application questions in DMs and route the completed application to the correct dashboard department.")
+            .addFields({ name: "Select", value: "Choose from Clewiston Police Department, Hendry County Sheriff's Office, or Florida Highway Patrol, then confirm to begin." })
             .setTimestamp();
 
         const select = new StringSelectMenuBuilder()
             .setCustomId(APPLICATION_DEPT_SELECT_ID)
-            .setPlaceholder("Select your application type...")
+            .setPlaceholder("Select your department...")
             .addOptions(getDepartmentApplicationChoices().map(option => ({
                 label: option.label,
                 value: option.value,
@@ -6408,6 +6411,31 @@ client.on("interactionCreate", async interaction => {
         const row = new ActionRowBuilder().addComponents(select);
 
         await interaction.reply({ embeds: [panelEmbed], components: [row] });
+        return;
+    }
+
+    if (interaction.commandName === "staff-application") {
+        if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
+            return interaction.reply({
+                content: "❌ You don't have permission to post the staff application panel.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        const staffEmbed = new EmbedBuilder()
+            .setColor("#4ea8de")
+            .setTitle("📝 Staff Application")
+            .setDescription("Click the button below to begin a staff application. Once you confirm, I will send your application questions in DMs and route the completed application to the staff queue.")
+            .setTimestamp();
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`${APPLICATION_START_PREFIX}staff`)
+                .setLabel("Start Staff Application")
+                .setStyle(ButtonStyle.Primary)
+        );
+
+        await interaction.reply({ embeds: [staffEmbed], components: [row] });
         return;
     }
 
