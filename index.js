@@ -5944,14 +5944,7 @@ client.on("interactionCreate", async interaction => {
         }
     }
 
-    if (interaction.commandName && (interaction.commandName === "ticket-panel" || interaction.commandName === "ticketpanel-public")) {
-        console.log(`[Index] About to call ticketSystem.handleChatInputCommand for: ${interaction.commandName}`);
-    }
-
     if (await ticketSystem.handleChatInputCommand(interaction)) {
-        if (interaction.commandName && (interaction.commandName === "ticket-panel" || interaction.commandName === "ticketpanel-public")) {
-            console.log(`[Index] ticketSystem handled ticket-panel command`);
-        }
         return;
     }
 

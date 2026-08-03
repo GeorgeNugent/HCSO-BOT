@@ -892,10 +892,6 @@ ${results.join("\n")}` }).catch(() => {});
         }
 
         if (interaction.commandName === "ticket-panel" || interaction.commandName === "ticketpanel-public") {
-            console.log(`[TicketPanel] Command received: ${interaction.commandName}`);
-            console.log(`[TicketPanel] config.ticketPanelEphemeral =`, config.ticketPanelEphemeral);
-            console.log(`[TicketPanel] typeof config.ticketPanelEphemeral =`, typeof config.ticketPanelEphemeral);
-            
             const ticketTypeLabels = Array.isArray(config.ticketTypes) && config.ticketTypes.length > 0
                 ? config.ticketTypes.map(t => String(t?.label || "").trim()).filter(Boolean)
                 : ["Open a Ticket"];
@@ -911,10 +907,8 @@ ${results.join("\n")}` }).catch(() => {});
                 );
             }
 
-            // Force non-ephemeral by default; only ephemeral if explicitly true
-            const shouldBeEphemeral = config.ticketPanelEphemeral === true;
-            console.log(`[TicketPanel] Sending panel with ephemeral: ${shouldBeEphemeral}`);
-            await interaction.reply({ embeds: [panelEmbed], components: [row], ephemeral: shouldBeEphemeral }).catch(() => {});
+            // Do NOT specify ephemeral - default behavior is non-ephemeral (visible to all)
+            await interaction.reply({ embeds: [panelEmbed], components: [row] }).catch(() => {});
             return true;
         }
 
