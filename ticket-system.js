@@ -26,6 +26,21 @@ export const ticketCommands = [
         .setDMPermission(false),
 
     new SlashCommandBuilder()
+        .setName("ticket-panel-config")
+        .setDescription("Configure the ticket panel title and description")
+        .setDMPermission(false)
+        .addStringOption(option =>
+            option.setName("title")
+                .setDescription("Set the ticket panel title")
+                .setRequired(false)
+        )
+        .addStringOption(option =>
+            option.setName("description")
+                .setDescription("Set the ticket panel description")
+                .setRequired(false)
+        ),
+
+    new SlashCommandBuilder()
         .setName("ticketcat")
         .setDescription("Set the category where new tickets will be created")
         .setDMPermission(false)
@@ -771,6 +786,32 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
             }
 
             await interaction.reply({ embeds: [panelEmbed], components: [row], flags: MessageFlags.Ephemeral }).catch(() => {});
+            return true;
+        }
+
+        if (interaction.commandName === "ticket-panel-config") {
+            if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                await interaction.reply({ content: "❌ Administrator permission required.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                return true;
+            }
+
+            const title = interaction.options.getString("title");
+            const description = interaction.options.getString("description");
+
+            if (!title && !description) {
+                await interaction.reply({ content: "❌ Please provide a title and/or description to update.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                return true;
+            }
+
+            if (typeof title === "string") {
+                config.ticketPanelTitle = title.trim() || null;
+            }
+            if (typeof description === "string") {
+                config.ticketPanelDescription = description.trim() || null;
+            }
+
+            saveConfig();
+            await interaction.reply({ content: "✅ Ticket panel configuration updated.", flags: MessageFlags.Ephemeral }).catch(() => {});
             return true;
         }
 
