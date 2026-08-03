@@ -1799,6 +1799,38 @@ const commands = [
 
 // Register commands
 const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+const STALE_APPLICATION_COMMAND_NAMES = new Set([
+    "applicationresultscpd",
+    "applicationresultshcso",
+    "applicationresultsfhp",
+    "applicationresultsstaff"
+]);
+
+async function cleanupAndLogGuildCommands(guildId) {
+    try {
+        let existingCommands = await rest.get(Routes.applicationGuildCommands(CLIENT_ID, guildId));
+        if (!Array.isArray(existingCommands)) {
+            console.log(`Unable to list registered commands for guild ${guildId}.`);
+            return;
+        }
+
+        const staleCommands = existingCommands.filter(c => STALE_APPLICATION_COMMAND_NAMES.has(c.name));
+        for (const stale of staleCommands) {
+            await rest.delete(Routes.applicationGuildCommand(CLIENT_ID, guildId, stale.id));
+            console.log(`Deleted stale command '${stale.name}' from guild ${guildId}`);
+        }
+
+        if (staleCommands.length > 0) {
+            existingCommands = await rest.get(Routes.applicationGuildCommands(CLIENT_ID, guildId));
+        }
+
+        console.log(`Registered commands for guild ${guildId}: ${existingCommands.map(c => c.name).join(", ")}`);
+    } catch (err) {
+        console.error(`Failed to fetch or clean commands for guild ${guildId}:`, err?.message || err);
+    }
+}
+
 try {
     // Force guild-only command mode for multi-server operation.
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
@@ -1820,6 +1852,7 @@ try {
             try {
                 await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body: commands });
                 console.log(`Registered ${commands.length} guild commands for guild ${guildId}`);
+                await cleanupAndLogGuildCommands(guildId);
             } catch (gerr) {
                 // Log and continue registering other guilds. Missing Access is common when
                 // the bot or application isn't present in a specific guild.
