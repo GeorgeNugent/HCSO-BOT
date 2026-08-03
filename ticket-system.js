@@ -26,6 +26,11 @@ export const ticketCommands = [
         .setDMPermission(false),
 
     new SlashCommandBuilder()
+        .setName("ticketpanel-public")
+        .setDescription("Post the ticket creation panel publicly in this channel")
+        .setDMPermission(false),
+
+    new SlashCommandBuilder()
         .setName("ticket-panel-config")
         .setDescription("Configure the ticket panel title and description")
         .setDMPermission(false)
@@ -781,7 +786,7 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
             return true;
         }
 
-        if (interaction.commandName === "ticket-panel") {
+        if (interaction.commandName === "ticket-panel" || interaction.commandName === "ticketpanel-public") {
             const ticketTypeLabels = Array.isArray(config.ticketTypes) && config.ticketTypes.length > 0
                 ? config.ticketTypes.map(t => String(t?.label || "").trim()).filter(Boolean)
                 : ["Open a Ticket"];
