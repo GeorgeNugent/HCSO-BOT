@@ -2053,50 +2053,6 @@ client.on("interactionCreate", async interaction => {
             const patrolLogChannelId = getLogChannelId(interaction.guildId, "patrol");
             const logChannel = patrolLogChannelId ? client.channels.cache.get(patrolLogChannelId) : null;
 
-            if (interaction.isStringSelectMenu() && interaction.customId === APPLICATION_DEPT_SELECT_ID) {
-                const selection = interaction.values?.[0];
-                if (!selection) {
-                    return interaction.reply({
-                        content: "⚠️ Please select a valid application department.",
-                        flags: MessageFlags.Ephemeral
-                    });
-                }
-
-                const existing = getOpenApplicationSession(interaction.user.id);
-                if (existing) {
-                    return interaction.reply({
-                        content: `⚠️ You already have an active application (${existing.app.id}). Please finish or wait for review.`,
-                        flags: MessageFlags.Ephemeral
-                    });
-                }
-
-                const app = buildApplicationRecord(interaction.user, selection);
-                applicationsData.applications[app.id] = app;
-                applicationsData.activeSessions[interaction.user.id] = {
-                    applicationId: app.id,
-                    currentQuestionIndex: 0,
-                    createdAt: new Date().toISOString()
-                };
-                saveApplications();
-
-                try {
-                    await sendApplicationQuestionDm(interaction.user, app, 0);
-                } catch {
-                    delete applicationsData.activeSessions[interaction.user.id];
-                    delete applicationsData.applications[app.id];
-                    saveApplications();
-                    return interaction.reply({
-                        content: "❌ I could not DM you. Please enable DMs and try again.",
-                        flags: MessageFlags.Ephemeral
-                    });
-                }
-
-                return interaction.reply({
-                    content: "✅ Application started. Check your DMs and answer each question there. You have 60 minutes to complete it.",
-                    flags: MessageFlags.Ephemeral
-                });
-            }
-
             if (interaction.customId.startsWith(APPLICATION_START_PREFIX)) {
                 const selection = interaction.customId.slice(APPLICATION_START_PREFIX.length);
 
@@ -2466,22 +2422,39 @@ client.on("interactionCreate", async interaction => {
             return interaction.reply({ content: "❌ No option selected.", flags: MessageFlags.Ephemeral });
         }
 
-        const choices = getDepartmentApplicationChoices();
-        const selectedChoice = choices.find(c => c.value === selected);
-        const label = selectedChoice?.label || selected;
+        const existing = getOpenApplicationSession(interaction.user.id);
+        if (existing) {
+            return interaction.reply({
+                content: `⚠️ You already have an active application (${existing.app.id}). Please finish or wait for review.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
 
-        const confirmEmbed = new EmbedBuilder()
-            .setColor("#4ea8de")
-            .setTitle(label)
-            .setDescription("Are you sure you want to apply?\n\nOnce you start the application I will send you a series of questions in DMs. You will have 60 minutes to complete it.")
-            .setTimestamp();
+        const app = buildApplicationRecord(interaction.user, selected);
+        applicationsData.applications[app.id] = app;
+        applicationsData.activeSessions[interaction.user.id] = {
+            applicationId: app.id,
+            currentQuestionIndex: 0,
+            createdAt: new Date().toISOString()
+        };
+        saveApplications();
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`${APPLICATION_START_PREFIX}${selected}`).setLabel("Start application").setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`${APPLICATION_CANCEL_PREFIX}${selected}`).setLabel("Cancel application").setStyle(ButtonStyle.Danger)
-        );
+        try {
+            await sendApplicationQuestionDm(interaction.user, app, 0);
+        } catch {
+            delete applicationsData.activeSessions[interaction.user.id];
+            delete applicationsData.applications[app.id];
+            saveApplications();
+            return interaction.reply({
+                content: "❌ I could not DM you. Please enable DMs and try again.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
 
-        return interaction.reply({ embeds: [confirmEmbed], components: [row], flags: MessageFlags.Ephemeral });
+        return interaction.reply({
+            content: "✅ Application started. Check your DMs and answer each question there. You have 60 minutes to complete it.",
+            flags: MessageFlags.Ephemeral
+        });
     }
 
     // Force End Patrol button handler
