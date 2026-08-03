@@ -797,7 +797,7 @@ ${results.join("\n")}`, flags: MessageFlags.Ephemeral }).catch(() => {});
                 );
             }
 
-            await interaction.reply({ embeds: [panelEmbed], components: [row], flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ embeds: [panelEmbed], components: [row] }).catch(() => {});
             return true;
         }
 
