@@ -392,9 +392,15 @@ const APPLICATION_NEEDS_INTERVIEW_ROLE_IDS = {
     hcs: "1533636184192847892",
     fhp: "1533634237884793053"
 };
+const APPLICATION_SUBMITTED_ROLE_ID = "1533590255733706868";
+const APPLICATION_ACCEPTED_ROLE_ID = "1534704264260096201";
 
 function getApplicationDepartmentRoleKey(app) {
-    if (!app || app.type !== "department") return null;
+    if (!app || !app.type) return null;
+    const normalizedType = String(app.type || "").trim().toUpperCase();
+    if (normalizedType === "CFD") return "cfd";
+    if (normalizedType === "EMS") return "ems";
+    if (normalizedType !== "department") return null;
 
     const guildId = String(app.departmentGuildId || "");
     switch (guildId) {
@@ -423,22 +429,19 @@ function getApplicationDepartmentRoleKey(app) {
 }
 
 async function syncApplicationDepartmentRoleState(app, targetUserId, state, guildContext = null) {
-    if (!app || app.type !== "department" || !targetUserId) return false;
+    if (!app || !targetUserId) return false;
 
     const roleKey = getApplicationDepartmentRoleKey(app);
-    if (!roleKey) {
-        console.error("[ApplicationRole] Unknown department role key for app", app?.id, app?.departmentGuildId, app?.departmentName);
-        return false;
+    if (!roleKey && app.type !== "staff") {
+        console.warn("[ApplicationRole] No department role key for app type", app.type, app?.id, app?.departmentGuildId, app?.departmentName);
     }
 
-    const pendingRoleId = APPLICATION_PENDING_ROLE_IDS[roleKey];
-    const interviewRoleId = APPLICATION_NEEDS_INTERVIEW_ROLE_IDS[roleKey];
-    if (!pendingRoleId && !interviewRoleId) {
-        console.error("[ApplicationRole] No configured role IDs for department key", roleKey, app.id);
-        return false;
-    }
+    const pendingRoleId = roleKey ? APPLICATION_PENDING_ROLE_IDS[roleKey] : null;
+    const interviewRoleId = roleKey ? APPLICATION_NEEDS_INTERVIEW_ROLE_IDS[roleKey] : null;
+    const submittedRoleId = APPLICATION_SUBMITTED_ROLE_ID;
+    const acceptedRoleId = APPLICATION_ACCEPTED_ROLE_ID;
 
-    console.log("[ApplicationRole] start sync", { appId: app.id, targetUserId, state, roleKey, departmentGuildId: app.departmentGuildId, departmentName: app.departmentName, mainGuildId: MAIN_ROLE_GUILD_ID, pendingRoleId, interviewRoleId });
+    console.log("[ApplicationRole] start sync", { appId: app.id, targetUserId, state, roleKey, departmentGuildId: app.departmentGuildId, departmentName: app.departmentName, mainGuildId: MAIN_ROLE_GUILD_ID, pendingRoleId, interviewRoleId, submittedRoleId, acceptedRoleId });
 
     const guild = guildContext
         || client.guilds.cache.get(MAIN_ROLE_GUILD_ID)
@@ -466,13 +469,25 @@ async function syncApplicationDepartmentRoleState(app, targetUserId, state, guil
     const roleIdsToAdd = [];
 
     if (state === "pending") {
-        roleIdsToAdd.push(pendingRoleId);
-        roleIdsToRemove.push(interviewRoleId);
+        if (pendingRoleId) {
+            roleIdsToAdd.push(pendingRoleId);
+        }
+        if (submittedRoleId) {
+            roleIdsToAdd.push(submittedRoleId);
+        }
+        roleIdsToRemove.push(interviewRoleId, acceptedRoleId);
     } else if (state === "interview") {
-        roleIdsToAdd.push(interviewRoleId);
-        roleIdsToRemove.push(pendingRoleId);
+        if (interviewRoleId) {
+            roleIdsToAdd.push(interviewRoleId);
+        }
+        roleIdsToRemove.push(pendingRoleId, submittedRoleId, acceptedRoleId);
+    } else if (state === "accepted") {
+        if (acceptedRoleId) {
+            roleIdsToAdd.push(acceptedRoleId);
+        }
+        roleIdsToRemove.push(pendingRoleId, submittedRoleId, interviewRoleId);
     } else {
-        roleIdsToRemove.push(pendingRoleId, interviewRoleId);
+        roleIdsToRemove.push(pendingRoleId, interviewRoleId, submittedRoleId, acceptedRoleId);
     }
 
     const resolvedRoles = [];
@@ -551,7 +566,7 @@ const FIRE_APPLICATION_QUESTIONS = [
     "English Proficiency – Are you able to read, write, and speak English?",
     "Application History – Has your application ever been denied? If yes, explain why and give an approximate date.",
     "Community History – Have you previously been in this community? If so, explain. If not, put N/A.",
-    "Firefighting Skills – What tools or skills can you bring to the Fire Department? Minimum 3 full sentences.",
+    "Firefighting Skills – What tools or skills can you bring to the Clewiston Fire Department? Minimum 3 full sentences.",
     "Strengths – Name your 3 strengths separated by commas.",
     "Weaknesses – Name your 3 weaknesses separated by commas.",
     "Why Hire You – Why should the department hire you? Minimum 3 full sentences.",
@@ -576,10 +591,10 @@ const EMS_APPLICATION_QUESTIONS = [
 ];
 
 function getApplicationQuestionsForType(appType) {
-    const normalizedType = String(appType || "").toLowerCase().trim();
-    if (normalizedType === "staff") return STAFF_APPLICATION_QUESTIONS;
-    if (normalizedType === "cfd") return FIRE_APPLICATION_QUESTIONS;
-    if (normalizedType === "ems") return EMS_APPLICATION_QUESTIONS;
+    const normalizedType = String(appType || "").trim().toUpperCase();
+    if (normalizedType === "STAFF") return STAFF_APPLICATION_QUESTIONS;
+    if (normalizedType === "CFD") return FIRE_APPLICATION_QUESTIONS;
+    if (normalizedType === "EMS") return EMS_APPLICATION_QUESTIONS;
     return APPLICATION_QUESTIONS;
 }
 
@@ -624,13 +639,13 @@ function getDepartmentApplicationChoices() {
 function getFireEMSApplicationChoices() {
     return [
         {
-            label: "Fire Department (CFD)",
-            value: "cfd",
-            description: "Apply for the Fire Department application."
+            label: "Clewiston Fire Department (CFD)",
+            value: "CFD",
+            description: "Apply for the Clewiston Fire Department application."
         },
         {
             label: "Ambulance / EMS",
-            value: "ems",
+            value: "EMS",
             description: "Apply for the Ambulance / EMS application."
         }
     ];
@@ -721,10 +736,10 @@ function buildApplicationRecord(user, selectionValue, guildId = null) {
     let departmentName = "Staff Application";
 
     // Determine type based on selection
-    if (normalizedSelection === "cfd" || normalizedSelection === "ems") {
+    if (normalizedSelection === "CFD" || normalizedSelection === "EMS") {
         targetType = normalizedSelection;
         departmentGuildId = normalizedSelection;
-        departmentName = normalizedSelection === "cfd" ? "Fire Department" : "Ambulance / EMS";
+        departmentName = normalizedSelection === "CFD" ? "Clewiston Fire Department" : "Ambulance / EMS";
     } else if (normalizedSelection.startsWith("dept:")) {
         targetType = "department";
         departmentGuildId = normalizedSelection.slice(5);
@@ -2951,7 +2966,7 @@ client.on("interactionCreate", async interaction => {
                 app.reviewReason = "Accepted in Discord";
                 saveApplications();
 
-                await syncApplicationDepartmentRoleState(app, app.applicantId, "interview", app.guildId ? client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null) : interaction.guild);
+                await syncApplicationDepartmentRoleState(app, app.applicantId, "accepted", app.guildId ? client.guilds.cache.get(app.guildId) || await client.guilds.fetch(app.guildId).catch(() => null) : interaction.guild);
                 await sendApplicationDecisionDm(client, app, interaction.user.id, "accepted", "");
 
                 const acceptedEmbed = new EmbedBuilder()
@@ -7311,7 +7326,7 @@ client.on("interactionCreate", async interaction => {
             .setColor("#4ea8de")
             .setTitle("🚒 Fire / EMS Applications")
             .setDescription("Use the dropdown below to choose your application type. Once you confirm, I will send your application questions in DMs and route the completed application to the correct dashboard queue.")
-            .addFields({ name: "Select", value: "Choose Fire Department (CFD) or Ambulance / EMS, then confirm to begin." })
+            .addFields({ name: "Select", value: "Choose Clewiston Fire Department (CFD) or Ambulance / EMS, then confirm to begin." })
             .setTimestamp();
 
         const select = new StringSelectMenuBuilder()
