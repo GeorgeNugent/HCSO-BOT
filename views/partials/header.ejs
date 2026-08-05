@@ -103,7 +103,7 @@
         <% } %>
       <% } %>
 
-      <% var canSeeDepartmentApplicationSection = isBotOwner || departmentApplicationAccess.hcso || departmentApplicationAccess.cpd || departmentApplicationAccess.fhp; %>
+      <% var canSeeDepartmentApplicationSection = isBotOwner || departmentApplicationAccess.hcso || departmentApplicationAccess.cpd || departmentApplicationAccess.fhp || departmentApplicationAccess.cfd || departmentApplicationAccess.ems; %>
       <% if (canSeeDepartmentApplicationSection) { %>
         <div class="sidebar-section-label">Department Applications</div>
         <% if (isBotOwner || departmentApplicationAccess.hcso) { %>
@@ -122,6 +122,18 @@
           <a href="/applications/fhp" class="nav-link <%= page === 'applications-fhp' ? 'active' : '' %>">
             <span class="nav-icon">🚓</span>
             <span class="nav-label">FHP</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || departmentApplicationAccess.cfd) { %>
+          <a href="/applications/cfd" class="nav-link <%= page === 'applications-cfd' ? 'active' : '' %>">
+            <span class="nav-icon">🚒</span>
+            <span class="nav-label">CFD</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || departmentApplicationAccess.ems) { %>
+          <a href="/applications/ems" class="nav-link <%= page === 'applications-ems' ? 'active' : '' %>">
+            <span class="nav-icon">🚑</span>
+            <span class="nav-label">EMS</span>
           </a>
         <% } %>
       <% } %>

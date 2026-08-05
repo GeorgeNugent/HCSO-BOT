@@ -80,6 +80,20 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             departmentGuildId: "1482498655523962892",
             route: "fhp",
             page: "applications-fhp"
+        },
+        cfd: {
+            label: "CFD",
+            roleIds: ["1533590255746285581", "1533590255746285580"],
+            type: "cfd",
+            route: "cfd",
+            page: "applications-cfd"
+        },
+        ems: {
+            label: "EMS",
+            roleIds: ["1533590255746285581", "1533590255746285580"],
+            type: "ems",
+            route: "ems",
+            page: "applications-ems"
         }
     };
 
@@ -674,8 +688,10 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             || roleNames.some(name => name.includes("staff") || name.includes("administrator") || name.includes("supervisor"));
 
         let allowedDepartmentGuildIds = [];
+        let allowedApplicationKeys = [];
         if (canViewStaffApplications) {
             allowedDepartmentGuildIds = departmentEntries.map(([id]) => id);
+            allowedApplicationKeys = Object.keys(DEPARTMENT_APPLICATION_SPECS);
         } else {
             allowedDepartmentGuildIds = departmentEntries
                 .filter(([, dept]) => {
@@ -687,9 +703,13 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
                     );
                 })
                 .map(([id]) => id);
+
+            allowedApplicationKeys = Object.entries(DEPARTMENT_APPLICATION_SPECS)
+                .filter(([, spec]) => Array.isArray(spec.roleIds) && spec.roleIds.some(roleId => memberRoleIds.includes(roleId)))
+                .map(([key]) => key);
         }
 
-        return { canViewStaffApplications, allowedDepartmentGuildIds };
+        return { canViewStaffApplications, allowedDepartmentGuildIds, allowedApplicationKeys };
     }
 
     // ── Applications page ────────────────────────────────────────────────────
@@ -703,7 +723,7 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             ? allApplications.filter(a => a.type === "staff")
             : [];
 
-        // Build per-department application lists
+        // Build per-department application lists and include CFD/EMS if allowed
         const departmentAppsByGuildId = {};
 
         const seededDepartmentIds = new Set();
@@ -719,20 +739,45 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             };
         }
 
-        for (const app of allApplications) {
-            if (app.type !== "department" || !app.departmentGuildId) continue;
-            const guildId = String(app.departmentGuildId);
-            if (!scope.canViewStaffApplications && !scope.allowedDepartmentGuildIds.includes(guildId)) continue;
+        if (scope.canViewStaffApplications || scope.allowedApplicationKeys.includes("cfd")) {
+            departmentAppsByGuildId["cfd"] = {
+                name: "Fire Department",
+                shortName: "CFD",
+                apps: []
+            };
+        }
 
-            if (!departmentAppsByGuildId[guildId]) {
-                departmentAppsByGuildId[guildId] = {
-                    name: app.departmentName || guildId,
-                    shortName: app.departmentName || guildId,
-                    apps: []
-                };
+        if (scope.canViewStaffApplications || scope.allowedApplicationKeys.includes("ems")) {
+            departmentAppsByGuildId["ems"] = {
+                name: "Ambulance / EMS",
+                shortName: "EMS",
+                apps: []
+            };
+        }
+
+        for (const app of allApplications) {
+            if (app.type === "department" && app.departmentGuildId) {
+                const guildId = String(app.departmentGuildId);
+                if (!scope.canViewStaffApplications && !scope.allowedDepartmentGuildIds.includes(guildId)) continue;
+
+                if (!departmentAppsByGuildId[guildId]) {
+                    departmentAppsByGuildId[guildId] = {
+                        name: app.departmentName || guildId,
+                        shortName: app.departmentName || guildId,
+                        apps: []
+                    };
+                }
+
+                departmentAppsByGuildId[guildId].apps.push(app);
             }
 
-            departmentAppsByGuildId[guildId].apps.push(app);
+            if (app.type === "cfd" && departmentAppsByGuildId["cfd"]) {
+                departmentAppsByGuildId["cfd"].apps.push(app);
+            }
+
+            if (app.type === "ems" && departmentAppsByGuildId["ems"]) {
+                departmentAppsByGuildId["ems"].apps.push(app);
+            }
         }
 
         for (const guildId of seededDepartmentIds) {
@@ -741,6 +786,14 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             dept.apps = allApplications.filter(a =>
                 a.type === "department" && String(a.departmentGuildId || "") === guildId
             );
+        }
+
+        if (departmentAppsByGuildId["cfd"]) {
+            departmentAppsByGuildId["cfd"].apps = allApplications.filter(a => a.type === "cfd");
+        }
+
+        if (departmentAppsByGuildId["ems"]) {
+            departmentAppsByGuildId["ems"].apps = allApplications.filter(a => a.type === "ems");
         }
 
         const visibleApplications = [
@@ -785,9 +838,12 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         const allApplications = Object.values(applicationsData?.applications || {})
             .sort((a, b) => new Date(b.startedAt || 0).getTime() - new Date(a.startedAt || 0).getTime());
 
-        const scopedApplications = allApplications.filter(app =>
-            app.type === "department" && String(app.departmentGuildId || "") === spec.departmentGuildId
-        );
+        const scopedApplications = allApplications.filter(app => {
+            if (spec.type === "cfd" || spec.type === "ems") {
+                return app.type === spec.type;
+            }
+            return app.type === "department" && String(app.departmentGuildId || "") === spec.departmentGuildId;
+        });
 
         const summary = {
             total: scopedApplications.length,
@@ -963,6 +1019,12 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             if (app.type === "department" && !scope.canViewStaffApplications) {
                 const appDept = String(app.departmentGuildId || "");
                 if (!scope.allowedDepartmentGuildIds.includes(appDept)) {
+                    return res.status(403).json({ error: "You can only review applications for your own department." });
+                }
+            }
+
+            if ((app.type === "cfd" || app.type === "ems") && !scope.canViewStaffApplications) {
+                if (!scope.allowedApplicationKeys.includes(app.type)) {
                     return res.status(403).json({ error: "You can only review applications for your own department." });
                 }
             }

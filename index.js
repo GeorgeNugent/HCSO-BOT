@@ -545,9 +545,42 @@ const STAFF_APPLICATION_QUESTIONS = [
     "Do you understand that your application can take up to 24 hours to get accepted?"
 ];
 
+const FIRE_APPLICATION_QUESTIONS = [
+    "Preferred Name – What name will you be going by? (First Initial Last Name)",
+    "Date of Birth – Provide your in-role date of birth (Month Day, Year).",
+    "English Proficiency – Are you able to read, write, and speak English?",
+    "Application History – Has your application ever been denied? If yes, explain why and give an approximate date.",
+    "Community History – Have you previously been in this community? If so, explain. If not, put N/A.",
+    "Firefighting Skills – What tools or skills can you bring to the Fire Department? Minimum 3 full sentences.",
+    "Strengths – Name your 3 strengths separated by commas.",
+    "Weaknesses – Name your 3 weaknesses separated by commas.",
+    "Why Hire You – Why should the department hire you? Minimum 3 full sentences.",
+    "Cadet Understanding – Do you understand you will start as a Probationary Firefighter regardless of experience?",
+    "Interview Availability – List 3 different dates and times you’re available for a Discord voice interview.",
+    "Interview Deadline – Do you understand you have 14 days to complete your interview if accepted?"
+];
+
+const EMS_APPLICATION_QUESTIONS = [
+    "Discord Tag – What is your Discord tag?",
+    "Personal Info – What is your name, how old are you, and what is your time zone?",
+    "Medical Scenario Handling – You arrive on scene and a civilian is unconscious with no pulse. Explain step-by-step what you would do (30+ words).",
+    "EMS Definition – What is the role of EMS in emergency situations?",
+    "Medical RP – What is the definition of Medical Roleplay (MedRP)?",
+    "Meta Gaming – What is the definition of Meta Gaming?",
+    "Joining Motivation – Why would you like to join the EMS team? (30+ words)",
+    "Candidate Advantage – What makes you a better candidate than other applicants? (30+ words)",
+    "Past Experience – List your past RP/EMS experience: server name, rank, and how long you were there.",
+    "Staff Rulebreaking – You see a higher EMS/Staff member breaking rules. What do you do? (20+ words)",
+    "Conflict Resolution – You and another EMS member are arguing. How do you resolve the situation? (15+ words)",
+    "Application Timing – Do you understand your application can take up to 24 hours to be accepted?"
+];
+
 function getApplicationQuestionsForType(appType) {
     const normalizedType = String(appType || "").toLowerCase().trim();
-    return normalizedType === "staff" ? STAFF_APPLICATION_QUESTIONS : APPLICATION_QUESTIONS;
+    if (normalizedType === "staff") return STAFF_APPLICATION_QUESTIONS;
+    if (normalizedType === "cfd") return FIRE_APPLICATION_QUESTIONS;
+    if (normalizedType === "ems") return EMS_APPLICATION_QUESTIONS;
+    return APPLICATION_QUESTIONS;
 }
 
 function getDepartmentApplicationChoices() {
@@ -586,6 +619,21 @@ function getDepartmentApplicationChoices() {
     }
 
     return choices.slice(0, 25);
+}
+
+function getFireEMSApplicationChoices() {
+    return [
+        {
+            label: "Fire Department (CFD)",
+            value: "cfd",
+            description: "Apply for the Fire Department application."
+        },
+        {
+            label: "Ambulance / EMS",
+            value: "ems",
+            description: "Apply for the Ambulance / EMS application."
+        }
+    ];
 }
 
 function nextApplicationId() {
@@ -673,7 +721,11 @@ function buildApplicationRecord(user, selectionValue, guildId = null) {
     let departmentName = "Staff Application";
 
     // Determine type based on selection
-    if (normalizedSelection.startsWith("dept:")) {
+    if (normalizedSelection === "cfd" || normalizedSelection === "ems") {
+        targetType = normalizedSelection;
+        departmentGuildId = normalizedSelection;
+        departmentName = normalizedSelection === "cfd" ? "Fire Department" : "Ambulance / EMS";
+    } else if (normalizedSelection.startsWith("dept:")) {
         targetType = "department";
         departmentGuildId = normalizedSelection.slice(5);
     } else if (/^\d{17,20}$/.test(normalizedSelection)) {
@@ -2233,6 +2285,10 @@ const commands = [
     new SlashCommandBuilder()
         .setName("application-panel")
         .setDescription("Post the department application panel for recruits"),
+
+    new SlashCommandBuilder()
+        .setName("fireemsapplication-panel")
+        .setDescription("Post the Fire/EMS application panel"),
 
     new SlashCommandBuilder()
         .setName("verification-panel")
@@ -7232,6 +7288,36 @@ client.on("interactionCreate", async interaction => {
             .setCustomId(APPLICATION_DEPT_SELECT_ID)
             .setPlaceholder("Select your department...")
             .addOptions(getDepartmentApplicationChoices().map(option => ({
+                label: option.label,
+                value: option.value,
+                description: option.description
+            })));
+
+        const row = new ActionRowBuilder().addComponents(select);
+
+        await interaction.reply({ embeds: [panelEmbed], components: [row] });
+        return;
+    }
+
+    if (interaction.commandName === "fireemsapplication-panel") {
+        if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
+            return interaction.reply({
+                content: "❌ You don't have permission to post the Fire/EMS application panel.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        const panelEmbed = new EmbedBuilder()
+            .setColor("#4ea8de")
+            .setTitle("🚒 Fire / EMS Applications")
+            .setDescription("Use the dropdown below to choose your application type. Once you confirm, I will send your application questions in DMs and route the completed application to the correct dashboard queue.")
+            .addFields({ name: "Select", value: "Choose Fire Department (CFD) or Ambulance / EMS, then confirm to begin." })
+            .setTimestamp();
+
+        const select = new StringSelectMenuBuilder()
+            .setCustomId(APPLICATION_DEPT_SELECT_ID)
+            .setPlaceholder("Select your application type...")
+            .addOptions(getFireEMSApplicationChoices().map(option => ({
                 label: option.label,
                 value: option.value,
                 description: option.description
