@@ -1,28 +1,5 @@
 {
-  "counter": 5,
-  "applications": {
-    "APP-000005": {
-      "id": "APP-000005",
-      "applicantId": "967375704486449222",
-      "applicantTag": "synissleepy",
-      "type": "staff",
-      "departmentGuildId": null,
-      "departmentName": "Staff Application",
-      "status": "in-progress",
-      "startedAt": "2026-08-03T17:40:17.819Z",
-      "submittedAt": null,
-      "reviewedAt": null,
-      "reviewedBy": null,
-      "reviewDecision": null,
-      "reviewReason": "",
-      "answers": []
-    }
-  },
-  "activeSessions": {
-    "967375704486449222": {
-      "applicationId": "APP-000005",
-      "currentQuestionIndex": 0,
-      "createdAt": "2026-08-03T17:40:17.819Z"
-    }
-  }
+  "counter": 0,
+  "applications": {},
+  "activeSessions": {}
 }
