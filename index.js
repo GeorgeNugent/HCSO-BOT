@@ -361,6 +361,18 @@ const STAFF_PANEL_BUTTON_BACK = "staff_panel_back";
 const VERIFICATION_SESSION_DURATION_MS = 10 * 60 * 1000;
 const VERIFICATION_MAX_ATTEMPTS = 3;
 const verificationSessions = new Map();
+const ROLE_REQUEST_REVIEWER_ROLE_IDS = [
+    "1533590255792554051",
+    "1533590255783907460",
+    "1533590255763194088"
+];
+const ROLE_REQUEST_DEPARTMENT_CHANNELS = {
+    fhp: { label: "Florida Highway Patrol", channelId: "1534674035663835206" },
+    hcs: { label: "Hendry County Sheriff's Office", channelId: "1533936099771027506" },
+    cpd: { label: "Clewiston Police Department", channelId: "1533671125060419745" }
+};
+const roleRequestStore = new Map();
+let roleRequestCounter = 0;
 const APPLICATION_DEPT_SELECT_ID = "app_select_department";
 const APPLICATION_START_PREFIX = "app_start_";
 const APPLICATION_CANCEL_PREFIX = "app_cancel_";
@@ -1290,6 +1302,91 @@ function getTrainingCertificationName(roleId) {
     return entry ? entry[0] : roleId;
 }
 
+function createRoleRequestId() {
+    roleRequestCounter += 1;
+    return `RR-${String(roleRequestCounter).padStart(4, "0")}`;
+}
+
+function normalizeRoleRequestDepartment(input) {
+    const normalized = String(input || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+
+    if (!normalized) return null;
+
+    const aliases = {
+        fhp: "fhp",
+        "florida highway patrol": "fhp",
+        "florida highway": "fhp",
+        hcs: "hcs",
+        hcso: "hcs",
+        "hendry county sheriff": "hcs",
+        "hendry county sheriffs office": "hcs",
+        cpd: "cpd",
+        "clewiston police department": "cpd"
+    };
+
+    return aliases[normalized] || null;
+}
+
+function resolveRoleRequestDepartment(input) {
+    const key = normalizeRoleRequestDepartment(input);
+    return key ? ROLE_REQUEST_DEPARTMENT_CHANNELS[key] || null : null;
+}
+
+function buildRoleRequestEmbed(request) {
+    const status = request?.status || "pending";
+    const color = status === "accepted" ? "#2d5a3d" : status === "denied" ? "#8b0000" : "#ff00a6";
+    const statusLabel = status === "accepted" ? "ACCEPTED" : status === "denied" ? "DENIED" : "PENDING REVIEW";
+    const description = [
+        "=== ROLE REQUEST ===",
+        `NAME: ${request?.requesterName || "Unknown"}`,
+        `DEPARTMENT: ${request?.departmentLabel || "Unknown"}`,
+        `ROLES REQUESTED: ${request?.rolesRequested || "None"}`,
+        `REASON: ${request?.reason || "No reason provided."}`,
+        `STATUS: ${statusLabel}`,
+        "===================="
+    ].join("\n");
+
+    const embed = new EmbedBuilder()
+        .setColor(color)
+        .setDescription(description);
+
+    if (status === "accepted") {
+        embed.addFields({ name: "Decision", value: `Accepted by <@${request.reviewedBy || "unknown"}>` });
+    } else if (status === "denied") {
+        embed.addFields({ name: "Decision", value: `Denied by <@${request.reviewedBy || "unknown"}>` });
+        if (request.denialReason) {
+            embed.addFields({ name: "Denial Reason", value: request.denialReason });
+        }
+    }
+
+    return embed;
+}
+
+function buildRoleRequestComponents(requestId) {
+    return [
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`role_request_accept_${requestId}`)
+                .setLabel("Accept")
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId(`role_request_deny_${requestId}`)
+                .setLabel("Deny")
+                .setStyle(ButtonStyle.Danger)
+        )
+    ];
+}
+
+function hasRoleRequestReviewerAccess(member) {
+    if (!member) return false;
+    if (member.permissions?.has(PermissionFlagsBits.Administrator)) return true;
+    return member.roles?.cache?.some(role => ROLE_REQUEST_REVIEWER_ROLE_IDS.includes(role.id)) || false;
+}
+
 async function syncNoTrainingCertificationRole(guild, member, me) {
     const noCertRole = guild.roles.cache.get(TRAINING_NO_CERT_ROLE_ID)
         || await guild.roles.fetch(TRAINING_NO_CERT_ROLE_ID).catch(() => null);
@@ -2150,6 +2247,17 @@ const commands = [
         .setDescription("Open the staff moderation command helper"),
 
     new SlashCommandBuilder()
+        .setName("rolerequest")
+        .setDescription("Submit a role request for review")
+        .addStringOption(o => o.setName("department").setDescription("Department to route the request to").setRequired(true).addChoices(
+            { name: "FHP", value: "fhp" },
+            { name: "HCSO", value: "hcs" },
+            { name: "CPD", value: "cpd" }
+        ))
+        .addStringOption(o => o.setName("role").setDescription("Role name or role ID to request").setRequired(true))
+        .addStringOption(o => o.setName("reason").setDescription("Why you are requesting this role").setRequired(true)),
+
+    new SlashCommandBuilder()
         .setName("suggestion")
         .setDescription("Submit a server suggestion")
         .addSubcommand(sub =>
@@ -2680,6 +2788,79 @@ client.on("interactionCreate", async interaction => {
                 );
 
                 return interaction.update({ embeds: [panelEmbed], components: [row] });
+            }
+
+            if (interaction.customId.startsWith("role_request_accept_") || interaction.customId.startsWith("role_request_deny_")) {
+                if (!hasRoleRequestReviewerAccess(interaction.member)) {
+                    return interaction.reply({
+                        content: "❌ You do not have permission to review role requests.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+
+                const requestId = interaction.customId.replace(interaction.customId.startsWith("role_request_accept_") ? "role_request_accept_" : "role_request_deny_", "");
+                const request = roleRequestStore.get(requestId);
+                if (!request) {
+                    return interaction.reply({
+                        content: "⚠️ This role request is no longer available.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+
+                if (request.status !== "pending") {
+                    return interaction.reply({
+                        content: "⚠️ This role request has already been reviewed.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+
+                const isAccept = interaction.customId.startsWith("role_request_accept_");
+                if (!isAccept) {
+                    const modal = new ModalBuilder()
+                        .setCustomId(`role_request_deny_modal_${requestId}`)
+                        .setTitle("Deny Role Request");
+
+                    const reasonInput = new TextInputBuilder()
+                        .setCustomId("role_request_deny_reason")
+                        .setLabel("Reason for denial")
+                        .setStyle(TextInputStyle.Paragraph)
+                        .setRequired(true);
+
+                    modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
+                    return interaction.showModal(modal);
+                }
+
+                const targetMember = await interaction.guild.members.fetch(request.requesterId).catch(() => null);
+                const roleIds = Array.isArray(request.requestedRoleIds) ? request.requestedRoleIds : [];
+                const resolvedRoles = [];
+
+                for (const roleId of roleIds) {
+                    const resolvedRole = interaction.guild.roles.cache.get(roleId) || await interaction.guild.roles.fetch(roleId).catch(() => null);
+                    if (resolvedRole) {
+                        resolvedRoles.push(resolvedRole);
+                    }
+                }
+
+                if (targetMember && resolvedRoles.length > 0) {
+                    await targetMember.roles.add(resolvedRoles).catch(() => null);
+                }
+
+                request.status = "accepted";
+                request.reviewedBy = interaction.user.id;
+                request.reviewedAt = new Date().toISOString();
+                roleRequestStore.set(requestId, request);
+
+                try {
+                    const targetUser = await interaction.client.users.fetch(request.requesterId).catch(() => null);
+                    if (targetUser) {
+                        await targetUser.send(`✅ Your role request has been accepted. You were granted: ${request.rolesRequested || "the requested role(s)"}.`).catch(() => {});
+                    }
+                } catch (error) {
+                    console.error("Role request accept DM failed", error);
+                }
+
+                const acceptedEmbed = buildRoleRequestEmbed(request);
+                return interaction.update({ embeds: [acceptedEmbed], components: [] });
             }
 
             if (interaction.customId.startsWith(APPLICATION_REVIEW_ACCEPT_PREFIX) || interaction.customId.startsWith(APPLICATION_REVIEW_DENY_PREFIX)) {
@@ -3248,6 +3429,39 @@ client.on("interactionCreate", async interaction => {
     // Handle modal submissions for ticket close reason
     if (interaction.isModalSubmit()) {
         try {
+            if (interaction.customId.startsWith("role_request_deny_modal_")) {
+                const requestId = interaction.customId.replace("role_request_deny_modal_", "");
+                const request = roleRequestStore.get(requestId);
+                if (!request) {
+                    return interaction.reply({
+                        content: "⚠️ This role request is no longer available.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+
+                const denialReason = interaction.fields.getTextInputValue("role_request_deny_reason").trim();
+                request.status = "denied";
+                request.reviewedBy = interaction.user.id;
+                request.reviewedAt = new Date().toISOString();
+                request.denialReason = denialReason || "No reason provided.";
+                roleRequestStore.set(requestId, request);
+
+                const targetUser = await interaction.client.users.fetch(request.requesterId).catch(() => null);
+                if (targetUser) {
+                    await targetUser.send(`❌ Your role request was denied. Department: ${request.departmentLabel}. Reason: ${request.denialReason}`).catch(() => {});
+                }
+
+                const deniedEmbed = buildRoleRequestEmbed(request);
+                if (interaction.message) {
+                    await interaction.message.edit({ embeds: [deniedEmbed], components: [] });
+                }
+
+                return interaction.reply({
+                    content: "✅ Role request denied.",
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
             // Handle promote modal
             if (interaction.customId === "promote_modal") {
                 const userId = interaction.fields.getTextInputValue("promote_user_id");
@@ -5229,6 +5443,104 @@ client.on("interactionCreate", async interaction => {
         return interaction.reply({
             embeds: [embed],
             components: [row]
+        });
+    }
+
+    // /patrolannouncements
+    if (interaction.commandName === "rolerequest") {
+        const departmentInput = interaction.options.getString("department", true);
+        const roleInput = interaction.options.getString("role", true);
+        const reasonInput = interaction.options.getString("reason", true);
+        const departmentConfig = resolveRoleRequestDepartment(departmentInput);
+
+        if (!interaction.guild) {
+            return interaction.reply({
+                content: "❌ This command can only be used in a server.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        if (!hasRoleRequestReviewerAccess(interaction.member)) {
+            return interaction.reply({
+                content: "❌ Only authorized review staff can use this command.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        if (!departmentConfig) {
+            return interaction.reply({
+                content: "❌ Please pick a valid department: FHP, HCSO, or CPD.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        const requestedRoleNames = roleInput
+            .split(/\s*,\s*|\s*\/\s*/)
+            .map(value => value.trim())
+            .filter(Boolean);
+
+        if (requestedRoleNames.length === 0) {
+            return interaction.reply({
+                content: "❌ Please provide at least one role name or role ID.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        const resolvedRoles = [];
+        for (const roleNameOrId of requestedRoleNames) {
+            const matchedRole = interaction.guild.roles.cache.find(role => role.name.toLowerCase() === roleNameOrId.toLowerCase() || role.id === roleNameOrId)
+                || await interaction.guild.roles.fetch(roleNameOrId).catch(() => null);
+
+            if (!matchedRole) {
+                return interaction.reply({
+                    content: `❌ I could not find the role **${roleNameOrId}** in this server.`,
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            resolvedRoles.push(matchedRole);
+        }
+
+        const targetChannel = interaction.guild.channels.cache.get(departmentConfig.channelId)
+            || await interaction.guild.channels.fetch(departmentConfig.channelId).catch(() => null);
+
+        if (!targetChannel || !targetChannel.isTextBased()) {
+            return interaction.reply({
+                content: "❌ I could not find the configured review channel for that department.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        const requestId = createRoleRequestId();
+        const requestData = {
+            id: requestId,
+            requesterId: interaction.user.id,
+            requesterName: interaction.member.displayName || interaction.user.username,
+            requesterTag: interaction.user.tag,
+            departmentKey: departmentInput.toLowerCase(),
+            departmentLabel: departmentConfig.label,
+            rolesRequested: resolvedRoles.map(role => role.name).join(", "),
+            requestedRoleIds: resolvedRoles.map(role => role.id),
+            reason: reasonInput.trim(),
+            status: "pending",
+            createdAt: new Date().toISOString()
+        };
+
+        roleRequestStore.set(requestId, requestData);
+
+        const embed = buildRoleRequestEmbed(requestData);
+        const message = await targetChannel.send({
+            embeds: [embed],
+            components: buildRoleRequestComponents(requestId)
+        });
+
+        requestData.messageId = message.id;
+        requestData.channelId = message.channelId;
+        roleRequestStore.set(requestId, requestData);
+
+        return interaction.reply({
+            content: `✅ Your role request has been submitted to ${targetChannel}.`,
+            flags: MessageFlags.Ephemeral
         });
     }
 
