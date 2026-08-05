@@ -351,6 +351,7 @@ const TRAINING_CERTIFICATION_ROLES = {
 const TRAINING_CERTIFICATION_ROLE_IDS = Object.values(TRAINING_CERTIFICATION_ROLES);
 const TRAINING_NO_CERT_ROLE_ID = "1482203107956883574";
 const LOA_ROLE_ID = "1482203107806150668";
+const VERIFICATION_ROLE_ID = "1533590255624523830";
 const APPLICATION_PANEL_BUTTON_ID = "app_open_apply";
 const VERIFICATION_PANEL_BUTTON_ID = "verification_open_panel";
 const VERIFICATION_START_BUTTON_ID = "verification_start";
@@ -1611,6 +1612,37 @@ async function setLoaRole(member, enabled) {
     } else {
         await member.roles.remove(loaRole).catch(() => {});
     }
+}
+
+async function assignVerificationRole(member) {
+    if (!member || !member.guild) return false;
+    const role = await member.guild.roles.fetch(VERIFICATION_ROLE_ID).catch(() => null);
+    if (!role) {
+        console.error("[Verification] Verification role not found:", VERIFICATION_ROLE_ID);
+        return false;
+    }
+
+    const me = member.guild.members.me || await member.guild.members.fetchMe().catch(() => null);
+    if (!me) {
+        console.error("[Verification] Could not resolve bot member for role assignment.");
+        return false;
+    }
+
+    if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+        console.error("[Verification] Bot missing Manage Roles for role assignment.");
+        return false;
+    }
+
+    if (me.roles.highest.comparePositionTo(role) <= 0) {
+        console.error("[Verification] Bot role must be higher than verification role:", role.id);
+        return false;
+    }
+
+    if (member.roles.cache.has(role.id)) return true;
+    await member.roles.add(role).catch(err => {
+        console.error("[Verification] Failed to assign verification role:", err?.message || err);
+    });
+    return member.roles.cache.has(role.id);
 }
 
 async function sendLoaReviewLog(guildId, { userId, startDate, endDate, reason, requestedById }) {
@@ -7256,6 +7288,37 @@ client.on("messageCreate", async message => {
 
     const commandMatch = normalized.match(/^>\s*([a-z0-9_-]+)/);
     const command = commandMatch ? commandMatch[1] : "";
+
+    // >verificationpanel command
+    if (command === "verificationpanel") {
+        const allowedRoles = [
+            "1533590255842627764",
+            "1533590255842627763"
+        ];
+
+        if (!message.member.roles.cache.has(allowedRoles[0]) && !message.member.roles.cache.has(allowedRoles[1])) {
+            return message.reply({ content: "❌ You do not have permission to run this command.", allowedMentions: { repliedUser: false } });
+        }
+
+        const verificationEmbed = new EmbedBuilder()
+            .setColor("#4ea8de")
+            .setTitle("✅ Verification Complete")
+            .setDescription("Your verification is complete. You have been assigned the verified role.")
+            .setTimestamp();
+
+        try {
+            await message.author.send({ embeds: [verificationEmbed] });
+        } catch (dmError) {
+            console.error("[Verification] DM send failed:", dmError);
+        }
+
+        const assigned = await assignVerificationRole(message.member);
+        if (assigned) {
+            return message.reply({ content: "✅ Verification complete. You have been assigned the verified role.", allowedMentions: { repliedUser: false } });
+        }
+
+        return message.reply({ content: "⚠️ Verification complete, but I could not assign the verified role. Please ensure I have Manage Roles and that the verification role is below my highest role.", allowedMentions: { repliedUser: false } });
+    }
 
     // >addrank command
     if (command === "addrank") {
