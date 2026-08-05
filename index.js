@@ -1390,7 +1390,7 @@ function resolveRoleRequestDepartment(input) {
 
 function buildRoleRequestEmbed(request) {
     const status = request?.status || "pending";
-    const color = status === "accepted" ? "#2d5a3d" : status === "denied" ? "#8b0000" : "#ff00a6";
+    const color = status === "accepted" ? "#2d5a3d" : status === "denied" ? "#8b0000" : "#00ff9d";
     const statusLabel = status === "accepted" ? "ACCEPTED" : status === "denied" ? "DENIED" : "PENDING REVIEW";
     const description = [
         "=== ROLE REQUEST ===",
