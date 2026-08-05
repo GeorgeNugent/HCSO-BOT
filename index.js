@@ -2254,7 +2254,7 @@ const commands = [
             { name: "HCSO", value: "hcs" },
             { name: "CPD", value: "cpd" }
         ))
-        .addStringOption(o => o.setName("role").setDescription("Role name or role ID to request").setRequired(true))
+        .addStringOption(o => o.setName("role").setDescription("Role name or role ID to request").setRequired(true).setAutocomplete(true))
         .addStringOption(o => o.setName("reason").setDescription("Why you are requesting this role").setRequired(true)),
 
     new SlashCommandBuilder()
@@ -3394,6 +3394,35 @@ client.on("interactionCreate", async interaction => {
     if (interaction.isAutocomplete()) {
         const focusedOption = interaction.options.getFocused(true);
         
+        if (focusedOption.name === "role" && interaction.commandName === "rolerequest") {
+            const query = focusedOption.value.toLowerCase();
+            const guild = interaction.guild;
+            if (!guild) {
+                return interaction.respond([]);
+            }
+
+            const allRoles = guild.roles.cache
+                .filter(role => !role.managed && role.id !== guild.id)
+                .map(role => ({
+                    name: role.name,
+                    id: role.id
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            const filtered = allRoles.filter(role => 
+                role.name.toLowerCase().includes(query) || 
+                role.id.includes(query)
+            ).slice(0, 25);
+
+            const choices = filtered.map(role => ({
+                name: role.name,
+                value: role.id
+            }));
+
+            await interaction.respond(choices);
+            return;
+        }
+
         if (focusedOption.name === "case-id") {
             const query = focusedOption.value.toUpperCase();
             const commandName = interaction.commandName;
@@ -5460,13 +5489,6 @@ client.on("interactionCreate", async interaction => {
             });
         }
 
-        if (!hasRoleRequestReviewerAccess(interaction.member)) {
-            return interaction.reply({
-                content: "❌ Only authorized review staff can use this command.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
         if (!departmentConfig) {
             return interaction.reply({
                 content: "❌ Please pick a valid department: FHP, HCSO, or CPD.",
@@ -5474,32 +5496,17 @@ client.on("interactionCreate", async interaction => {
             });
         }
 
-        const requestedRoleNames = roleInput
-            .split(/\s*,\s*|\s*\/\s*/)
-            .map(value => value.trim())
-            .filter(Boolean);
+        const matchedRole = interaction.guild.roles.cache.get(roleInput)
+            || await interaction.guild.roles.fetch(roleInput).catch(() => null);
 
-        if (requestedRoleNames.length === 0) {
+        if (!matchedRole) {
             return interaction.reply({
-                content: "❌ Please provide at least one role name or role ID.",
+                content: `❌ I could not find the role with ID **${roleInput}** in this server. Please select a role from the list.`,
                 flags: MessageFlags.Ephemeral
             });
         }
 
-        const resolvedRoles = [];
-        for (const roleNameOrId of requestedRoleNames) {
-            const matchedRole = interaction.guild.roles.cache.find(role => role.name.toLowerCase() === roleNameOrId.toLowerCase() || role.id === roleNameOrId)
-                || await interaction.guild.roles.fetch(roleNameOrId).catch(() => null);
-
-            if (!matchedRole) {
-                return interaction.reply({
-                    content: `❌ I could not find the role **${roleNameOrId}** in this server.`,
-                    flags: MessageFlags.Ephemeral
-                });
-            }
-
-            resolvedRoles.push(matchedRole);
-        }
+        const resolvedRoles = [matchedRole];
 
         const targetChannel = interaction.guild.channels.cache.get(departmentConfig.channelId)
             || await interaction.guild.channels.fetch(departmentConfig.channelId).catch(() => null);
