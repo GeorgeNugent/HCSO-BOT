@@ -355,6 +355,9 @@ const VERIFICATION_ROLE_ID = "1533590255624523830";
 const APPLICATION_PANEL_BUTTON_ID = "app_open_apply";
 const VERIFICATION_PANEL_BUTTON_ID = "verification_open_panel";
 const VERIFICATION_START_BUTTON_ID = "verification_start";
+const STAFF_PANEL_BUTTON_USER = "staff_panel_user";
+const STAFF_PANEL_BUTTON_CHANNEL = "staff_panel_channel";
+const STAFF_PANEL_BUTTON_BACK = "staff_panel_back";
 const VERIFICATION_SESSION_DURATION_MS = 10 * 60 * 1000;
 const VERIFICATION_MAX_ATTEMPTS = 3;
 const verificationSessions = new Map();
@@ -1689,6 +1692,46 @@ function deleteVerificationSession(userId) {
     verificationSessions.delete(userId);
 }
 
+function buildStaffPanelRootEmbed() {
+    return new EmbedBuilder()
+        .setColor("#3b82f6")
+        .setTitle("🛡️ Staff Moderation Command Panel")
+        .setDescription("Choose the moderation scope below to view the commands you need. User moderation covers member and role actions, while channel moderation covers message and channel controls.")
+        .addFields(
+            { name: "User Moderation", value: "View member-focused moderation commands like warnings, timeouts, bans, and role control.", inline: false },
+            { name: "Channel Moderation", value: "View channel and message controls such as purge, lock, slowmode, and lockdown.", inline: false }
+        )
+        .setTimestamp();
+}
+
+function buildStaffPanelCategoryEmbed(category) {
+    const embed = new EmbedBuilder()
+        .setColor("#3b82f6")
+        .setTimestamp();
+
+    if (category === "user") {
+        embed
+            .setTitle("🎭 User Moderation Commands")
+            .setDescription("Use these commands when moderating a user. Most actions require a staff role or elevated permissions.");
+
+        embed.addFields(
+            { name: "Core Member Moderation Commands", value: "• /warn\n• /warnings\n• /unwarn\n• /timeout\n• /untimeout\n• /mute\n• /unmute\n• /kick\n• /ban\n• /unban\n• /softban\n• /hardban\n• /massban\n• /masskick", inline: false },
+            { name: "Role & Permission Control", value: "• /strip\n• /restore\n• /massrole\n• /jail\n• /unjail\n• /nickname", inline: false },
+            { name: "Advanced Moderation Tools", value: "• /modcase\n• /modcases\n• /reason\n• /clearcases\n• /modlogs\n• /raw-modlogs", inline: false }
+        );
+    } else if (category === "channel") {
+        embed
+            .setTitle("💬 Channel Moderation Commands")
+            .setDescription("Use these commands when moderating a channel or its messages.");
+
+        embed.addFields(
+            { name: "Message & Channel Moderation", value: "• /slowmode\n• /purge\n• /purge-all\n• /clear\n• /lock\n• /unlock\n• /lockdown\n• /lockall", inline: false }
+        );
+    }
+
+    return embed;
+}
+
 setInterval(() => {
     const now = Date.now();
     for (const [userId, session] of verificationSessions.entries()) {
@@ -2101,6 +2144,10 @@ const commands = [
     new SlashCommandBuilder()
         .setName("staff-application")
         .setDescription("Post the staff application panel"),
+
+    new SlashCommandBuilder()
+        .setName("staff-panel")
+        .setDescription("Open the staff moderation command helper"),
 
     new SlashCommandBuilder()
         .setName("suggestion")
@@ -2603,6 +2650,36 @@ client.on("interactionCreate", async interaction => {
                     content: "✅ Verification started. Check your DMs.",
                     flags: MessageFlags.Ephemeral
                 });
+            }
+
+            if (interaction.customId === STAFF_PANEL_BUTTON_USER || interaction.customId === STAFF_PANEL_BUTTON_CHANNEL) {
+                const category = interaction.customId === STAFF_PANEL_BUTTON_USER ? "user" : "channel";
+                const categoryEmbed = buildStaffPanelCategoryEmbed(category);
+
+                const backRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(STAFF_PANEL_BUTTON_BACK)
+                        .setLabel("Back")
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+                return interaction.update({ embeds: [categoryEmbed], components: [backRow] });
+            }
+
+            if (interaction.customId === STAFF_PANEL_BUTTON_BACK) {
+                const panelEmbed = buildStaffPanelRootEmbed();
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(STAFF_PANEL_BUTTON_USER)
+                        .setLabel("User Moderation")
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId(STAFF_PANEL_BUTTON_CHANNEL)
+                        .setLabel("Channel Moderation")
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+                return interaction.update({ embeds: [panelEmbed], components: [row] });
             }
 
             if (interaction.customId.startsWith(APPLICATION_REVIEW_ACCEPT_PREFIX) || interaction.customId.startsWith(APPLICATION_REVIEW_DENY_PREFIX)) {
@@ -6869,6 +6946,30 @@ client.on("interactionCreate", async interaction => {
         );
 
         await interaction.reply({ embeds: [panelEmbed], components: [row] });
+        return;
+    }
+
+    if (interaction.commandName === "staff-panel") {
+        if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
+            return interaction.reply({
+                content: "❌ You don't have permission to open the staff moderation panel.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        const panelEmbed = buildStaffPanelRootEmbed();
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(STAFF_PANEL_BUTTON_USER)
+                .setLabel("User Moderation")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId(STAFF_PANEL_BUTTON_CHANNEL)
+                .setLabel("Channel Moderation")
+                .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.reply({ embeds: [panelEmbed], components: [row], ephemeral: false });
         return;
     }
 
