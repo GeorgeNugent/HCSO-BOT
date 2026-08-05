@@ -355,6 +355,9 @@ const VERIFICATION_ROLE_ID = "1533590255624523830";
 const APPLICATION_PANEL_BUTTON_ID = "app_open_apply";
 const VERIFICATION_PANEL_BUTTON_ID = "verification_open_panel";
 const VERIFICATION_START_BUTTON_ID = "verification_start";
+const VERIFICATION_SESSION_DURATION_MS = 10 * 60 * 1000;
+const VERIFICATION_MAX_ATTEMPTS = 3;
+const verificationSessions = new Map();
 const APPLICATION_DEPT_SELECT_ID = "app_select_department";
 const APPLICATION_START_PREFIX = "app_start_";
 const APPLICATION_CANCEL_PREFIX = "app_cancel_";
@@ -1226,6 +1229,18 @@ async function renderWelcomeImage(memberName) {
     return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
+async function renderVerificationCodeImage(code) {
+    const safeCode = escapeSvgText(code);
+    const svg = `
+        <svg width="800" height="300" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+            <rect width="800" height="300" fill="#14161a" rx="20"/>
+            <text x="400" y="180" text-anchor="middle" fill="#ffffff" font-size="88" font-family="Segoe UI, Arial, sans-serif" font-weight="700" letter-spacing="10">${safeCode}</text>
+            <text x="400" y="250" text-anchor="middle" fill="#9ca3af" font-size="24" font-family="Segoe UI, Arial, sans-serif">Reply to this DM with the exact code shown above.</text>
+        </svg>
+    `;
+    return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
 function formatRoleMentions(roleIds) {
     if (!roleIds || roleIds.length === 0) return "None";
     return roleIds.map(id => `<@&${id}>`).join(", ");
@@ -1644,6 +1659,44 @@ async function assignVerificationRole(member) {
     });
     return member.roles.cache.has(role.id);
 }
+
+function generateVerificationCode(length = 6) {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < length; i += 1) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+function createVerificationSession(userId, guildId) {
+    const session = {
+        userId,
+        guildId,
+        code: generateVerificationCode(),
+        attemptsRemaining: VERIFICATION_MAX_ATTEMPTS,
+        createdAt: Date.now()
+    };
+    verificationSessions.set(userId, session);
+    return session;
+}
+
+function getVerificationSession(userId) {
+    return verificationSessions.get(userId);
+}
+
+function deleteVerificationSession(userId) {
+    verificationSessions.delete(userId);
+}
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [userId, session] of verificationSessions.entries()) {
+        if (now - session.createdAt > VERIFICATION_SESSION_DURATION_MS) {
+            verificationSessions.delete(userId);
+        }
+    }
+}, 5 * 60 * 1000);
 
 async function sendLoaReviewLog(guildId, { userId, startDate, endDate, reason, requestedById }) {
     const loaLogChannelId = getLogChannelId(guildId, "loa");
@@ -2524,18 +2577,21 @@ client.on("interactionCreate", async interaction => {
             }
 
             if (interaction.customId === VERIFICATION_START_BUTTON_ID) {
-                const dmEmbed = new EmbedBuilder()
-                    .setColor("#4ea8de")
-                    .setTitle("Verification Started")
-                    .setDescription("Thanks for starting verification! Check your DMs for the verification instructions.")
-                    .addFields(
-                        { name: "Next Step", value: "You should receive a direct message from me with verification details. If you do not receive it, please ensure your DMs are open and try again.", inline: false }
-                    )
-                    .setTimestamp();
-
+                let session;
                 try {
-                    await interaction.user.send({ embeds: [dmEmbed] });
+                    session = createVerificationSession(interaction.user.id, interaction.guild.id);
+                    const imageBuffer = await renderVerificationCodeImage(session.code);
+                    await interaction.user.send({
+                        embeds: [new EmbedBuilder()
+                            .setColor("#4ea8de")
+                            .setTitle("Verification Started")
+                            .setDescription("To complete verification, reply to this DM with the verification code shown in the attached image.")
+                            .setTimestamp()
+                        ],
+                        files: [{ attachment: imageBuffer, name: "verification-code.png" }]
+                    });
                 } catch (dmError) {
+                    deleteVerificationSession(interaction.user.id);
                     console.error("[VerificationPanel] DM send failed:", dmError);
                     return interaction.reply({
                         content: "❌ I could not send you a DM. Please make sure your DM settings allow messages from server members.",
@@ -7204,6 +7260,43 @@ client.on("messageCreate", async message => {
         return;
     }
 
+    const verificationSession = getVerificationSession(message.author.id);
+    if (verificationSession) {
+        const now = Date.now();
+        if (now - verificationSession.createdAt > VERIFICATION_SESSION_DURATION_MS) {
+            deleteVerificationSession(message.author.id);
+            await message.channel.send("⏰ Your verification session expired. Please click the verification button again to restart the process.").catch(() => {});
+            return;
+        }
+
+        const answer = String(message.content || "").trim();
+        if (!answer) return;
+
+        if (answer.toUpperCase() === verificationSession.code) {
+            deleteVerificationSession(message.author.id);
+            const guild = await client.guilds.fetch(verificationSession.guildId).catch(() => null);
+            const member = guild ? await guild.members.fetch(message.author.id).catch(() => null) : null;
+            const assigned = member ? await assignVerificationRole(member) : false;
+
+            if (assigned) {
+                await message.channel.send("✅ Verification complete. You have been assigned the verified role.").catch(() => {});
+            } else {
+                await message.channel.send("⚠️ I could not assign your verified role. Please ensure I have Manage Roles and that the verification role is below my highest role.").catch(() => {});
+            }
+            return;
+        }
+
+        verificationSession.attemptsRemaining -= 1;
+        if (verificationSession.attemptsRemaining > 0) {
+            await message.channel.send(`❌ Incorrect code. You have ${verificationSession.attemptsRemaining} attempt(s) remaining. Please reply again with the exact code from your verification DM.`).catch(() => {});
+            return;
+        }
+
+        deleteVerificationSession(message.author.id);
+        await message.channel.send("❌ Too many incorrect attempts. Your verification session has ended. Please click the verification button again to restart the process.").catch(() => {});
+        return;
+    }
+
     const active = getOpenApplicationSession(message.author.id);
     if (!active) return;
 
@@ -7300,24 +7393,26 @@ client.on("messageCreate", async message => {
             return message.reply({ content: "❌ You do not have permission to run this command.", allowedMentions: { repliedUser: false } });
         }
 
-        const verificationEmbed = new EmbedBuilder()
+        const panelEmbed = new EmbedBuilder()
             .setColor("#4ea8de")
-            .setTitle("✅ Verification Complete")
-            .setDescription("Your verification is complete. You have been assigned the verified role.")
+            .setTitle("✅ Verification Panel")
+            .setDescription("Click the button below to begin verification. You will receive verification instructions in your DMs.")
             .setTimestamp();
 
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(VERIFICATION_START_BUTTON_ID)
+                .setLabel("Start Verification")
+                .setStyle(ButtonStyle.Primary)
+        );
+
         try {
-            await message.author.send({ embeds: [verificationEmbed] });
-        } catch (dmError) {
-            console.error("[Verification] DM send failed:", dmError);
+            await message.channel.send({ embeds: [panelEmbed], components: [row] });
+            return message.reply({ content: "✅ Verification panel posted.", allowedMentions: { repliedUser: false } });
+        } catch (sendError) {
+            console.error("[VerificationPanel] Failed to post panel:", sendError);
+            return message.reply({ content: "❌ Could not post the verification panel. Please try again or check my channel permissions.", allowedMentions: { repliedUser: false } });
         }
-
-        const assigned = await assignVerificationRole(message.member);
-        if (assigned) {
-            return message.reply({ content: "✅ Verification complete. You have been assigned the verified role.", allowedMentions: { repliedUser: false } });
-        }
-
-        return message.reply({ content: "⚠️ Verification complete, but I could not assign the verified role. Please ensure I have Manage Roles and that the verification role is below my highest role.", allowedMentions: { repliedUser: false } });
     }
 
     // >addrank command
