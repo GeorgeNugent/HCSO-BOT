@@ -483,7 +483,8 @@ a {
 
 .cmd-form input,
 .cmd-form select,
-.cmd-form textarea {
+.cmd-form textarea,
+#moderation-server {
   width: 100%;
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.08);
@@ -496,7 +497,8 @@ a {
 
 .cmd-form input:focus,
 .cmd-form select:focus,
-.cmd-form textarea:focus {
+.cmd-form textarea:focus,
+#moderation-server:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 5px rgba(92, 249, 255, 0.12);
