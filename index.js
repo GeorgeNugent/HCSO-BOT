@@ -737,7 +737,7 @@ function buildApplicationRecord(user, selectionValue, guildId = null) {
 
     // Determine type based on selection
     if (normalizedSelection === "CFD" || normalizedSelection === "EMS") {
-        targetType = normalizedSelection;
+        targetType = normalizedSelection.toLowerCase();
         departmentGuildId = normalizedSelection;
         departmentName = normalizedSelection === "CFD" ? "Clewiston Fire Department" : "Ambulance / EMS";
     } else if (normalizedSelection.startsWith("dept:")) {

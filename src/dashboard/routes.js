@@ -108,8 +108,15 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         return spec.roleIds.some(roleId => memberRoleIds.includes(roleId));
     }
 
+    function normalizeApplicationType(type) {
+        const normalized = String(type || "").trim().toLowerCase();
+        if (normalized === "cfd" || normalized === "fire") return "cfd";
+        if (normalized === "ems" || normalized === "ambulance" || normalized === "ambulance/ems") return "ems";
+        return normalized;
+    }
+
     function getDepartmentInviteLinkForApp(app) {
-        if (!app || app.type !== "department") return null;
+        if (!app || normalizeApplicationType(app.type) !== "department") return null;
 
         const departments = getAllDepartments();
         const appGuildId = String(app.departmentGuildId || "");
@@ -126,7 +133,7 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
     }
 
     function getDepartmentRoleKey(app) {
-        if (!app || app.type !== "department") return null;
+        if (!app || normalizeApplicationType(app.type) !== "department") return null;
 
         const guildId = String(app.departmentGuildId || "");
         switch (guildId) {
@@ -155,7 +162,7 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
     }
 
     async function syncApplicationDepartmentRoleState(app, targetUserId, state) {
-        if (!app || app.type !== "department" || !targetUserId) return false;
+        if (!app || normalizeApplicationType(app.type) !== "department" || !targetUserId) return false;
 
         const roleKey = getDepartmentRoleKey(app);
         if (!roleKey) {
@@ -756,7 +763,8 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         }
 
         for (const app of allApplications) {
-            if (app.type === "department" && app.departmentGuildId) {
+            const appType = normalizeApplicationType(app.type);
+            if (appType === "department" && app.departmentGuildId) {
                 const guildId = String(app.departmentGuildId);
                 if (!scope.canViewStaffApplications && !scope.allowedDepartmentGuildIds.includes(guildId)) continue;
 
@@ -771,11 +779,11 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
                 departmentAppsByGuildId[guildId].apps.push(app);
             }
 
-            if (app.type === "cfd" && departmentAppsByGuildId["cfd"]) {
+            if (appType === "cfd" && departmentAppsByGuildId["cfd"]) {
                 departmentAppsByGuildId["cfd"].apps.push(app);
             }
 
-            if (app.type === "ems" && departmentAppsByGuildId["ems"]) {
+            if (appType === "ems" && departmentAppsByGuildId["ems"]) {
                 departmentAppsByGuildId["ems"].apps.push(app);
             }
         }
@@ -784,16 +792,16 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             const dept = departmentAppsByGuildId[guildId];
             if (!dept) continue;
             dept.apps = allApplications.filter(a =>
-                a.type === "department" && String(a.departmentGuildId || "") === guildId
+                normalizeApplicationType(a.type) === "department" && String(a.departmentGuildId || "") === guildId
             );
         }
 
         if (departmentAppsByGuildId["cfd"]) {
-            departmentAppsByGuildId["cfd"].apps = allApplications.filter(a => a.type === "cfd");
+            departmentAppsByGuildId["cfd"].apps = allApplications.filter(a => normalizeApplicationType(a.type) === "cfd");
         }
 
         if (departmentAppsByGuildId["ems"]) {
-            departmentAppsByGuildId["ems"].apps = allApplications.filter(a => a.type === "ems");
+            departmentAppsByGuildId["ems"].apps = allApplications.filter(a => normalizeApplicationType(a.type) === "ems");
         }
 
         const visibleApplications = [
@@ -839,10 +847,11 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             .sort((a, b) => new Date(b.startedAt || 0).getTime() - new Date(a.startedAt || 0).getTime());
 
         const scopedApplications = allApplications.filter(app => {
+            const appType = normalizeApplicationType(app.type);
             if (spec.type === "cfd" || spec.type === "ems") {
-                return app.type === spec.type;
+                return appType === spec.type;
             }
-            return app.type === "department" && String(app.departmentGuildId || "") === spec.departmentGuildId;
+            return appType === "department" && String(app.departmentGuildId || "") === spec.departmentGuildId;
         });
 
         const summary = {
@@ -1012,19 +1021,21 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             const app = applicationsData?.applications?.[appId];
             if (!app) return res.status(404).json({ error: "Application not found" });
 
-            if (app.type === "staff" && !scope.canViewStaffApplications) {
+            const appType = normalizeApplicationType(app.type);
+
+            if (appType === "staff" && !scope.canViewStaffApplications) {
                 return res.status(403).json({ error: "Only staff can review staff applications." });
             }
 
-            if (app.type === "department" && !scope.canViewStaffApplications) {
+            if (appType === "department" && !scope.canViewStaffApplications) {
                 const appDept = String(app.departmentGuildId || "");
                 if (!scope.allowedDepartmentGuildIds.includes(appDept)) {
                     return res.status(403).json({ error: "You can only review applications for your own department." });
                 }
             }
 
-            if ((app.type === "cfd" || app.type === "ems") && !scope.canViewStaffApplications) {
-                if (!scope.allowedApplicationKeys.includes(app.type)) {
+            if ((appType === "cfd" || appType === "ems") && !scope.canViewStaffApplications) {
+                if (!scope.allowedApplicationKeys.includes(appType)) {
                     return res.status(403).json({ error: "You can only review applications for your own department." });
                 }
             }
@@ -1040,7 +1051,7 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             app.reviewedAt = new Date().toISOString();
             saveApplications();
 
-            if (app.type === "department") {
+            if (appType === "department") {
                 console.log("[Dashboard Review] application object before role sync", app);
                 const syncOk = await syncApplicationDepartmentRoleState(app, app.applicantId, decision === "accepted" ? "interview" : "none");
                 if (!syncOk) {
