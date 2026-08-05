@@ -52,6 +52,11 @@ export function startDashboard(context) {
         "administrator", "management", "developer", "bot staff",
         "supervisor", "ia", "sheriff", "staff", "owner", "co-owner"
     ];
+    const DEPARTMENT_APPLICATION_ROLE_IDS = {
+        hcso: ["1533590255783907460", "1533590255783907459", "1533590255775645745"],
+        cpd: ["1533590255792554051", "1533590255792554050", "1533590255792554049"],
+        fhp: ["1533590255763194088", "1533590255763194087", "1533590255750353109"]
+    };
 
     // ── Express app ──────────────────────────────────────────────────────────
     const app = express();
@@ -292,6 +297,13 @@ export function startDashboard(context) {
         }
 
         const accessibleDepartmentIds = [];
+        const viewerRoleIds = userId ? await getViewerRoleIds(userId, GUILD_ID || MAIN_ROLE_GUILD_ID) : [];
+        const departmentApplicationAccess = Object.fromEntries(
+            Object.entries(DEPARTMENT_APPLICATION_ROLE_IDS).map(([key, roleIds]) => [
+                key,
+                BOT_OWNER_IDS.includes(String(userId)) || roleIds.some(roleId => viewerRoleIds.includes(roleId))
+            ])
+        );
         const departmentAccessByGuild = context.config?.departmentAccessByGuild && typeof context.config.departmentAccessByGuild === "object"
             ? context.config.departmentAccessByGuild
             : {};
@@ -341,6 +353,7 @@ export function startDashboard(context) {
         res.locals.accessibleDepartmentIds = accessibleDepartmentIds;
         res.locals.mainServerId = GUILD_ID || null;
         res.locals.segmentAccess = segmentAccess;
+        res.locals.departmentApplicationAccess = departmentApplicationAccess;
         next();
     });
 

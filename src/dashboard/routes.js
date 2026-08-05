@@ -59,6 +59,40 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
     const DEPARTMENT_INVITE_LINKS = {
         [TARGET_GUILD_ID]: "https://discord.gg/qmwhsPwEDy"
     };
+    const DEPARTMENT_APPLICATION_SPECS = {
+        hcso: {
+            label: "HCSO",
+            roleIds: ["1533590255783907460", "1533590255783907459", "1533590255775645745"],
+            departmentGuildId: "1482203107432595601",
+            route: "hcso",
+            page: "applications-hcso"
+        },
+        cpd: {
+            label: "CPD",
+            roleIds: ["1533590255792554051", "1533590255792554050", "1533590255792554049"],
+            departmentGuildId: "1482501585803415572",
+            route: "cpd",
+            page: "applications-cpd"
+        },
+        fhp: {
+            label: "FHP",
+            roleIds: ["1533590255763194088", "1533590255763194087", "1533590255750353109"],
+            departmentGuildId: "1482498655523962892",
+            route: "fhp",
+            page: "applications-fhp"
+        }
+    };
+
+    async function getDepartmentApplicationAccess(userId, departmentKey) {
+        const spec = DEPARTMENT_APPLICATION_SPECS[departmentKey];
+        if (!spec) return false;
+        if (BOT_OWNER_IDS.includes(String(userId))) return true;
+
+        const mainGuild = await getMainRoleGuild();
+        const member = mainGuild && userId ? await mainGuild.members.fetch(userId).catch(() => null) : null;
+        const memberRoleIds = member ? member.roles.cache.map(role => String(role.id)) : [];
+        return spec.roleIds.some(roleId => memberRoleIds.includes(roleId));
+    }
 
     function getDepartmentInviteLinkForApp(app) {
         if (!app || app.type !== "department") return null;
@@ -727,7 +761,60 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
             staffApplications,
             departmentAppsByGuildId,
             summary,
-            canViewStaffApplications: scope.canViewStaffApplications
+            canViewStaffApplications: scope.canViewStaffApplications,
+            pageTitle: "📝 Applications",
+            pageSubtitle: "Review staff and department applications. Accept or deny with a reason."
+        });
+    });
+
+    router.get("/applications/:departmentKey", requireAuth, async (req, res) => {
+        const departmentKey = String(req.params.departmentKey || "").toLowerCase();
+        const spec = DEPARTMENT_APPLICATION_SPECS[departmentKey];
+        if (!spec) {
+            return res.redirect("/applications");
+        }
+
+        const userId = req.session.user?.id || null;
+        const scope = await getApplicationReviewScope(req);
+        const hasDepartmentAccess = scope.canViewStaffApplications || await getDepartmentApplicationAccess(userId, departmentKey);
+        if (!hasDepartmentAccess) {
+            return res.status(403).render("access-denied", { page: "denied" });
+        }
+
+        const departments = getAllDepartments();
+        const allApplications = Object.values(applicationsData?.applications || {})
+            .sort((a, b) => new Date(b.startedAt || 0).getTime() - new Date(a.startedAt || 0).getTime());
+
+        const scopedApplications = allApplications.filter(app =>
+            app.type === "department" && String(app.departmentGuildId || "") === spec.departmentGuildId
+        );
+
+        const summary = {
+            total: scopedApplications.length,
+            pending: scopedApplications.filter(app => app.status === "pending").length,
+            accepted: scopedApplications.filter(app => app.status === "accepted").length,
+            denied: scopedApplications.filter(app => app.status === "denied").length
+        };
+
+        const departmentAppsByGuildId = {
+            [spec.departmentGuildId]: {
+                name: spec.label,
+                shortName: spec.label,
+                apps: scopedApplications
+            }
+        };
+
+        res.render("applications", {
+            page: spec.page,
+            departments,
+            staffApplications: [],
+            departmentAppsByGuildId,
+            summary,
+            canViewStaffApplications: false,
+            pageTitle: `🛡️ ${spec.label} Department Applications`,
+            pageSubtitle: `Review only ${spec.label} department applications.`,
+            isDepartmentScoped: true,
+            departmentScopeLabel: spec.label
         });
     });
 

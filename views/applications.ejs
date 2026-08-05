@@ -99,8 +99,8 @@
 </style>
 
 <div class="page-header">
-  <h2 class="page-title">📝 Applications</h2>
-  <p class="page-subtitle">Review staff and department applications. Accept or deny with a reason.</p>
+  <h2 class="page-title"><%= typeof pageTitle !== 'undefined' && pageTitle ? pageTitle : '📝 Applications' %></h2>
+  <p class="page-subtitle"><%= typeof pageSubtitle !== 'undefined' && pageSubtitle ? pageSubtitle : 'Review staff and department applications. Accept or deny with a reason.' %></p>
 </div>
 
 <div class="apps-layout">

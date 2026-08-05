@@ -61,7 +61,8 @@
         </a>
       <% } %>
 
-      <% var canSeeStaffSection = isBotOwner || (!segmentAccess || segmentAccess.status || segmentAccess.commands || segmentAccess.logs || segmentAccess.applications || segmentAccess.settings); %>
+      <% var hasDepartmentApplicationAccess = departmentApplicationAccess && (departmentApplicationAccess.hcso || departmentApplicationAccess.cpd || departmentApplicationAccess.fhp); %>
+      <% var canSeeStaffSection = isBotOwner || (!hasDepartmentApplicationAccess && (!segmentAccess || segmentAccess.status || segmentAccess.commands || segmentAccess.logs || segmentAccess.applications || segmentAccess.settings)); %>
       <% if (canSeeStaffSection) { %>
         <div class="sidebar-section-label">Staff</div>
         <% if (isBotOwner || !segmentAccess || segmentAccess.status) { %>
@@ -98,6 +99,29 @@
           <a href="/bot-owner" class="nav-link <%= page === 'bot-owner' ? 'active' : '' %>">
             <span class="nav-icon">👑</span>
             <span class="nav-label">Owner</span>
+          </a>
+        <% } %>
+      <% } %>
+
+      <% var canSeeDepartmentApplicationSection = isBotOwner || departmentApplicationAccess.hcso || departmentApplicationAccess.cpd || departmentApplicationAccess.fhp; %>
+      <% if (canSeeDepartmentApplicationSection) { %>
+        <div class="sidebar-section-label">Department Applications</div>
+        <% if (isBotOwner || departmentApplicationAccess.hcso) { %>
+          <a href="/applications/hcso" class="nav-link <%= page === 'applications-hcso' ? 'active' : '' %>">
+            <span class="nav-icon">🛡️</span>
+            <span class="nav-label">HCSO</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || departmentApplicationAccess.cpd) { %>
+          <a href="/applications/cpd" class="nav-link <%= page === 'applications-cpd' ? 'active' : '' %>">
+            <span class="nav-icon">🚔</span>
+            <span class="nav-label">CPD</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || departmentApplicationAccess.fhp) { %>
+          <a href="/applications/fhp" class="nav-link <%= page === 'applications-fhp' ? 'active' : '' %>">
+            <span class="nav-icon">🚓</span>
+            <span class="nav-label">FHP</span>
           </a>
         <% } %>
       <% } %>
