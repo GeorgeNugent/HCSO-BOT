@@ -6969,7 +6969,7 @@ client.on("interactionCreate", async interaction => {
                 .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.reply({ embeds: [panelEmbed], components: [row], ephemeral: false });
+        await interaction.reply({ embeds: [panelEmbed], components: [row], ephemeral: true });
         return;
     }
 
