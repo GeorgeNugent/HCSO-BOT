@@ -352,6 +352,8 @@ const TRAINING_CERTIFICATION_ROLE_IDS = Object.values(TRAINING_CERTIFICATION_ROL
 const TRAINING_NO_CERT_ROLE_ID = "1482203107956883574";
 const LOA_ROLE_ID = "1482203107806150668";
 const APPLICATION_PANEL_BUTTON_ID = "app_open_apply";
+const VERIFICATION_PANEL_BUTTON_ID = "verification_open_panel";
+const VERIFICATION_START_BUTTON_ID = "verification_start";
 const APPLICATION_DEPT_SELECT_ID = "app_select_department";
 const APPLICATION_START_PREFIX = "app_start_";
 const APPLICATION_CANCEL_PREFIX = "app_cancel_";
@@ -468,15 +470,22 @@ async function syncApplicationDepartmentRoleState(app, targetUserId, state, guil
     const addRoles = resolvedRoles.filter(role => roleIdsToAdd.includes(role.id));
     console.log("[ApplicationRole] role update plan", { appId: app.id, guildId: guild.id, targetUserId, addRoles: addRoles.map(r => r.id), removeRoles: removeRoles.map(r => r.id) });
 
+    let success = true;
+    if (resolvedRoles.length !== [...new Set([...roleIdsToRemove, ...roleIdsToAdd].filter(Boolean))].length) {
+        success = false;
+    }
+
     if (removeRoles.length > 0) {
         await member.roles.remove(removeRoles).catch(err => {
             console.error("[ApplicationRole] Failed to remove roles", removeRoles.map(r => r.id), "from", targetUserId, err?.message || err);
+            success = false;
         });
     }
 
     if (addRoles.length > 0) {
         await member.roles.add(addRoles).catch(err => {
             console.error("[ApplicationRole] Failed to add roles", addRoles.map(r => r.id), "to", targetUserId, err?.message || err);
+            success = false;
         });
     }
 
@@ -484,7 +493,7 @@ async function syncApplicationDepartmentRoleState(app, targetUserId, state, guil
         console.warn("[ApplicationRole] No role changes were required for app", app.id, "state", state);
     }
 
-    return true;
+    return success;
 }
 
 const APPLICATION_QUESTIONS = [
@@ -2001,6 +2010,10 @@ const commands = [
         .setDescription("Post the department application panel for recruits"),
 
     new SlashCommandBuilder()
+        .setName("verification-panel")
+        .setDescription("Post the verification panel for members"),
+
+    new SlashCommandBuilder()
         .setName("staff-application")
         .setDescription("Post the staff application panel"),
 
@@ -2476,6 +2489,32 @@ client.on("interactionCreate", async interaction => {
                     .setTimestamp();
 
                 return interaction.update({ embeds: [keepEmbed], components: [] });
+            }
+
+            if (interaction.customId === VERIFICATION_START_BUTTON_ID) {
+                const dmEmbed = new EmbedBuilder()
+                    .setColor("#4ea8de")
+                    .setTitle("Verification Started")
+                    .setDescription("Thanks for starting verification! Check your DMs for the verification instructions.")
+                    .addFields(
+                        { name: "Next Step", value: "You should receive a direct message from me with verification details. If you do not receive it, please ensure your DMs are open and try again.", inline: false }
+                    )
+                    .setTimestamp();
+
+                try {
+                    await interaction.user.send({ embeds: [dmEmbed] });
+                } catch (dmError) {
+                    console.error("[VerificationPanel] DM send failed:", dmError);
+                    return interaction.reply({
+                        content: "❌ I could not send you a DM. Please make sure your DM settings allow messages from server members.",
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+
+                return interaction.reply({
+                    content: "✅ Verification started. Check your DMs.",
+                    flags: MessageFlags.Ephemeral
+                });
             }
 
             if (interaction.customId.startsWith(APPLICATION_REVIEW_ACCEPT_PREFIX) || interaction.customId.startsWith(APPLICATION_REVIEW_DENY_PREFIX)) {
@@ -6602,7 +6641,7 @@ client.on("interactionCreate", async interaction => {
         );
 
         if (isStaff) {
-            helpEmbed.addFields({ name: "Staff — Requires Staff Role", value: "• /dashboard — Open the staff control panel\n• /set-log-channel — Configure log channels\n• /application-panel — Post application panel for recruits", inline: false });
+            helpEmbed.addFields({ name: "Staff — Requires Staff Role", value: "• /dashboard — Open the staff control panel\n• /set-log-channel — Configure log channels\n• /application-panel — Post application panel for recruits\n• /verification-panel — Post verification panel for members", inline: false });
         }
 
         if (isAdmin) {
@@ -6715,6 +6754,31 @@ client.on("interactionCreate", async interaction => {
             })));
 
         const row = new ActionRowBuilder().addComponents(select);
+
+        await interaction.reply({ embeds: [panelEmbed], components: [row] });
+        return;
+    }
+
+    if (interaction.commandName === "verification-panel") {
+        if (!interaction.guild || !interaction.member || !canAccessDashboard(interaction.member)) {
+            return interaction.reply({
+                content: "❌ You don't have permission to post the verification panel.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        const panelEmbed = new EmbedBuilder()
+            .setColor("#4ea8de")
+            .setTitle("✅ Verification Panel")
+            .setDescription("Click the button below to begin verification. You will receive verification instructions in your DMs.")
+            .setTimestamp();
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(VERIFICATION_START_BUTTON_ID)
+                .setLabel("Start Verification")
+                .setStyle(ButtonStyle.Primary)
+        );
 
         await interaction.reply({ embeds: [panelEmbed], components: [row] });
         return;
