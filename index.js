@@ -19,6 +19,78 @@ const VEHICLE_OWNERSHIP_API_TOKEN = process.env.VEHICLE_OWNERSHIP_API_TOKEN || "
 
 const branding = getBranding();
 
+import http from "http";
+import https from "https";
+
+async function sendVehicleOwnershipRequest(payload) {
+    if (!VEHICLE_OWNERSHIP_API_URL) {
+        throw new Error("Vehicle ownership API is not configured. Set VEHICLE_OWNERSHIP_API_URL in your environment.");
+    }
+
+    const url = new URL(VEHICLE_OWNERSHIP_API_URL);
+    const data = JSON.stringify(payload || {});
+
+    const options = {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(data)
+        }
+    };
+
+    if (VEHICLE_OWNERSHIP_API_TOKEN) {
+        options.headers.Authorization = `Bearer ${VEHICLE_OWNERSHIP_API_TOKEN}`;
+    }
+
+    const client = url.protocol === "https:" ? https : http;
+
+    return new Promise((resolve, reject) => {
+        const req = client.request(url, options, res => {
+            let raw = "";
+            res.on("data", chunk => raw += chunk);
+            res.on("end", () => {
+                try {
+                    const parsed = raw ? JSON.parse(raw) : null;
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(parsed);
+                    } else {
+                        reject(new Error(parsed?.message || `HTTP ${res.statusCode}`));
+                    }
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        });
+
+        req.on("error", err => reject(err));
+        req.write(data);
+        req.end();
+    });
+}
+
+function buildVehicleOwnershipEmbed(title, description, color = "#2d5a3d") {
+    return new EmbedBuilder()
+        .setColor(color)
+        .setTitle(title)
+        .setDescription(description)
+        .setTimestamp();
+}
+
+function formatVehicleOwnershipList(vehicles) {
+    if (!Array.isArray(vehicles) || vehicles.length === 0) {
+        return "No vehicles found.";
+    }
+
+    return vehicles
+        .map((vehicle, index) => {
+            const model = vehicle?.model || "Unknown";
+            const plate = vehicle?.plate || "N/A";
+            const owner = vehicle?.owner_id || vehicle?.owner || "Unknown";
+            return `**${index + 1}.** ${model} — Plate: ${plate} — Owner: ${owner}`;
+        })
+        .join("\n");
+}
+
 if (!TOKEN || !CLIENT_ID) {
     console.error("Missing required configuration. Set TOKEN and CLIENT_ID in environment variables or a .env file.");
     process.exit(1);
