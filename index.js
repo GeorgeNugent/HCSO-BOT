@@ -23,10 +23,95 @@ import http from "http";
 import https from "https";
 
 async function sendVehicleOwnershipRequest(payload) {
+    // If external FiveM HTTP API is not configured, fall back to a local JSON store
     if (!VEHICLE_OWNERSHIP_API_URL) {
-        throw new Error("Vehicle ownership API is not configured. Set VEHICLE_OWNERSHIP_API_URL in your environment.");
+        const storeFile = "vehicle_ownership.json";
+        const store = readJsonData(storeFile, { nextId: 1, vehicles: [] });
+        const action = (payload && payload.action) ? String(payload.action).toLowerCase() : "";
+
+        if (action === "import") {
+            const id = Number(store.nextId) || 1;
+            const model = payload.model || "unknown";
+            const plate = payload.plate || `PLATE${id}`;
+            const owner = String(payload.owner || payload.owner_id || "") || null;
+            const vin = payload.vin || `VIN-${Date.now()}-${id}`;
+            const imported_by = String(payload.imported_by || null);
+            const entry = {
+                id,
+                model,
+                plate,
+                vin,
+                owner_id: owner,
+                allowed_drivers: [],
+                imported_by,
+                import_date: new Date().toISOString(),
+                metadata: payload.metadata || {}
+            };
+            store.vehicles.push(entry);
+            store.nextId = id + 1;
+            writeJsonData(storeFile, store);
+            return { success: true, message: "Imported locally (fallback)", vehicle: entry };
+        }
+
+        if (action === "list") {
+            const discordId = String(payload.discordId || payload.discord_id || payload.owner || payload.owner_id || "");
+            const vehicles = store.vehicles.filter(v => String(v.owner_id) === discordId);
+            return { success: true, vehicles };
+        }
+
+        if (action === "list_all") {
+            return { success: true, vehicles: store.vehicles };
+        }
+
+        if (action === "assign") {
+            const vehicleId = Number(payload.vehicle_id || payload.vehicleId || payload.id);
+            const newOwner = String(payload.new_owner || payload.newOwner || payload.owner || "");
+            const vehicle = store.vehicles.find(v => Number(v.id) === vehicleId);
+            if (!vehicle) return { success: false, message: "Vehicle not found" };
+            vehicle.prev_owner = vehicle.owner_id || null;
+            vehicle.owner_id = newOwner;
+            writeJsonData(storeFile, store);
+            return { success: true, message: "Assigned locally (fallback)", vehicle };
+        }
+
+        if (action === "add_driver" || action === "adddriver") {
+            const vehicleId = Number(payload.vehicle_id || payload.vehicleId || payload.id);
+            const driverId = String(payload.driver_id || payload.driver || payload.driverId || "");
+            const vehicle = store.vehicles.find(v => Number(v.id) === vehicleId);
+            if (!vehicle) return { success: false, message: "Vehicle not found" };
+            vehicle.allowed_drivers = Array.isArray(vehicle.allowed_drivers) ? vehicle.allowed_drivers : [];
+            if (!vehicle.allowed_drivers.includes(driverId)) vehicle.allowed_drivers.push(driverId);
+            writeJsonData(storeFile, store);
+            return { success: true, message: "Driver added locally (fallback)", vehicle };
+        }
+
+        if (action === "remove_driver" || action === "removedriver") {
+            const vehicleId = Number(payload.vehicle_id || payload.vehicleId || payload.id);
+            const driverId = String(payload.driver_id || payload.driver || payload.driverId || "");
+            const vehicle = store.vehicles.find(v => Number(v.id) === vehicleId);
+            if (!vehicle) return { success: false, message: "Vehicle not found" };
+            vehicle.allowed_drivers = Array.isArray(vehicle.allowed_drivers) ? vehicle.allowed_drivers.filter(d => d !== driverId) : [];
+            writeJsonData(storeFile, store);
+            return { success: true, message: "Driver removed locally (fallback)", vehicle };
+        }
+
+        if (action === "revert") {
+            const vehicleId = Number(payload.vehicle_id || payload.vehicleId || payload.id);
+            const vehicle = store.vehicles.find(v => Number(v.id) === vehicleId);
+            if (!vehicle) return { success: false, message: "Vehicle not found" };
+            if (vehicle.prev_owner) {
+                vehicle.owner_id = vehicle.prev_owner;
+                delete vehicle.prev_owner;
+                writeJsonData(storeFile, store);
+                return { success: true, message: "Reverted locally (fallback)", vehicle };
+            }
+            return { success: false, message: "No previous owner to revert to" };
+        }
+
+        return { success: false, message: "Unknown action or FiveM API not configured" };
     }
 
+    // External HTTP POST to configured FiveM endpoint
     const url = new URL(VEHICLE_OWNERSHIP_API_URL);
     const data = JSON.stringify(payload || {});
 
