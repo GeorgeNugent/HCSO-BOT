@@ -14,6 +14,8 @@ const GUILD_ID = process.env.GUILD_ID;
 const MAIN_ROLE_GUILD_ID = process.env.GUILD_ID || "1533590255603810334";
 const PORT = Number(process.env.PORT) || 8100;
 const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://51.79.43.184:${PORT}`;
+const VEHICLE_OWNERSHIP_API_URL = process.env.VEHICLE_OWNERSHIP_API_URL || null;
+const VEHICLE_OWNERSHIP_API_TOKEN = process.env.VEHICLE_OWNERSHIP_API_TOKEN || "HendryCountyProject";
 
 const branding = getBranding();
 
@@ -841,7 +843,7 @@ async function sendApplicationQuestionDm(user, app, index) {
     }
 
     const embed = new EmbedBuilder()
-        .setColor("#4ea8de")
+        .setColor("#4ede96")
         .setTitle(app.departmentName)
         .setDescription(`${index + 1}/${questions.length}. ${question}`)
         .addFields({ name: "How to answer", value: "Send your answer in this DM. I will automatically move you to the next question." })
@@ -2294,6 +2296,46 @@ const commands = [
     ...ticketCommands,
 
     new SlashCommandBuilder()
+        .setName("importvehicle")
+        .setDescription("Import a vehicle into the FiveM ownership system")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .addStringOption(o => o.setName("model").setDescription("Vehicle spawn code").setRequired(true))
+        .addStringOption(o => o.setName("plate").setDescription("Vehicle plate").setRequired(true))
+        .addUserOption(o => o.setName("owner").setDescription("Vehicle owner").setRequired(true)),
+
+    new SlashCommandBuilder()
+        .setName("myvehicles")
+        .setDescription("View vehicles for yourself or another player")
+        .addUserOption(o => o.setName("user").setDescription("User to look up").setRequired(false)),
+
+    new SlashCommandBuilder()
+        .setName("assignvehicle")
+        .setDescription("Transfer ownership of a vehicle")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .addIntegerOption(o => o.setName("vehicle-id").setDescription("Vehicle ID").setRequired(true))
+        .addUserOption(o => o.setName("new-owner").setDescription("New owner").setRequired(true)),
+
+    new SlashCommandBuilder()
+        .setName("adddriver")
+        .setDescription("Whitelist a driver for a vehicle")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .addIntegerOption(o => o.setName("vehicle-id").setDescription("Vehicle ID").setRequired(true))
+        .addUserOption(o => o.setName("driver").setDescription("Driver to allow").setRequired(true)),
+
+    new SlashCommandBuilder()
+        .setName("removedriver")
+        .setDescription("Remove a whitelisted driver from a vehicle")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .addIntegerOption(o => o.setName("vehicle-id").setDescription("Vehicle ID").setRequired(true))
+        .addUserOption(o => o.setName("driver").setDescription("Driver to remove").setRequired(true)),
+
+    new SlashCommandBuilder()
+        .setName("revertownership")
+        .setDescription("Revert a vehicle to its previous owner")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .addIntegerOption(o => o.setName("vehicle-id").setDescription("Vehicle ID").setRequired(true)),
+
+    new SlashCommandBuilder()
         .setName("help")
         .setDescription("Show the help menu"),
 
@@ -2665,6 +2707,127 @@ client.on("interactionCreate", async interaction => {
         }
     } catch (e) {
         console.error(`[ERROR] Early interactionCreate error:`, e.message);
+    }
+
+    if (interaction.isChatInputCommand()) {
+        const isVehicleManagementCommand = ["importvehicle", "assignvehicle", "adddriver", "removedriver", "revertownership"].includes(interaction.commandName);
+        const canManageVehicles = interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)
+            || interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
+            || isBotOwner(interaction.member);
+
+        if (isVehicleManagementCommand && !canManageVehicles) {
+            await interaction.reply({
+                content: "You do not have permission to manage vehicle ownership.",
+                flags: MessageFlags.Ephemeral
+            });
+            return;
+        }
+
+        try {
+            await interaction.deferReply({ ephemeral: true });
+
+            if (interaction.commandName === "importvehicle") {
+                const model = interaction.options.getString("model", true);
+                const plate = interaction.options.getString("plate", true);
+                const ownerUser = interaction.options.getUser("owner", true);
+                const result = await sendVehicleOwnershipRequest({
+                    action: "import",
+                    model,
+                    plate,
+                    owner: String(ownerUser.id),
+                    imported_by: String(interaction.user.id)
+                });
+
+                const embed = buildVehicleOwnershipEmbed(
+                    "✅ Vehicle Imported",
+                    `Vehicle **${model}** was imported for <@${ownerUser.id}> with plate **${plate}**.\n\n${result?.message || "The FiveM server accepted the request."}`
+                );
+                await interaction.editReply({ embeds: [embed] });
+                return;
+            }
+
+            if (interaction.commandName === "myvehicles") {
+                const targetUser = interaction.options.getUser("user") || interaction.user;
+                const result = await sendVehicleOwnershipRequest({ action: "list", discordId: String(targetUser.id) });
+                const vehicles = Array.isArray(result?.vehicles) ? result.vehicles : [];
+                const embed = buildVehicleOwnershipEmbed(
+                    `🚗 Vehicles for ${targetUser.username}`,
+                    formatVehicleOwnershipList(vehicles),
+                    "#4ea8de"
+                );
+                await interaction.editReply({ embeds: [embed] });
+                return;
+            }
+
+            if (interaction.commandName === "assignvehicle") {
+                const vehicleId = interaction.options.getInteger("vehicle-id", true);
+                const newOwnerUser = interaction.options.getUser("new-owner", true);
+                const result = await sendVehicleOwnershipRequest({
+                    action: "assign",
+                    vehicle_id: vehicleId,
+                    new_owner: String(newOwnerUser.id),
+                    assigned_by: String(interaction.user.id)
+                });
+                const embed = buildVehicleOwnershipEmbed(
+                    "✅ Ownership Assigned",
+                    `Vehicle ID **${vehicleId}** was assigned to <@${newOwnerUser.id}>.\n\n${result?.message || "The FiveM server accepted the request."}`
+                );
+                await interaction.editReply({ embeds: [embed] });
+                return;
+            }
+
+            if (interaction.commandName === "adddriver") {
+                const vehicleId = interaction.options.getInteger("vehicle-id", true);
+                const driverUser = interaction.options.getUser("driver", true);
+                const result = await sendVehicleOwnershipRequest({
+                    action: "add_driver",
+                    vehicle_id: vehicleId,
+                    driver_id: String(driverUser.id)
+                });
+                const embed = buildVehicleOwnershipEmbed(
+                    "✅ Driver Added",
+                    `Driver <@${driverUser.id}> was added to vehicle ID **${vehicleId}**.\n\n${result?.message || "The FiveM server accepted the request."}`
+                );
+                await interaction.editReply({ embeds: [embed] });
+                return;
+            }
+
+            if (interaction.commandName === "removedriver") {
+                const vehicleId = interaction.options.getInteger("vehicle-id", true);
+                const driverUser = interaction.options.getUser("driver", true);
+                const result = await sendVehicleOwnershipRequest({
+                    action: "remove_driver",
+                    vehicle_id: vehicleId,
+                    driver_id: String(driverUser.id)
+                });
+                const embed = buildVehicleOwnershipEmbed(
+                    "✅ Driver Removed",
+                    `Driver <@${driverUser.id}> was removed from vehicle ID **${vehicleId}**.\n\n${result?.message || "The FiveM server accepted the request."}`
+                );
+                await interaction.editReply({ embeds: [embed] });
+                return;
+            }
+
+            if (interaction.commandName === "revertownership") {
+                const vehicleId = interaction.options.getInteger("vehicle-id", true);
+                const result = await sendVehicleOwnershipRequest({
+                    action: "revert",
+                    vehicle_id: vehicleId
+                });
+                const embed = buildVehicleOwnershipEmbed(
+                    "🔄 Ownership Reverted",
+                    `Vehicle ID **${vehicleId}** was reverted.\n\n${result?.message || "The FiveM server accepted the request."}`
+                );
+                await interaction.editReply({ embeds: [embed] });
+                return;
+            }
+        } catch (error) {
+            console.error("Vehicle ownership command failed:", error);
+            await interaction.editReply({
+                content: `❌ ${error.message || "The vehicle ownership request failed."}`
+            });
+            return;
+        }
     }
 
     // Handle button clicks
