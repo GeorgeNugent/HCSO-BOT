@@ -217,6 +217,14 @@ local function handleList(body)
     }
 end
 
+local function handleListAll(body)
+    local vehicles = MySQL.query.await('SELECT * FROM vehicle_ownership', {})
+    return {
+        success = true,
+        vehicles = vehicles or {}
+    }
+end
+
 local function handleVehicleOwnershipRequest(req, res)
     local body = nil
     if req.body and req.body ~= '' then
@@ -250,6 +258,8 @@ local function handleVehicleOwnershipRequest(req, res)
         result = handleRevert(body)
     elseif action == 'list' then
         result = handleList(body)
+    elseif action == 'list_all' then
+        result = handleListAll(body)
     else
         result = { success = false, message = 'Unsupported action.' }
     end

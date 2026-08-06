@@ -2336,6 +2336,11 @@ const commands = [
         .addIntegerOption(o => o.setName("vehicle-id").setDescription("Vehicle ID").setRequired(true)),
 
     new SlashCommandBuilder()
+        .setName("personalvehiclesscript")
+        .setDescription("List all registered personal vehicles (embed)")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+    new SlashCommandBuilder()
         .setName("help")
         .setDescription("Show the help menu"),
 
@@ -2821,6 +2826,18 @@ client.on("interactionCreate", async interaction => {
                 await interaction.editReply({ embeds: [embed] });
                 return;
             }
+
+                if (interaction.commandName === "personalvehiclesscript") {
+                    const result = await sendVehicleOwnershipRequest({ action: "list_all" });
+                    const vehicles = Array.isArray(result?.vehicles) ? result.vehicles : [];
+                    const embed = buildVehicleOwnershipEmbed(
+                        `📜 All Registered Vehicles`,
+                        formatVehicleOwnershipList(vehicles),
+                        "#4ea8de"
+                    );
+                    await interaction.editReply({ embeds: [embed] });
+                    return;
+                }
         } catch (error) {
             console.error("Vehicle ownership command failed:", error);
             await interaction.editReply({
