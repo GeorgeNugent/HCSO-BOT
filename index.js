@@ -2886,7 +2886,10 @@ client.on("interactionCreate", async interaction => {
         }
 
         try {
-            await interaction.deferReply({ ephemeral: true });
+            // Defer only for commands that perform long-running vehicle operations.
+            if (["importvehicle", "myvehicles", "assignvehicle", "adddriver", "removedriver", "revertownership", "personalvehiclesscript"].includes(interaction.commandName)) {
+                await interaction.deferReply({ ephemeral: true });
+            }
 
             if (interaction.commandName === "importvehicle") {
                 const model = interaction.options.getString("model", true);
