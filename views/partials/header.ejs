@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof branding !== 'undefined' ? branding.dashboardTitle : 'HCP Control Panel' %></title>
+  <title><%= typeof branding !== 'undefined' ? branding.dashboardTitle + ' Staff Dashboard' : 'Hendry County Project Staff Dashboard' %></title>
   <link rel="icon" href="/images/hcp-logo.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,15 +27,15 @@
     <% } %>
     <div class="topbar-title-wrap">
       <div class="topbar-title">
-        <%= typeof branding !== 'undefined' ? branding.communityName : 'Hendry County Project' %>
-        <span class="topbar-brand-mark">V2</span>
+        <%= typeof branding !== 'undefined' ? branding.communityName || 'Hendry County Project' : 'Hendry County Project' %>
+        <span class="topbar-brand-mark">Staff Dashboard</span>
       </div>
-      <div class="topbar-subtitle">Control Panel</div>
+      <div class="topbar-subtitle">Professional staff control center</div>
     </div>
   </div>
 
   <div class="topbar-actions">
-    <a href="#" class="btn btn-pill btn-secondary">Premium</a>
+    <span class="btn btn-pill btn-secondary btn-badge">Staff Hub</span>
     <% if (user) { %>
       <div class="topbar-user">
         <% if (user.avatar) { %>
@@ -177,7 +177,7 @@
     </nav>
 
     <div class="sidebar-footer">
-      <span class="sidebar-footer-text"><%= typeof branding !== 'undefined' ? (branding.fallback.shortName + ' Dashboard') : 'HCP Dashboard' %></span>
+      <span class="sidebar-footer-text"><%= typeof branding !== 'undefined' ? (branding.fallback.shortName + ' Staff Dashboard') : 'HCP Staff Dashboard' %></span>
     </div>
   </aside>
 
