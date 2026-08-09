@@ -3933,7 +3933,8 @@ client.on("interactionCreate", async interaction => {
                     .setTitle("✏️ Member Demoted")
                     .setDescription(`<@${userId}> has been demoted.`)
                     .addFields(
-                        { name: "Role Removed", value: `<@&${roleId}>`, inline: true },
+                        { name: "Role Removed", value: `<@&${roleId}>`
+                        , inline: true },
                         { name: "Demoted By", value: interaction.user.username, inline: true }
                     )
                     .setTimestamp();
