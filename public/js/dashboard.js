@@ -45,14 +45,21 @@ async function submitForm(form) {
     resultEl.className = "inline-result";
 
     try {
-        const body = {};
-        new FormData(form).forEach((v, k) => { body[k] = v; });
-
-        const res = await fetch(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        });
+        // If the form contains a file input with selected files, send multipart FormData
+        const fileInput = form.querySelector('input[type=file]');
+        let res;
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            const formData = new FormData(form);
+            res = await fetch(endpoint, { method: "POST", body: formData });
+        } else {
+            const body = {};
+            new FormData(form).forEach((v, k) => { body[k] = v; });
+            res = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+        }
 
         const data = await res.json();
 

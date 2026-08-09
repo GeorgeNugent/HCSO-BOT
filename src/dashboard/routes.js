@@ -5,6 +5,9 @@
 import { Router } from "express";
 import { ActivityType, EmbedBuilder } from "discord.js";
 import { getAllDepartments, getBranding } from "../embeds/departmentThemes.js";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 /**
  * @param {Object}   context   - Shared bot state passed in from index.js
@@ -55,6 +58,31 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         fhp: "1533634237884793053"
     };
     const router   = Router();
+    // Ensure uploads directory exists for announcement images
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+        try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) { /* ignore */ }
+    }
+
+    const storage = multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, uploadDir);
+        },
+        filename: function (req, file, cb) {
+            const safe = (file.originalname || file.fieldname).replace(/[^a-zA-Z0-9._-]/g, '_');
+            cb(null, `${Date.now()}-${safe}`);
+        }
+    });
+
+    const upload = multer({
+        storage,
+        limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
+        fileFilter: (req, file, cb) => {
+            if (!file || !file.mimetype) return cb(null, false);
+            if (file.mimetype.startsWith('image/')) return cb(null, true);
+            cb(null, false);
+        }
+    });
     const TARGET_GUILD_ID = "1533590255603810334";
     const DEPARTMENT_INVITE_LINKS = {
         [TARGET_GUILD_ID]: "https://discord.gg/qmwhsPwEDy"
@@ -1313,7 +1341,7 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
     });
 
     // ── API: Announce ─────────────────────────────────────────────────────────
-    router.post("/api/commands/announce", requireStaff, segmentGuard("commands"), async (req, res) => {
+    router.post("/api/commands/announce", requireStaff, segmentGuard("commands"), upload.single('image'), async (req, res) => {
         try {
             const { channelId, title, message } = req.body;
             if (!channelId || !message) return res.status(400).json({ error: "Missing channelId or message" });
@@ -1334,7 +1362,20 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
                 .setFooter({ text: `Posted by ${req.session.user.username} via ${branding.dashboardTitle}` })
                 .setTimestamp();
 
-            await channel.send({ embeds: [embed] });
+            // If an image was uploaded, attach it to the message and reference it in the embed
+            if (req.file && req.file.path) {
+                const attachmentPath = req.file.path;
+                const attachmentName = req.file.originalname || req.file.filename || path.basename(attachmentPath);
+                try {
+                    embed.setImage(`attachment://${attachmentName}`);
+                } catch (e) {
+                    // ignore embed image errors
+                }
+
+                await channel.send({ embeds: [embed], files: [{ attachment: attachmentPath, name: attachmentName }] });
+            } else {
+                await channel.send({ embeds: [embed] });
+            }
 
             await sendDashboardActionLog({
                 guildId: GUILD_ID,
