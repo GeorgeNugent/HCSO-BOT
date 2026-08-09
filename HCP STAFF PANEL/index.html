@@ -252,7 +252,7 @@ body{
 
 <header class="header">
     <a href="#" class="brand">
-        <img src="assets/HCP-Main.png" alt="Hendry County Project">
+        <img src="/assets/hcp-main.png" alt="Hendry County Project" onerror="this.style.display='none'">
         <div class="brand-text">
             <div class="brand-name">Hendry County <span>Project</span></div>
             <div class="brand-subtitle">Online Dashboard For Bot</div>
@@ -427,13 +427,12 @@ async function refreshSession(){
             loginButton.hidden = true;
             accountNameEl.textContent = currentUser.tag || `${currentUser.username}#${currentUser.discriminator || '0000'}`;
 
-            if (currentUser.avatar) {
-                if (typeof currentUser.avatar === 'string' && currentUser.avatar.startsWith('http')) {
-                    avatarEl.src = currentUser.avatar;
-                } else {
-                    const avatarExtension = currentUser.avatar.startsWith('a_') ? 'gif' : 'png';
-                    avatarEl.src = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.${avatarExtension}?size=64`;
-                }
+            if (currentUser.avatarUrl) {
+                avatarEl.src = currentUser.avatarUrl;
+                avatarEl.alt = currentUser.username || currentUser.tag;
+            } else if (currentUser.avatarHash) {
+                const avatarExtension = currentUser.avatarHash.startsWith('a_') ? 'gif' : 'png';
+                avatarEl.src = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatarHash}.${avatarExtension}?size=64`;
                 avatarEl.alt = currentUser.username || currentUser.tag;
             } else {
                 const defaultAvatarId = Number(currentUser.discriminator || 0) % 5;
