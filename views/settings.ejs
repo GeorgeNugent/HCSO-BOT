@@ -1,0 +1,259 @@
+<%- include('partials/header') %>
+
+<div class="page-header">
+  <h2 class="page-title">⚙️ Settings</h2>
+  <p class="page-subtitle">Bot configuration overview</p>
+</div>
+
+<!-- Bot Status -->
+<div class="section-card">
+  <h3 class="section-title">Bot Status</h3>
+  <p class="section-desc">Current: <strong><%= cfg.currentStatus %></strong></p>
+  <form class="cmd-form" style="max-width:400px;">
+    <label>Set New Status</label>
+    <select id="statusSelect">
+      <option value="online"           <%= cfg.currentStatus === 'online'           ? 'selected' : '' %>>🟢 Online</option>
+      <option value="idle"             <%= cfg.currentStatus === 'idle'             ? 'selected' : '' %>>🌙 Idle</option>
+      <option value="dnd"              <%= cfg.currentStatus === 'dnd'              ? 'selected' : '' %>>⛔ Do Not Disturb</option>
+      <option value="invisible"        <%= cfg.currentStatus === 'invisible'        ? 'selected' : '' %>>👻 Invisible</option>
+      <option value="watching_patrol"  <%= cfg.currentStatus === 'watching_patrol'  ? 'selected' : '' %>>👀 Watching Patrol Logs</option>
+      <option value="listening_radio"  <%= cfg.currentStatus === 'listening_radio'  ? 'selected' : '' %>>🎧 Listening to Radio Traffic</option>
+      <option value="playing_hcp"     <%= cfg.currentStatus === 'playing_hcp'     ? 'selected' : '' %>><%= typeof branding !== 'undefined' ? '🎮 Playing ' + (branding.fallback.shortName || 'HCP') + ' Operations' : '🎮 Playing HCSO Operations' %></option>
+      <option value="watching_hcp"      <%= cfg.currentStatus === 'watching_hcp'      ? 'selected' : '' %>><%= typeof branding !== 'undefined' ? '🏘️ Watching Over ' + branding.communityName : '🏘️ Watching Over Hendry County' %></option>
+      <option value="competing_patrol" <%= cfg.currentStatus === 'competing_patrol' ? 'selected' : '' %>>🏆 Competing in Patrol Hours</option>
+    </select>
+    <button type="button" class="btn btn-info" onclick="updateStatus()">Apply Status</button>
+    <div id="status-result" class="inline-result" style="display:none"></div>
+  </form>
+</div>
+
+<!-- Log Channels -->
+<div class="section-card" style="margin-top:20px;">
+  <h3 class="section-title">Configured Log Channels</h3>
+  <% const lcKeys = Object.entries(cfg.logChannels).filter(([k,v]) => typeof v === 'string' && v); %>
+  <% if (lcKeys.length === 0) { %>
+    <p class="empty-state">No log channels configured. Use <code>/set-log-channel</code> in Discord.</p>
+  <% } else { %>
+  <table class="log-table">
+    <thead><tr><th>Log Type</th><th>Channel ID</th></tr></thead>
+    <tbody>
+      <% lcKeys.forEach(([type, id]) => { %>
+      <tr>
+        <td><strong><%= type %></strong></td>
+        <td><code><%= id %></code></td>
+      </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+
+<!-- Blacklist join action -->
+<div class="section-card" style="margin-top:20px;">
+  <h3 class="section-title">Blacklist Join Action</h3>
+  <p class="section-desc">
+    When a blacklisted user joins the server, the bot will automatically:
+    <strong><%= cfg.blacklistJoinAction === 'kick' ? 'Kick' : 'Ban' %></strong> them.
+  </p>
+  <p class="section-desc">Change this setting using <code>/set-blacklist-action</code> in Discord.</p>
+</div>
+
+<!-- Ticket System -->
+<div class="section-card" style="margin-top:20px;">
+  <h3 class="section-title">Ticket System</h3>
+  <p class="section-desc">Configure the category where new support tickets will be opened and the button labels shown on the ticket panel.</p>
+  <form class="cmd-form" style="max-width:640px;">
+    <label for="ticketCategoryId">Ticket Category ID</label>
+    <input id="ticketCategoryId" type="text" value="<%= cfg.ticketCategory || '' %>" placeholder="Enter a category ID">
+
+    <label for="ticketPanelTitle" style="margin-top:12px;">Ticket Panel Title</label>
+    <input id="ticketPanelTitle" type="text" value="<%= cfg.ticketPanelTitle || '' %>" placeholder="🎫 Open a Support Ticket">
+
+    <label for="ticketPanelDescription" style="margin-top:12px;">Ticket Panel Description</label>
+    <textarea id="ticketPanelDescription" rows="4" placeholder="Describe what tickets are for and how they work"><%= cfg.ticketPanelDescription || '' %></textarea>
+
+    <label for="ticketPanelImageUrl" style="margin-top:12px;">Ticket Panel Image URL</label>
+    <input id="ticketPanelImageUrl" type="text" value="<%= cfg.ticketPanelImageUrl || '' %>" placeholder="https://example.com/image.png">
+
+    <label for="ticketButtonLabels" style="margin-top:12px;">Ticket Panel Buttons (one per line)</label>
+    <textarea id="ticketButtonLabels" rows="5" placeholder="Support&#10;Bug Report&#10;Feature Request"><% if (cfg.ticketTypes && cfg.ticketTypes.length > 0) { %><%= cfg.ticketTypes.map(t => t.label).join('\n') %><% } %></textarea>
+
+    <label style="margin-top:12px; display:flex; align-items:center; gap:10px; cursor:pointer;">
+      <input id="ticketPanelEphemeral" type="checkbox" <%= cfg.ticketPanelEphemeral ? 'checked' : '' %>>
+      <span>Make ticket panel replies ephemeral</span>
+    </label>
+
+    <button type="button" class="btn btn-info" onclick="updateTicketSystemSettings()">Save Ticket Settings</button>
+    <div id="ticket-settings-result" class="inline-result" style="display:none"></div>
+  </form>
+</div>
+
+<div class="section-card" style="margin-top:20px;">
+  <h3 class="section-title">Ticket Panel Preview</h3>
+  <div id="ticket-panel-preview" style="padding:16px; border:1px solid #d0d7de; border-radius:10px; background:#f4f8ff;">
+    <div id="ticket-preview-title" style="font-size:18px; font-weight:700; margin-bottom:8px;">🎫 Open a Support Ticket</div>
+    <div id="ticket-preview-description" style="margin-bottom:12px; color:#4a5568;">Describe what tickets are for and how they work.</div>
+    <img id="ticket-preview-image" src="" alt="Ticket Panel Preview Image" style="display:none; width:100%; max-height:240px; object-fit:cover; border-radius:8px; margin-bottom:12px;" />
+    <div id="ticket-preview-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+  </div>
+</div>
+
+<% if (cfg.ticketTypes && cfg.ticketTypes.length > 0) { %>
+  <div style="margin-top:16px;">
+    <h4 class="section-title" style="font-size:14px;">Current Panel Buttons</h4>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      <% cfg.ticketTypes.forEach(t => { %>
+      <span class="filter-chip <%= t.enabled ? 'active' : '' %>">
+        <%= t.label %> <%= t.enabled ? '' : '(hidden)' %>
+      </span>
+      <% }); %>
+    </div>
+  </div>
+  <% } %>
+</div>
+
+<!-- Module Role Access -->
+<div class="section-card" style="margin-top:20px;">
+  <h3 class="section-title">Module Role Access</h3>
+  <table class="log-table">
+    <thead><tr><th>Module</th><th>Allowed Role IDs</th></tr></thead>
+    <tbody>
+      <% Object.entries(cfg.moduleRoleAccess).forEach(([mod, ids]) => { %>
+      <tr>
+        <td><strong><%= mod %></strong></td>
+        <td><% if (ids.length === 0) { %>
+          <span class="text-muted">Default (role name check)</span>
+        <% } else { %>
+          <% ids.forEach(id => { %><code><%= id %></code> <% }); %>
+        <% } %></td>
+      </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  <p class="section-desc" style="margin-top:8px;">Use <code>/set-module-access</code> in Discord to configure these.</p>
+</div>
+
+<!-- Bot Owner Access (separate page) -->
+<div class="section-card" style="margin-top:20px;">
+  <h3 class="section-title">Bot Owner Access</h3>
+  <% if (isBotOwner) { %>
+    <p class="section-desc">Open the dedicated Bot Owner page to manage dashboard segment role access with cleaner dropdown controls.</p>
+    <a href="/bot-owner" class="btn btn-info" style="margin-top:8px;">Open Bot Owner Page</a>
+  <% } else { %>
+    <p class="section-desc">Only the Bot Owner account can access the Bot Owner page.</p>
+  <% } %>
+</div>
+
+<script>
+async function updateStatus() {
+  const status = document.getElementById("statusSelect").value;
+  const resultEl = document.getElementById("status-result");
+  resultEl.style.display = "block";
+  resultEl.className = "inline-result";
+  resultEl.textContent = "Updating...";
+
+  try {
+    const r = await fetch("/api/settings/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+    const d = await r.json();
+    if (d.success) {
+      resultEl.textContent = "✅ Status updated!";
+      resultEl.classList.add("result-success");
+    } else {
+      resultEl.textContent = "❌ " + (d.error || "Failed");
+      resultEl.classList.add("result-error");
+    }
+  } catch (e) {
+    resultEl.textContent = "❌ Network error";
+    resultEl.classList.add("result-error");
+  }
+}
+
+async function updateTicketSystemSettings() {
+  const categoryId = document.getElementById("ticketCategoryId").value.trim();
+  const ticketPanelTitle = document.getElementById("ticketPanelTitle").value.trim();
+  const ticketPanelDescription = document.getElementById("ticketPanelDescription").value.trim();
+  const ticketPanelImageUrl = document.getElementById("ticketPanelImageUrl").value.trim();
+  const ticketPanelEphemeral = document.getElementById("ticketPanelEphemeral").checked;
+  const buttonLabels = document.getElementById("ticketButtonLabels").value
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const resultEl = document.getElementById("ticket-settings-result");
+  resultEl.style.display = "block";
+  resultEl.className = "inline-result";
+  resultEl.textContent = "Saving...";
+
+  try {
+    const r = await fetch("/api/settings/ticket-system", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoryId, ticketPanelTitle, ticketPanelDescription, ticketPanelImageUrl, ticketPanelEphemeral, buttonLabels })
+    });
+    const d = await r.json();
+    if (d.success) {
+      resultEl.textContent = "✅ Ticket settings saved!";
+      resultEl.classList.add("result-success");
+    } else {
+      resultEl.textContent = "❌ " + (d.error || "Failed");
+      resultEl.classList.add("result-error");
+    }
+  } catch (e) {
+    resultEl.textContent = "❌ Network error";
+    resultEl.classList.add("result-error");
+  }
+}
+
+function updateTicketPanelPreview() {
+  const title = document.getElementById("ticketPanelTitle").value.trim() || "🎫 Open a Support Ticket";
+  const description = document.getElementById("ticketPanelDescription").value.trim() || "Describe what tickets are for and how they work.";
+  const imageUrl = document.getElementById("ticketPanelImageUrl").value.trim();
+  const buttonLabels = document.getElementById("ticketButtonLabels").value
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  document.getElementById("ticket-preview-title").textContent = title;
+  document.getElementById("ticket-preview-description").textContent = description;
+
+  const previewImage = document.getElementById("ticket-preview-image");
+  if (imageUrl) {
+    previewImage.src = imageUrl;
+    previewImage.style.display = "block";
+  } else {
+    previewImage.style.display = "none";
+  }
+
+  const buttonsContainer = document.getElementById("ticket-preview-buttons");
+  buttonsContainer.innerHTML = "";
+  if (buttonLabels.length === 0) {
+    buttonsContainer.innerHTML = "<span style='color:#718096;'>No ticket buttons configured.</span>";
+  } else {
+    buttonLabels.forEach(label => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      btn.style.padding = "10px 14px";
+      btn.style.border = "none";
+      btn.style.borderRadius = "999px";
+      btn.style.background = "#4f46e5";
+      btn.style.color = "#fff";
+      btn.style.cursor = "default";
+      buttonsContainer.appendChild(btn);
+    });
+  }
+}
+
+document.getElementById("ticketPanelTitle").addEventListener("input", updateTicketPanelPreview);
+document.getElementById("ticketPanelDescription").addEventListener("input", updateTicketPanelPreview);
+document.getElementById("ticketPanelImageUrl").addEventListener("input", updateTicketPanelPreview);
+document.getElementById("ticketButtonLabels").addEventListener("input", updateTicketPanelPreview);
+
+window.addEventListener("load", updateTicketPanelPreview);
+
+</script>
+
+<%- include('partials/footer') %>

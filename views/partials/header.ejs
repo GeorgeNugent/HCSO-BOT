@@ -1,0 +1,184 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof branding !== 'undefined' ? branding.dashboardTitle : 'HCP Control Panel' %></title>
+  <link rel="icon" href="/images/hcp-logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<header class="topbar">
+  <button class="hamburger" id="hamburgerBtn" aria-label="Open navigation" aria-expanded="false" aria-controls="mainSidebar">
+    <span></span><span></span><span></span>
+  </button>
+
+  <div class="topbar-brand">
+    <% if (botAvatar) { %>
+      <img src="<%= botAvatar %>" alt="Logo" class="topbar-avatar" onerror="this.style.display='none'">
+    <% } else { %>
+      <div class="topbar-avatar topbar-avatar--placeholder">H</div>
+    <% } %>
+    <div class="topbar-title-wrap">
+      <div class="topbar-title">
+        <%= typeof branding !== 'undefined' ? branding.communityName : 'Hendry County Project' %>
+        <span class="topbar-brand-mark">V2</span>
+      </div>
+      <div class="topbar-subtitle">Control Panel</div>
+    </div>
+  </div>
+
+  <div class="topbar-actions">
+    <a href="#" class="btn btn-pill btn-secondary">Premium</a>
+    <% if (user) { %>
+      <div class="topbar-user">
+        <% if (user.avatar) { %>
+          <img src="<%= user.avatar %>" alt="User" class="topbar-user-avatar" onerror="this.style.display='none'">
+        <% } else { %>
+          <span class="topbar-user-avatar topbar-user-avatar--placeholder"><%= user.username.charAt(0) %></span>
+        <% } %>
+        <span class="topbar-username"><%= user.username %></span>
+        <a href="/auth/logout" class="btn btn-sm btn-outline">Logout</a>
+      </div>
+    <% } %>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="mainSidebar">
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Main</div>
+      <% if (isBotOwner || !segmentAccess || segmentAccess.home) { %>
+        <a href="/" class="nav-link <%= page === 'home' ? 'active' : '' %>">
+          <span class="nav-icon">🏠</span>
+          <span class="nav-label">Home</span>
+        </a>
+      <% } %>
+
+      <% var hasDepartmentApplicationAccess = departmentApplicationAccess && (departmentApplicationAccess.hcso || departmentApplicationAccess.cpd || departmentApplicationAccess.fhp); %>
+      <% var canSeeStaffSection = isBotOwner || (!hasDepartmentApplicationAccess && (!segmentAccess || segmentAccess.status || segmentAccess.commands || segmentAccess.logs || segmentAccess.applications || segmentAccess.settings)); %>
+      <% if (canSeeStaffSection) { %>
+        <div class="sidebar-section-label">Staff</div>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.status) { %>
+          <a href="/status" class="nav-link <%= page === 'status' ? 'active' : '' %>">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Bot Status</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.commands) { %>
+          <a href="/commands" class="nav-link <%= page === 'commands' ? 'active' : '' %>">
+            <span class="nav-icon">⚡</span>
+            <span class="nav-label">Commands</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.logs) { %>
+          <a href="/logs" class="nav-link <%= page === 'logs' ? 'active' : '' %>">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">Logs</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.applications) { %>
+          <a href="/applications" class="nav-link <%= page === 'applications' ? 'active' : '' %>">
+            <span class="nav-icon">📝</span>
+            <span class="nav-label">Applications</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || !segmentAccess || segmentAccess.settings) { %>
+          <a href="/settings" class="nav-link <%= page === 'settings' ? 'active' : '' %>">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">Settings</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner) { %>
+          <a href="/bot-owner" class="nav-link <%= page === 'bot-owner' ? 'active' : '' %>">
+            <span class="nav-icon">👑</span>
+            <span class="nav-label">Owner</span>
+          </a>
+        <% } %>
+      <% } %>
+
+      <% var canSeeDepartmentApplicationSection = isBotOwner || departmentApplicationAccess.hcso || departmentApplicationAccess.cpd || departmentApplicationAccess.fhp || departmentApplicationAccess.cfd || departmentApplicationAccess.ems; %>
+      <% if (canSeeDepartmentApplicationSection) { %>
+        <div class="sidebar-section-label">Department Applications</div>
+        <% if (isBotOwner || departmentApplicationAccess.hcso) { %>
+          <a href="/applications/hcso" class="nav-link <%= page === 'applications-hcso' ? 'active' : '' %>">
+            <span class="nav-icon">🛡️</span>
+            <span class="nav-label">HCSO</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || departmentApplicationAccess.cpd) { %>
+          <a href="/applications/cpd" class="nav-link <%= page === 'applications-cpd' ? 'active' : '' %>">
+            <span class="nav-icon">🚔</span>
+            <span class="nav-label">CPD</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || departmentApplicationAccess.fhp) { %>
+          <a href="/applications/fhp" class="nav-link <%= page === 'applications-fhp' ? 'active' : '' %>">
+            <span class="nav-icon">🚓</span>
+            <span class="nav-label">FHP</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || departmentApplicationAccess.cfd) { %>
+          <a href="/applications/cfd" class="nav-link <%= page === 'applications-cfd' ? 'active' : '' %>">
+            <span class="nav-icon">🚒</span>
+            <span class="nav-label">CFD</span>
+          </a>
+        <% } %>
+        <% if (isBotOwner || departmentApplicationAccess.ems) { %>
+          <a href="/applications/ems" class="nav-link <%= page === 'applications-ems' ? 'active' : '' %>">
+            <span class="nav-icon">🚑</span>
+            <span class="nav-label">EMS</span>
+          </a>
+        <% } %>
+      <% } %>
+
+      <% if (isBotOwner || !segmentAccess || segmentAccess.departments) { %>
+        <% var visibleDepartmentIds = Array.isArray(accessibleDepartmentIds) ? accessibleDepartmentIds.map(String) : []; %>
+        <% var deptServers = Object.entries(typeof departments !== 'undefined' ? departments : {}).filter(function(entry){
+             var dept = entry[1] || {};
+             return dept.type === 'department' && visibleDepartmentIds.includes(String(entry[0]));
+           }).map(function(entry){
+             return {
+               id: entry[0],
+               name: entry[1].name,
+               shortName: entry[1].shortName,
+               logo: entry[1].logo
+             };
+           }); %>
+        <% var canSeeLawSection = isBotOwner || deptServers.length > 0; %>
+        <% if (canSeeLawSection) { %>
+          <div class="sidebar-section-label">Law Enforcement</div>
+          <a href="/departments/joint" class="nav-link <%= page === 'joint' ? 'active' : '' %>">
+            <span class="nav-icon">🤝</span>
+            <span class="nav-label">Joint Ops</span>
+          </a>
+          <% deptServers.forEach(function(srv) { %>
+            <a href="/departments/<%= srv.id %>" class="nav-link <%= page === 'department' && typeof guildId !== 'undefined' && guildId === srv.id ? 'active' : '' %>">
+              <% if (srv.logo) { %>
+                <span class="nav-icon" style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;"><img src="<%= srv.logo %>" alt="" style="width:24px;height:24px;border-radius:6px;object-fit:contain;" onerror="this.parentElement.textContent='🏛️'"></span>
+              <% } else { %>
+                <span class="nav-icon">🏛️</span>
+              <% } %>
+              <span class="nav-label"><%= srv.shortName || srv.name %></span>
+            </a>
+          <% }); %>
+          <a href="/servers" class="nav-link <%= page === 'servers' ? 'active' : '' %>">
+            <span class="nav-icon">🌐</span>
+            <span class="nav-label">All Servers</span>
+          </a>
+        <% } %>
+      <% } %>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="sidebar-footer-text"><%= typeof branding !== 'undefined' ? (branding.fallback.shortName + ' Dashboard') : 'HCP Dashboard' %></span>
+    </div>
+  </aside>
+
+  <main class="main-content">

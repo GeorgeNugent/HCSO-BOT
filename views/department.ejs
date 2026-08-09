@@ -1,0 +1,915 @@
+<%- include('partials/header') %>
+
+<style>
+  :root {
+    --dept-color:     <%= dept.color %>;
+    --dept-color-a13: <%= dept.color %>22;
+    --dept-color-a26: <%= dept.color %>44;
+  }
+  .dept-header        { border-left: 4px solid var(--dept-color); padding-left: 16px; }
+  .dept-icon-img      { width:64px;height:64px;border-radius:50%;border:3px solid var(--dept-color); }
+  .dept-icon-placeholder {
+    width:64px;height:64px;border-radius:50%;
+    background:var(--dept-color-a13);border:3px solid var(--dept-color);
+    display:flex;align-items:center;justify-content:center;font-size:28px;
+  }
+  .dept-color-display { color: var(--dept-color); }
+  .dept-color-swatch  { width:16px;height:16px;border-radius:3px;background:var(--dept-color);display:inline-block; }
+  .member-avatar      { width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:8px; }
+  .strike-pip         { display:inline-block;width:10px;height:10px;border-radius:50%;background:#e74c3c;margin-right:2px; }
+  .strike-pip.empty   { background:var(--border); }
+  .modal-overlay      { display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal-box          { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;min-width:340px;max-width:460px;width:100%; }
+  .modal-title        { font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:16px; }
+  .form-group         { margin-bottom:14px; }
+  .form-group label   { display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px; }
+  .member-search      { width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:14px;margin-bottom:12px; }
+  .action-btns        { display:flex;gap:8px;flex-wrap:wrap; }
+  .btn-strike  { background:#e67e22;color:#fff;border:none; }
+  .btn-kick    { background:#c0392b;color:#fff;border:none; }
+  .btn-timeout { background:#8e44ad;color:#fff;border:none; }
+  .btn-ban     { background:#2c3e50;color:#fff;border:none; }
+    .btn-strike-remove { background:#555;color:#fff;border:none; }
+  #memberTable {
+    width: 100%;
+    min-width: 1180px;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  #memberTable th {
+    text-align: left;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  #memberTable td {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border)50;
+    vertical-align: middle;
+  }
+  #memberTable .col-member  { width: 27%; min-width: 240px; }
+  #memberTable .col-roles   { width: 35%; min-width: 320px; }
+  #memberTable .col-strikes { width: 11%; min-width: 120px; }
+  #memberTable .col-joined  { width: 10%; min-width: 110px; }
+  #memberTable .col-actions { width: 17%; min-width: 220px; }
+  .role-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .role-pill {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--surface2);
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dept-tabs {
+    margin: 8px 0 18px;
+    padding-bottom: 0;
+    border-bottom: none;
+    gap: 8px;
+  }
+  .dept-tabs .tab-btn {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 9px 14px;
+  }
+  .dept-tabs .tab-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--dept-color-a26);
+    background: var(--dept-color-a13);
+  }
+  .dept-tabs .tab-btn.active {
+    color: #fff;
+    border-color: transparent;
+    border-bottom: 1px solid transparent;
+    background: var(--dept-color);
+    box-shadow: 0 10px 22px var(--dept-color-a26);
+  }
+  .form-control {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--surface2);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+  }
+  textarea.form-control {
+    resize: vertical;
+    min-height: 84px;
+  }
+  select.form-control {
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 34px;
+  }
+  .form-control::placeholder {
+    color: var(--text-muted);
+  }
+  .form-control:focus {
+    outline: none;
+    border-color: var(--dept-color);
+    box-shadow: 0 0 0 4px var(--dept-color-a13);
+    background: var(--surface);
+  }
+  .form-control option {
+    background: var(--surface);
+    color: var(--text-primary);
+  }
+  .cmd-card .btn,
+  .cmd-card .btn-primary {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: var(--dept-color);
+    color: #fff;
+    font-weight: 700;
+    padding: 9px 14px;
+    box-shadow: 0 8px 18px var(--dept-color-a26);
+  }
+  .cmd-card .btn:hover,
+  .cmd-card .btn-primary:hover {
+    filter: brightness(1.06);
+  }
+  .cmd-card .btn[style*="#c0392b"] {
+    background: #b93a32 !important;
+    box-shadow: 0 8px 18px rgba(185, 58, 50, .22);
+  }
+  input[type="checkbox"] {
+    accent-color: var(--dept-color);
+  }
+</style>
+
+<!-- Header -->
+<div class="page-header dept-header">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <% if (detail.icon) { %>
+      <img src="<%= detail.icon %>" alt="" class="dept-icon-img" onerror="this.style.display='none'">
+    <% } else { %>
+      <div class="dept-icon-placeholder">🏛️</div>
+    <% } %>
+    <div>
+      <h2 class="page-title" style="margin:0;"><%= dept.name %></h2>
+      <p class="page-subtitle" style="margin:4px 0 0;">
+        <%= detail.name %> &nbsp;·&nbsp; <%= detail.memberCount.toLocaleString() %> members
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Stats row -->
+<div class="stats-grid" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-icon">👥</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= detail.memberCount.toLocaleString() %></div>
+      <div class="stat-label">Total Members</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">👤</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= members.length %></div>
+      <div class="stat-label">Loaded</div>
+    </div>
+  </div>
+  <div class="stat-card stat-card--ok">
+    <div class="stat-icon">🟢</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= detail.online ? 'Online' : 'Offline' %></div>
+      <div class="stat-label">Bot Status</div>
+    </div>
+  </div>
+  <div class="stat-card stat-card--warn">
+    <div class="stat-icon">⚖️</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= members.reduce(function(s,m){return s+m.strikeCount},0) %></div>
+      <div class="stat-label">Total Strikes</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab bar -->
+<%
+  var deptCode = String(dept.shortName || '').toUpperCase();
+  var useCommandTabNames = ['HCSO', 'CPD', 'FHP'].includes(deptCode);
+%>
+<div class="tab-bar dept-tabs">
+  <button class="tab-btn active" data-dtab="dtab-members"><%= useCommandTabNames ? '🔨 Moderation' : '👥 Members' %></button>
+  <button class="tab-btn" data-dtab="dtab-cases">📋 Cases</button>
+  <button class="tab-btn" data-dtab="dtab-loa"><%= useCommandTabNames ? '🌴 Staff Mgmt' : '🌴 LOA Manager' %></button>
+  <button class="tab-btn" data-dtab="dtab-logs">🧾 View Logs</button>
+  <button class="tab-btn" data-dtab="dtab-settings">⚙️ Settings</button>
+</div>
+
+<!-- ─── Members tab panel ─────────────────────────────────────────────── -->
+<div id="dtab-members" class="tab-panel active">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><%= useCommandTabNames ? '🔨 Moderation' : '👥 Members' %></h3>
+    </div>
+    <div class="card-body" style="padding-top:12px;">
+      <input type="text" id="memberSearch" class="member-search" placeholder="🔍  Search members…" oninput="filterMembers()">
+      <% if (members.length === 0) { %>
+        <p style="color:var(--text-muted);padding:12px 0;">
+          No members loaded.
+          <% if (memberLoadError) { %>
+            Error: <%= memberLoadError %>
+          <% } else { %>
+            Bot may not have access to fetch members for this server.
+          <% } %>
+        </p>
+      <% } else { %>
+      <div style="overflow-x:auto;">
+        <table class="table" id="memberTable">
+          <thead>
+            <tr>
+              <th class="col-member">Member</th>
+              <th class="col-roles">Roles</th>
+              <th class="col-strikes">Strikes</th>
+              <th class="col-joined">Joined</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% members.forEach(function(m) { %>
+            <tr data-name="<%= m.name.toLowerCase() %>" data-username="<%= m.username.toLowerCase() %>">
+              <td class="col-member">
+                <img src="<%= m.avatar %>" alt="" class="member-avatar" onerror="this.style.display='none'">
+                <span style="font-weight:600;color:var(--text-primary);"><%= m.name %></span>
+                <% if (m.timedOut) { %><span class="badge" style="background:#8e44ad22;color:#8e44ad;margin-left:4px;">⏱ Timed out</span><% } %>
+              </td>
+              <td class="col-roles" style="font-size:12px;color:var(--text-muted);">
+                <div class="role-cell">
+                  <span class="role-pill" title="<%= m.highestRole %>"><%= m.highestRole %></span>
+                </div>
+              </td>
+              <td class="col-strikes">
+                <% for(var i=0;i<MAX_STRIKES;i++){ %>
+                  <span class="strike-pip <%= i < m.strikeCount ? '' : 'empty' %>"></span>
+                <% } %>
+                <span style="font-size:11px;color:var(--text-muted);margin-left:4px;"><%= m.strikeCount %>/<%= MAX_STRIKES %></span>
+              </td>
+              <td class="col-joined" style="font-size:12px;color:var(--text-muted);"><%= m.joinedAt %></td>
+              <td class="col-actions">
+                <div class="action-btns">
+                  <button class="btn btn-sm btn-strike" data-action="strike" data-id="<%= m.id %>" data-name="<%= m.name %>" onclick="openModal(this.dataset.action,this.dataset.id,this.dataset.name)">⚖️ Strike</button>
+                  <button class="btn btn-sm btn-timeout" data-action="timeout" data-id="<%= m.id %>" data-name="<%= m.name %>" onclick="openModal(this.dataset.action,this.dataset.id,this.dataset.name)">⏱ Timeout</button>
+                  <button class="btn btn-sm btn-kick" data-action="kick" data-id="<%= m.id %>" data-name="<%= m.name %>" onclick="openModal(this.dataset.action,this.dataset.id,this.dataset.name)">👢 Kick</button>
+                  <button class="btn btn-sm btn-ban" data-action="ban" data-id="<%= m.id %>" data-name="<%= m.name %>" onclick="openModal(this.dataset.action,this.dataset.id,this.dataset.name)">🔨 Ban</button>
+                  <button class="btn btn-sm btn-strike-remove" data-action="strike-remove" data-id="<%= m.id %>" data-name="<%= m.name %>" onclick="openModal(this.dataset.action,this.dataset.id,this.dataset.name)">❌ Remove Strike</button>
+                </div>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <a href="/servers" class="btn btn-outline">← Back to All Servers</a>
+  </div>
+</div><!-- end dtab-members -->
+
+<!-- ─── Cases tab panel ──────────────────────────────────────────────────── -->
+<div id="dtab-cases" class="tab-panel">
+  <% if (caseCreated) { %>
+    <div class="alert alert-success" style="margin-bottom:12px;">✅ Case <strong><%= caseCreated %></strong> created successfully.</div>
+  <% } %>
+  <% if (caseError) { %>
+    <div class="alert alert-danger" style="margin-bottom:12px;">❌ <%= caseError %></div>
+  <% } %>
+  <% if ((deptCases||[]).length === 0) { %>
+    <p style="color:var(--text-muted);padding:8px 0;">No cases for this department yet. Create one below.</p>
+  <% } %>
+  <div class="cmd-grid">
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">🆕</span><div class="cmd-card-title">Create Case</div></div>
+      <div class="cmd-card-body">
+        <form method="POST" action="/departments/<%= guildId %>/case-create" novalidate>
+          <div class="form-group"><label>Title</label><input class="form-control" id="dc-title" name="title" placeholder="Case title…" required></div>
+          <div class="form-group"><label>Incident Type</label><input class="form-control" id="dc-type" name="incidentType" placeholder="e.g. Traffic Stop" required></div>
+          <div class="form-group"><label>Location</label><input class="form-control" id="dc-loc" name="location" placeholder="Location…" required></div>
+          <div class="form-group"><label>Suspect (optional)</label><input class="form-control" id="dc-suspect" name="suspect" placeholder="Unknown"></div>
+          <div class="form-group"><label>Summary</label><textarea class="form-control" id="dc-summary" name="summary" rows="3" placeholder="Brief summary…" required></textarea></div>
+          <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <input type="checkbox" id="dc-joint" name="jointOps" value="true" style="width:auto;margin:0;">
+            <label for="dc-joint" style="margin:0;color:var(--text);cursor:pointer;">🤝 Joint Ops — visible to all departments</label>
+          </div>
+          <button type="submit" id="dc-create-btn" class="btn btn-primary btn-sm">Create</button>
+        </form>
+        <div id="dc-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">📂</span><div class="cmd-card-title">View Case</div></div>
+      <div class="cmd-card-body">
+        <div class="form-group"><label>Case</label>
+          <select class="form-control" id="dc-view-id">
+            <% (deptCases||[]).forEach(function(c){ %><option value="<%= c.id %>"><%= c.id %> — <%= c.title %> (<%= c.status %>)</option><% }); %>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="deptCaseAction('/api/guild/'+DEPT_GUILD_ID+'/case-view',{caseId:document.getElementById('dc-view-id').value},'dc-view-result')">View</button>
+        <div id="dc-view-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">📁</span><div class="cmd-card-title">Close Case</div></div>
+      <div class="cmd-card-body">
+        <div class="form-group"><label>Case</label>
+          <select class="form-control" id="dc-close-id">
+            <% (deptOpenCases||[]).forEach(function(c){ %><option value="<%= c.id %>"><%= c.id %> — <%= c.title %></option><% }); %>
+          </select>
+        </div>
+        <div class="form-group"><label>Reason</label><input class="form-control" id="dc-close-reason" placeholder="Closing reason…"></div>
+        <button class="btn btn-primary btn-sm" onclick="deptCaseAction('/api/guild/'+DEPT_GUILD_ID+'/case-close',{caseId:document.getElementById('dc-close-id').value,reason:document.getElementById('dc-close-reason').value},'dc-close-result')">Close Case</button>
+        <div id="dc-close-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">📌</span><div class="cmd-card-title">Assign Case</div></div>
+      <div class="cmd-card-body">
+        <div class="form-group"><label>Case</label>
+          <select class="form-control" id="dc-assign-id">
+            <% (deptCases||[]).forEach(function(c){ %><option value="<%= c.id %>"><%= c.id %> — <%= c.title %></option><% }); %>
+          </select>
+        </div>
+        <div class="form-group"><label>Assign To</label>
+          <select class="form-control" id="dc-assign-user">
+            <% (members||[]).forEach(function(m){ %><option value="<%= m.id %>"><%= m.name %></option><% }); %>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="(function(){ var sel=document.getElementById('dc-assign-user'); deptCaseAction('/api/guild/'+DEPT_GUILD_ID+'/case-assign',{caseId:document.getElementById('dc-assign-id').value,assignTo:sel.value,assignToName:sel.options[sel.selectedIndex].text},'dc-assign-result'); })()">Assign</button>
+        <div id="dc-assign-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">📸</span><div class="cmd-card-title">Add Evidence</div></div>
+      <div class="cmd-card-body">
+        <div class="form-group"><label>Case</label>
+          <select class="form-control" id="dc-evi-id">
+            <% (deptCases||[]).forEach(function(c){ %><option value="<%= c.id %>"><%= c.id %> — <%= c.title %></option><% }); %>
+          </select>
+        </div>
+        <div class="form-group"><label>Description</label><textarea class="form-control" id="dc-evi-desc" rows="2" placeholder="Evidence details…"></textarea></div>
+        <button class="btn btn-primary btn-sm" onclick="deptCaseAction('/api/guild/'+DEPT_GUILD_ID+'/evidence-add',{caseId:document.getElementById('dc-evi-id').value,evidence:document.getElementById('dc-evi-desc').value},'dc-evi-result')">Add Evidence</button>
+        <div id="dc-evi-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">🔍</span><div class="cmd-card-title">View Evidence</div></div>
+      <div class="cmd-card-body">
+        <div class="form-group"><label>Case</label>
+          <select class="form-control" id="dc-evview-id">
+            <% (deptCases||[]).forEach(function(c){ %><option value="<%= c.id %>"><%= c.id %> — <%= c.title %></option><% }); %>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="viewEvidence()">View Evidence</button>
+        <div id="dc-evview-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">🗑️</span><div class="cmd-card-title">Delete Case</div></div>
+      <div class="cmd-card-body">
+        <div class="form-group"><label>Case</label>
+          <select class="form-control" id="dc-del-id">
+            <% (deptCases||[]).forEach(function(c){ %><option value="<%= c.id %>"><%= c.id %> — <%= c.title %></option><% }); %>
+          </select>
+        </div>
+        <div class="form-group"><label>Type YES to confirm</label><input class="form-control" id="dc-del-confirm" placeholder="YES"></div>
+        <button class="btn btn-sm" style="background:#c0392b;color:#fff;border:none;" onclick="deptCaseAction('/api/guild/'+DEPT_GUILD_ID+'/case-delete',{caseId:document.getElementById('dc-del-id').value,confirmation:document.getElementById('dc-del-confirm').value},'dc-del-result')">🗑️ Delete</button>
+        <div id="dc-del-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+  </div>
+</div><!-- end dtab-cases -->
+
+<!-- ─── LOA Manager tab panel ─────────────────────────────────────────────── -->
+<div id="dtab-loa" class="tab-panel">
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><h3 class="card-title"><%= useCommandTabNames ? '🌴 Staff Mgmt — Current LOA' : '🌴 Currently On LOA' %> (<%= (usersOnLoa||[]).length %>)</h3></div>
+    <div class="card-body">
+      <% if (!(usersOnLoa||[]).length) { %>
+        <p style="color:var(--text-muted);">No members currently on LOA for this department.</p>
+      <% } else { %>
+        <% (usersOnLoa||[]).forEach(function(u){ %>
+          <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <span><strong><%= u.name %></strong></span>
+            <span style="font-size:12px;color:var(--text-muted);"><%= u.startDate %> → <%= u.endDate %></span>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+  </div>
+  <div class="cmd-grid">
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">🌴</span><div class="cmd-card-title">Set LOA</div></div>
+      <div class="cmd-card-body">
+        <div class="form-group"><label>Member</label>
+          <select class="form-control" id="dloa-user">
+            <% (members||[]).forEach(function(m){ %><option value="<%= m.id %>"><%= m.name %></option><% }); %>
+          </select>
+        </div>
+        <div class="form-group"><label>Start Date (MM-DD-YYYY)</label><input class="form-control" id="dloa-start" placeholder="03-01-2026"></div>
+        <div class="form-group"><label>End Date (MM-DD-YYYY)</label><input class="form-control" id="dloa-end" placeholder="03-15-2026"></div>
+        <div class="form-group"><label>Reason (optional)</label><input class="form-control" id="dloa-reason" placeholder="Vacation, medical…"></div>
+        <button class="btn btn-primary btn-sm" onclick="deptLOAAction()">Set LOA</button>
+        <div id="dloa-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+    <% if (canManageEndLoa || !isHcsoDepartment) { %>
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">✅</span><div class="cmd-card-title">End LOA</div></div>
+      <div class="cmd-card-body">
+        <% if ((usersOnLoa||[]).length > 0) { %>
+          <div class="form-group"><label>Member</label>
+            <select class="form-control" id="dloa-end-user">
+              <% (usersOnLoa||[]).forEach(function(u){ %><option value="<%= u.id %>"><%= u.name %></option><% }); %>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="deptCaseAction('/api/guild/'+DEPT_GUILD_ID+'/end-loa',{userId:document.getElementById('dloa-end-user').value},'dloa-end-result')">End LOA</button>
+        <% } else { %>
+          <p style="color:var(--text-muted);">No members are currently on LOA.</p>
+        <% } %>
+        <div id="dloa-end-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+    <% } else if (isHcsoDepartment) { %>
+    <div class="cmd-card">
+      <div class="cmd-card-header"><span class="cmd-card-icon">✅</span><div class="cmd-card-title">End LOA</div></div>
+      <div class="cmd-card-body">
+        <p style="color:var(--text-muted);">Only supervisors+ can end LOA in this department.</p>
+      </div>
+    </div>
+    <% } %>
+  </div>
+</div><!-- end dtab-loa -->
+
+<!-- ─── View Logs tab panel ────────────────────────────────────────────────── -->
+<div id="dtab-logs" class="tab-panel">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">⚖️ Strike Log</h3></div>
+    <div class="card-body">
+      <% if (!(deptStrikeLogs||[]).length) { %>
+        <p style="color:var(--text-muted);">No strikes on record for this department.</p>
+      <% } else { %>
+        <div style="overflow-x:auto;">
+          <table class="table" style="min-width:520px;">
+            <thead><tr><th>Member</th><th>Reason</th><th>Given By</th><th>Date</th></tr></thead>
+            <tbody>
+              <% (deptStrikeLogs||[]).forEach(function(log){ %>
+              <tr>
+                <td style="font-weight:600;color:var(--text-primary);"><%= log.name %></td>
+                <td><%= log.reason %></td>
+                <td style="font-size:12px;color:var(--text-muted);"><%= log.givenBy %></td>
+                <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;"><%= log.date %></td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div><!-- end dtab-logs -->
+
+<!-- ─── Settings tab panel ──────────────────────────────────────────────── -->
+<div id="dtab-settings" class="tab-panel">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">⚙️ Staff Access Settings</h3></div>
+    <div class="card-body">
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:24px;">Select which staff roles from the main server can access this department.</p>
+      
+      <!-- Department Access (Main Server Roles) -->
+      <div>
+        <h4 style="color:var(--text-primary);font-weight:600;margin-bottom:12px;">👥 Department Access</h4>
+        <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">Select roles from the main server that can view and manage this department on the dashboard.</p>
+        <div id="dept-access-loading" style="color:var(--text-muted);">Loading roles…</div>
+        <div id="dept-access-container" style="display:none;margin-bottom:12px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;"></div>
+        <button class="btn btn-primary btn-sm" onclick="saveDeptAccess()" id="dept-access-save-btn" style="display:none;">Save Department Access</button>
+        <div id="dept-access-result" style="display:none;margin-top:10px;padding:8px;border-radius:6px;"></div>
+      </div>
+    </div>
+  </div>
+</div><!-- end dtab-settings -->
+
+<!-- ── Action modal ───────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="actionModal" data-max-strikes="<%= MAX_STRIKES %>">
+  <div class="modal-box">
+    <h3 class="modal-title" id="modalTitle">Action</h3>
+    <div id="modalFields"></div>
+    <div style="display:flex;gap:10px;margin-top:18px;">
+      <button class="btn btn-primary" onclick="submitModal()" id="modalSubmitBtn">Confirm</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>
+    <div id="modalResult" style="margin-top:12px;display:none;"></div>
+  </div>
+</div>
+
+<script>
+  var GUILD_ID = '<%= guildId %>';
+  var MAX_STRIKES = parseInt(document.getElementById('actionModal').dataset.maxStrikes, 10);
+  var currentAction = null;
+  var currentUserId = null;
+
+  var ACTIONS = {
+    strike:  { title:'⚖️ Give Strike',   endpoint:'/api/guild/'+GUILD_ID+'/strike',   fields:['reason'] },
+    timeout: { title:'⏱ Timeout Member', endpoint:'/api/guild/'+GUILD_ID+'/timeout',  fields:['minutes','reason'] },
+    kick:    { title:'👢 Kick Member',    endpoint:'/api/guild/'+GUILD_ID+'/kick',     fields:['reason'] },
+    ban:     { title:'🔨 Ban Member',     endpoint:'/api/guild/'+GUILD_ID+'/ban',      fields:['reason'] }
+  };
+    ACTIONS['strike-remove'] = { title:'❌ Remove Strike', endpoint:'/api/guild/'+GUILD_ID+'/strike-remove', fields:['amount'] };
+
+  function openModal(action, userId, name) {
+    currentAction = action;
+    currentUserId = userId;
+    var cfg = ACTIONS[action];
+    document.getElementById('modalTitle').textContent = cfg.title + ' — ' + name;
+    var html = '<input type="hidden" id="mUserId" value="'+userId+'">';
+    if (cfg.fields.includes('minutes')) {
+      html += '<div class="form-group"><label>Duration (minutes)</label><input class="form-control" id="mMinutes" type="number" min="1" max="40320" value="60"></div>';
+    }
+    if (cfg.fields.includes('reason')) {
+      html += '<div class="form-group"><label>Reason</label><input class="form-control" id="mReason" type="text" placeholder="Enter reason…"></div>';
+    }
+      if (cfg.fields.includes('amount')) {
+        html += '<div class="form-group"><label>Strikes to Remove</label><input class="form-control" id="mAmount" type="number" min="1" max="'+MAX_STRIKES+'" value="1"></div>';
+      }
+    document.getElementById('modalFields').innerHTML = html;
+    document.getElementById('modalResult').style.display = 'none';
+    document.getElementById('actionModal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('actionModal').classList.remove('open');
+  }
+
+  async function submitModal() {
+    var cfg = ACTIONS[currentAction];
+    var body = { userId: currentUserId };
+    var reasonEl  = document.getElementById('mReason');
+    var minutesEl = document.getElementById('mMinutes');
+    var amountEl  = document.getElementById('mAmount');
+    if (reasonEl)  body.reason  = reasonEl.value.trim();
+    if (minutesEl) body.minutes = minutesEl.value;
+    if (amountEl)  body.amount  = amountEl.value;
+
+    if (!body.reason && cfg.fields.includes('reason')) {
+      showModalResult('error', 'Please enter a reason.');
+      return;
+    }
+
+    var btn = document.getElementById('modalSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Working…';
+
+    try {
+      var res = await fetch(cfg.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      var data = await res.json();
+      if (data.success) {
+        showModalResult('ok', 'Done! ' + (data.totalStrikes !== undefined ? 'Strikes: '+data.totalStrikes+'/'+MAX_STRIKES : ''));
+        setTimeout(function(){ closeModal(); location.reload(); }, 1200);
+      } else {
+        showModalResult('error', data.error || 'Something went wrong.');
+      }
+    } catch(e) {
+      showModalResult('error', 'Request failed: ' + e.message);
+    }
+    btn.disabled = false;
+    btn.textContent = 'Confirm';
+  }
+
+  function showModalResult(type, msg) {
+    var el = document.getElementById('modalResult');
+    el.style.display = 'block';
+    el.className = type === 'ok' ? 'alert alert-success' : 'alert alert-danger';
+    el.textContent = msg;
+  }
+
+  function filterMembers() {
+    var q = document.getElementById('memberSearch').value.toLowerCase();
+    document.querySelectorAll('#memberTable tbody tr').forEach(function(row) {
+      var name = row.dataset.name || '';
+      var user = row.dataset.username || '';
+      row.style.display = (name.includes(q) || user.includes(q)) ? '' : 'none';
+    });
+  }
+
+  document.getElementById('actionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+    // ── Department tab switching ──────────────────────────────────────────────
+    var DEPT_GUILD_ID = '<%= guildId %>';
+    document.querySelectorAll('.tab-btn[data-dtab]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn[data-dtab]').forEach(function(b){ b.classList.remove('active'); });
+        document.querySelectorAll('#dtab-members,#dtab-cases,#dtab-loa,#dtab-logs,#dtab-settings').forEach(function(p){ p.classList.remove('active'); });
+        this.classList.add('active');
+        var panel = document.getElementById(this.dataset.dtab);
+        if (panel) panel.classList.add('active');
+      });
+    });
+
+    // ── Department AJAX helper ────────────────────────────────────────────────
+    async function deptCaseAction(endpoint, body, resultId) {
+      var el = document.getElementById(resultId);
+      if (el) el.style.display = 'none';
+      try {
+        var r = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+        var d = await r.json();
+        if (el) {
+          el.style.display = 'block';
+          if (!d.success) {
+            el.style.color = '#e74c3c';
+            el.style.background = 'rgba(231,76,60,.12)';
+            el.style.border = '1px solid #e74c3c50';
+            el.textContent = d.error || 'Something went wrong.';
+            return;
+          }
+          // If the response includes a case object, render its details
+          if (d.case) {
+            var c = d.case;
+            var status = c.status || (c.closedAt ? 'Closed' : 'Open');
+            var evidence = Array.isArray(c.evidence) ? c.evidence.length : 0;
+            // Resolve assigned name from members dropdown if available
+            var assignedDisplay = 'Unassigned';
+            if (c.assignedTo) {
+              var assignSel = document.getElementById('dc-assign-user');
+              if (assignSel) {
+                for (var i = 0; i < assignSel.options.length; i++) {
+                  if (assignSel.options[i].value === c.assignedTo) { assignedDisplay = assignSel.options[i].text; break; }
+                }
+                if (assignedDisplay === 'Unassigned') assignedDisplay = c.assignedTo;
+              } else { assignedDisplay = c.assignedTo; }
+            }
+            var rows = [
+              ['ID', c.id || '—'],
+              ['Title', c.title || '—'],
+              ['Status', status],
+              ['Incident Type', c.incidentType || '—'],
+              ['Location', c.location || '—'],
+              ['Suspect', c.suspect || '—'],
+              ['Assigned To', assignedDisplay],
+              ['Summary', c.summary || '—'],
+              ['Evidence Items', evidence],
+              ['Opened At', c.createdAt ? new Date(c.createdAt).toLocaleString() : '—'],
+              ['Submitted By', c.officerId || '—'],
+            ];
+            if (c.closedAt) rows.push(['Closed At', new Date(c.closedAt).toLocaleString()]);
+            if (c.reopenReason) rows.push(['Reopen Reason', c.reopenReason]);
+            var table = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+            rows.forEach(function(row) {
+              table += '<tr style="border-bottom:1px solid rgba(255,255,255,0.07)">'
+                + '<td style="padding:5px 8px;color:#aaa;white-space:nowrap;width:130px">' + row[0] + '</td>'
+                + '<td style="padding:5px 8px;color:#eee;word-break:break-word">' + row[1] + '</td>'
+                + '</tr>';
+            });
+            table += '</table>';
+            el.style.color = '#eee';
+            el.style.background = 'rgba(46,204,113,.08)';
+            el.style.border = '1px solid #2ecc7150';
+            el.innerHTML = table;
+          } else {
+            el.style.color = '#2ecc71';
+            el.style.background = 'rgba(46,204,113,.12)';
+            el.style.border = '1px solid #2ecc7150';
+            el.textContent = d.message || 'Done!';
+          }
+        }
+      } catch(e) {
+        if (el) { el.style.display='block'; el.style.color='#e74c3c'; el.textContent='Request failed: '+e.message; }
+      }
+    }
+
+    async function viewEvidence() {
+      var caseId = document.getElementById('dc-evview-id').value;
+      var el = document.getElementById('dc-evview-result');
+      el.style.display = 'none';
+      try {
+        var r = await fetch('/api/guild/'+DEPT_GUILD_ID+'/case-view', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({caseId:caseId}) });
+        var d = await r.json();
+        el.style.display = 'block';
+        if (!d.success || !d.case) {
+          el.style.color='#e74c3c'; el.style.background='rgba(231,76,60,.12)'; el.style.border='1px solid #e74c3c50';
+          el.textContent = d.error || 'Failed to load evidence.';
+          return;
+        }
+        var evidence = Array.isArray(d.case.evidence) ? d.case.evidence : [];
+        el.style.color='#eee'; el.style.background='rgba(78,168,222,.08)'; el.style.border='1px solid rgba(78,168,222,.3)';
+        if (evidence.length === 0) {
+          el.textContent = 'No evidence submitted for this case.';
+          return;
+        }
+        var html = '<strong style="color:#4ea8de">Evidence for ' + caseId + ' (' + evidence.length + ' item' + (evidence.length!==1?'s':'') + ')</strong>';
+        html += '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">';
+        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.15)"><th style="padding:4px 8px;text-align:left;color:#aaa">#</th><th style="padding:4px 8px;text-align:left;color:#aaa">Description</th><th style="padding:4px 8px;text-align:left;color:#aaa">Added At</th></tr>';
+        evidence.forEach(function(ev, i) {
+          html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
+            + '<td style="padding:5px 8px;color:#aaa">' + (i+1) + '</td>'
+            + '<td style="padding:5px 8px;color:#eee;word-break:break-word">' + (ev.text||'—') + '</td>'
+            + '<td style="padding:5px 8px;color:#aaa;white-space:nowrap">' + (ev.addedAt ? new Date(ev.addedAt).toLocaleString() : '—') + '</td>'
+            + '</tr>';
+        });
+        html += '</table>';
+        el.innerHTML = html;
+      } catch(e) {
+        el.style.display='block'; el.style.color='#e74c3c'; el.textContent='Request failed: '+e.message;
+      }
+    }
+
+    function deptCaseCreate() {
+      var resultEl = document.getElementById('dc-result');
+      try {
+        var titleEl = document.getElementById('dc-title');
+        var typeEl = document.getElementById('dc-type');
+        var locEl = document.getElementById('dc-loc');
+        var suspectEl = document.getElementById('dc-suspect');
+        var summaryEl = document.getElementById('dc-summary');
+        var jointEl = document.getElementById('dc-joint');
+
+        if (!titleEl || !typeEl || !locEl || !summaryEl) {
+          if (resultEl) {
+            resultEl.style.display = 'block';
+            resultEl.style.color = '#e74c3c';
+            resultEl.style.background = 'rgba(231,76,60,.12)';
+            resultEl.style.border = '1px solid #e74c3c50';
+            resultEl.textContent = 'Create form is missing required fields on the page.';
+          }
+          return;
+        }
+
+        var title = titleEl.value.trim();
+        var incidentType = typeEl.value.trim();
+        var location = locEl.value.trim();
+        var suspect = suspectEl ? suspectEl.value.trim() : '';
+        var summary = summaryEl.value.trim();
+        var joint = !!(jointEl && jointEl.checked);
+
+        if (resultEl) {
+          resultEl.style.display = 'block';
+          resultEl.style.color = '#4ea8de';
+          resultEl.style.background = 'rgba(78,168,222,.12)';
+          resultEl.style.border = '1px solid rgba(78,168,222,.35)';
+          resultEl.textContent = 'Submitting case...';
+        }
+
+        if (!title || !incidentType || !location || !summary) {
+          if (resultEl) {
+            resultEl.style.display = 'block';
+            resultEl.style.color = '#e74c3c';
+            resultEl.style.background = 'rgba(231,76,60,.12)';
+            resultEl.style.border = '1px solid #e74c3c50';
+            resultEl.textContent = 'Title, incident type, location, and summary are required.';
+          }
+          return;
+        }
+
+        deptCaseAction('/api/guild/'+DEPT_GUILD_ID+'/case-create', {
+          title: title,
+          incidentType: incidentType,
+          location: location,
+          suspect: suspect,
+          summary: summary,
+          jointOps: joint ? 'true' : 'false'
+        }, 'dc-result');
+      } catch (e) {
+        if (resultEl) {
+          resultEl.style.display = 'block';
+          resultEl.style.color = '#e74c3c';
+          resultEl.style.background = 'rgba(231,76,60,.12)';
+          resultEl.style.border = '1px solid #e74c3c50';
+          resultEl.textContent = 'Create failed before request: ' + e.message;
+        }
+      }
+    }
+
+    function deptLOAAction() {
+      deptCaseAction('/api/guild/'+DEPT_GUILD_ID+'/loa', {
+        userId:    document.getElementById('dloa-user').value,
+        startDate: document.getElementById('dloa-start').value,
+        endDate:   document.getElementById('dloa-end').value,
+        reason:    document.getElementById('dloa-reason') ? document.getElementById('dloa-reason').value : ''
+      }, 'dloa-result');
+    }
+
+    // ── Settings Tab Functions ────────────────────────────────────────────────
+    var deptSettingsCache = { roles: [], deptAccess: [] };
+
+    async function loadDepartmentSettings() {
+      try {
+        const res = await fetch('/api/guild/' + GUILD_ID + '/settings', { method: 'GET' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to load settings');
+        
+        deptSettingsCache.roles = data.mainServerRoles || [];
+        deptSettingsCache.deptAccess = data.departmentAccess || [];
+        
+        renderRoleCheckboxes('dept-access-container', 'dept-access-loading', deptSettingsCache.deptAccess, 'dept-access-save-btn');
+      } catch(e) {
+        console.error('Error loading settings:', e);
+        document.getElementById('dept-access-loading').textContent = 'Error loading settings: ' + e.message;
+      }
+    }
+
+    function renderRoleCheckboxes(containerId, loadingId, selectedIds, saveBtnId) {
+      const container = document.getElementById(containerId);
+      const loading = document.getElementById(loadingId);
+      
+      if (!deptSettingsCache.roles || deptSettingsCache.roles.length === 0) {
+        loading.textContent = 'No roles available from main server.';
+        return;
+      }
+
+      // Hide loading, show container
+      loading.style.display = 'none';
+      container.style.display = 'block';
+      document.getElementById(saveBtnId).style.display = 'inline-block';
+
+      // Clear and rebuild
+      container.innerHTML = '';
+      deptSettingsCache.roles.forEach(role => {
+        const isChecked = selectedIds.includes(role.id);
+        const label = document.createElement('label');
+        label.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;cursor:pointer;border-radius:6px;transition:background .16s;';
+        label.innerHTML = `
+          <input type="checkbox" value="${role.id}" ${isChecked ? 'checked' : ''} style="accent-color:var(--dept-color);cursor:pointer;width:16px;height:16px;">
+          <span style="color:${role.color || 'var(--text-primary)'};font-weight:500;">${role.name}</span>
+        `;
+        label.onmouseover = () => label.style.background = 'var(--surface2)';
+        label.onmouseout = () => label.style.background = 'transparent';
+        container.appendChild(label);
+      });
+    }
+
+    function getSelectedRoleIds(containerId) {
+      const container = document.getElementById(containerId);
+      const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+      return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    function showResult(resultId, success, message) {
+      const el = document.getElementById(resultId);
+      el.style.display = 'block';
+      el.style.color = success ? '#2ecc71' : '#e74c3c';
+      el.style.background = success ? 'rgba(46,204,113,.12)' : 'rgba(231,76,60,.12)';
+      el.style.border = '1px solid ' + (success ? '#2ecc7150' : '#e74c3c50');
+      el.textContent = message || (success ? 'Saved!' : 'Error saving');
+    }
+
+    async function saveDeptAccess() {
+      const roleIds = getSelectedRoleIds('dept-access-container');
+      try {
+        const res = await fetch('/api/guild/' + GUILD_ID + '/settings/department-access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roleIds })
+        });
+        const data = await res.json();
+        showResult('dept-access-result', data.success, data.message || (data.success ? 'Department access updated' : data.error));
+        if (data.success) deptSettingsCache.deptAccess = roleIds;
+      } catch(e) {
+        showResult('dept-access-result', false, 'Request failed: ' + e.message);
+      }
+    }
+
+    // Load settings when Settings tab is clicked
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        if (this.dataset.dtab === 'dtab-settings') {
+          loadDepartmentSettings();
+        }
+      });
+    });
+
+</script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,90 @@
+﻿<%- include('partials/header') %>
+
+<div class="page-hero">
+  <div>
+    <div class="page-title">Select a Server <span class="topbar-brand-mark">V2</span></div>
+    <p class="hero-text">Browse your server fleet with fast filters, status badges, and quick action buttons.</p>
+  </div>
+  <div class="hero-actions">
+    <a href="/commands" class="btn btn-primary">Manage Commands</a>
+    <a href="/settings" class="btn btn-secondary">View Settings</a>
+  </div>
+</div>
+
+<div class="page-section">
+  <div>
+    <h3 class="section-title">Server Browser</h3>
+    <p class="section-desc">Search by name or filter by status to find the exact server you need.</p>
+  </div>
+  <div class="server-filter-bar">
+    <input id="serverSearchInput" class="filter-input" type="search" placeholder="Search servers..." aria-label="Search servers">
+  </div>
+</div>
+
+<div class="server-grid" id="serverGrid">
+  <% if (servers.length === 0) { %>
+    <div class="server-card">
+      <div class="server-card-header">
+        <div class="server-card-meta">
+          <div class="server-card-title">No servers available</div>
+          <div class="server-card-subtitle">There are no configured servers to display right now.</div>
+        </div>
+      </div>
+    </div>
+  <% } else { %>
+    <% servers.forEach(function(srv) { %>
+      <div class="server-card" data-server-name="<%= (srv.name || '').toLowerCase() %>">
+        <div class="server-card-header">
+          <div class="server-card-brand">
+            <% if (srv.logo) { %>
+              <img class="server-logo" src="<%= srv.logo %>" alt="<%= srv.name %> logo" onerror="this.style.display='none'">
+            <% } else if (srv.icon) { %>
+              <img class="server-logo" src="<%= srv.icon %>" alt="<%= srv.name %> icon" onerror="this.style.display='none'">
+            <% } else { %>
+              <div class="server-logo" style="display:flex;align-items:center;justify-content:center;font-size:18px;">🏘️</div>
+            <% } %>
+            <div class="server-card-meta">
+              <div class="server-card-title"><%= srv.name %></div>
+              <div class="server-card-subtitle"><%= srv.department || 'Main server' %></div>
+            </div>
+          </div>
+          <div class="server-card-tags">
+            <span class="server-badge"><%= srv.memberCount.toLocaleString() %> members</span>
+            <span class="server-badge"><%= srv.online ? 'Online' : 'Offline' %></span>
+          </div>
+        </div>
+
+        <div class="server-card-body">
+          <div class="server-card-status <%= srv.online ? 'online' : 'offline' %>">
+            <span></span>
+            <%= srv.online ? 'Live' : 'Offline' %>
+          </div>
+          <div class="server-card-subtitle">ID: <code><%= srv.id %></code></div>
+        </div>
+
+        <div class="server-card-actions">
+          <a href="/departments/<%= srv.id %>" class="btn btn-primary">Open</a>
+          <a href="/departments/<%= srv.id %>" class="btn btn-secondary">Details</a>
+        </div>
+      </div>
+    <% }); %>
+  <% } %>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const filterInput = document.getElementById('serverSearchInput');
+    const cards = Array.from(document.querySelectorAll('#serverGrid .server-card'));
+    if (!filterInput || cards.length === 0) return;
+
+    filterInput.addEventListener('input', function() {
+      const query = this.value.trim().toLowerCase();
+      cards.forEach(card => {
+        const name = card.dataset.serverName || '';
+        card.style.display = name.includes(query) ? 'grid' : 'none';
+      });
+    });
+  });
+</script>
+
+<%- include('partials/footer') %>

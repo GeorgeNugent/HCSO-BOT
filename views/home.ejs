@@ -1,0 +1,310 @@
+﻿<%- include('partials/header') %>
+
+<div class="page-hero">
+  <div>
+    <div class="page-title">Welcome back, <%= user.username %> <span class="topbar-brand-mark">V2</span></div>
+    <p class="hero-text">Your control panel has been upgraded with faster navigation, clearer status summaries, and enhanced dashboard visibility.</p>
+  </div>
+  <div class="hero-actions">
+    <% if (!segmentAccess || segmentAccess.commands) { %>
+      <a href="/commands" class="btn btn-primary">Open Commands</a>
+    <% } %>
+    <% if (!segmentAccess || segmentAccess.logs) { %>
+      <a href="/logs" class="btn btn-secondary">View Logs</a>
+    <% } %>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon">🟢</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= ping %>ms</div>
+      <div class="stat-label">API Latency</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⏱️</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= uptime %></div>
+      <div class="stat-label">Uptime</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🏘️</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= guildCount %></div>
+      <div class="stat-label">Servers</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">👥</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= memberCount %></div>
+      <div class="stat-label">Members</div>
+    </div>
+  </div>
+</div>
+
+<div class="page-section">
+  <div>
+    <h3 class="section-title">Live Overview</h3>
+    <p class="section-desc">Track current activity and quickly jump to the most important sections.</p>
+  </div>
+  <div class="server-filter-bar">
+    <input id="dashboardSearch" class="filter-input" type="search" placeholder="Search commands, logs, departments..." aria-label="Search dashboard">
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon">⚖️</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= totalStrikes %></div>
+      <div class="stat-label">Total Strikes</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🚔</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= activePatrols %></div>
+      <div class="stat-label">Active Patrols</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🌴</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= activeLoas %></div>
+      <div class="stat-label">Active LOAs</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">📋</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= openCases %></div>
+      <div class="stat-label">Open Cases</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-card">
+  <div class="section-title">Quick Actions</div>
+  <div class="quick-grid">
+    <% if (!segmentAccess || segmentAccess.commands) { %>
+      <a href="/commands#moderation" class="quick-btn">🔨 Moderation</a>
+      <a href="/commands#staffmgmt" class="quick-btn">🌴 LOA Manager</a>
+      <a href="/commands#cases" class="quick-btn">📋 Cases</a>
+      <a href="/commands#announce" class="quick-btn">📢 Announce</a>
+    <% } %>
+    <% if (!segmentAccess || segmentAccess.logs) { %>
+      <a href="/logs" class="quick-btn">📜 Logs</a>
+    <% } %>
+    <% if (!segmentAccess || segmentAccess.status) { %>
+      <a href="/status" class="quick-btn">📊 Status</a>
+    <% } %>
+    <% if (isBotOwner) { %>
+      <a href="/bot-owner" class="quick-btn">👑 Owner</a>
+    <% } %>
+  </div>
+</div>
+
+<% if ((!segmentAccess || segmentAccess.departments) && typeof departments !== 'undefined' && Object.keys(departments).length > 0) { %>
+<div class="section-card" style="margin-top:20px;">
+  <div class="section-title">Departments</div>
+  <div class="quick-grid">
+    <a href="/servers" class="quick-btn">🌐 All Servers</a>
+    <% var visibleDepartmentIds = Array.isArray(accessibleDepartmentIds) ? accessibleDepartmentIds.map(String) : []; %>
+    <% Object.entries(departments).filter(function(entry){ return (entry[1] || {}).type === 'department' && (visibleDepartmentIds.length === 0 || visibleDepartmentIds.includes(String(entry[0]))); }).forEach(function(entry){ var gId = entry[0]; var dept = entry[1]; var deptColor = dept && dept.color ? dept.color : '#5865F2'; %>
+      <a href="/departments/<%= gId %>" class="quick-btn" data-dept-color="<%= deptColor %>"><%= dept.shortName || dept.name %></a>
+    <% }); %>
+  </div>
+</div>
+<% } %>
+
+<% if (typeof ticketCategory !== 'undefined' || typeof ticketTypes !== 'undefined') { %>
+<div class="section-card" style="margin-top:20px;">
+  <div class="section-title">🎫 Ticket System</div>
+  <p class="section-desc">Configure the category where new tickets open and the panel button labels.</p>
+  <form class="cmd-form" style="max-width:720px;">
+    <label for="homeTicketCategoryId">Ticket Category ID</label>
+    <input id="homeTicketCategoryId" type="text" value="<%= ticketCategory || '' %>" placeholder="Enter a category ID">
+
+    <label for="homeTicketPanelTitle" style="margin-top:12px;">Ticket Panel Title</label>
+    <input id="homeTicketPanelTitle" type="text" value="<%= ticketPanelTitle || '' %>" placeholder="🎫 Open a Support Ticket">
+
+    <label for="homeTicketPanelDescription" style="margin-top:12px;">Ticket Panel Description</label>
+    <textarea id="homeTicketPanelDescription" rows="4" placeholder="Describe what tickets are for"><%= ticketPanelDescription || '' %></textarea>
+
+    <label for="homeTicketPanelImageUrl" style="margin-top:12px;">Ticket Panel Image URL</label>
+    <input id="homeTicketPanelImageUrl" type="text" value="<%= ticketPanelImageUrl || '' %>" placeholder="https://example.com/image.png">
+
+    <label for="homeTicketButtonLabels" style="margin-top:12px;">Ticket Panel Buttons (one per line)</label>
+    <textarea id="homeTicketButtonLabels" rows="5" placeholder="Support&#10;Bug Report&#10;Feature Request"><% if (ticketTypes && ticketTypes.length > 0) { %><%= ticketTypes.map(t => t.label).join('\n') %><% } %></textarea>
+
+    <label style="margin-top:12px; display:flex; align-items:center; gap:10px; cursor:pointer;">
+      <input id="homeTicketPanelEphemeral" type="checkbox" <%= ticketPanelEphemeral ? 'checked' : '' %>>
+      <span>Make ticket panel replies ephemeral</span>
+    </label>
+
+    <button type="button" class="btn btn-primary" onclick="updateHomeTicketSystemSettings()">Save Ticket Settings</button>
+    <div id="home-ticket-settings-result" class="inline-result" style="display:none"></div>
+  </form>
+</div>
+<% } %>
+
+<% if (openTickets > 0) { %>
+<div class="alert alert-info" style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+  <div>📨 There are <strong><%= openTickets %></strong> open ticket(s) currently active.</div>
+  <button type="button" class="btn btn-danger" onclick="toggleCloseTicketPanel()">Close a Ticket</button>
+</div>
+<div id="close-ticket-panel" style="display:none; margin-top:16px; padding:16px; border:1px solid #b0c4de; border-radius:8px; background:#f7fbff; max-width:720px;">
+  <label for="closeTicketId">Select ticket to close</label>
+  <select id="closeTicketId" style="width:100%; padding:10px; margin-top:8px;">
+    <% openTicketList.forEach(ticket => { %>
+      <option value="<%= ticket.id %>"><%= ticket.id %> - <%= ticket.type %> (<%= ticket.channel %>)</option>
+    <% }); %>
+  </select>
+  <label for="closeTicketReason" style="margin-top:12px;">Reason (optional)</label>
+  <input id="closeTicketReason" type="text" style="width:100%; padding:10px; margin-top:8px;" placeholder="Reason for closing this ticket">
+  <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+    <button type="button" class="btn btn-danger" onclick="submitCloseTicket()">Close Selected Ticket</button>
+    <button type="button" class="btn btn-secondary" onclick="toggleCloseTicketPanel()">Cancel</button>
+  </div>
+  <div id="close-ticket-result" class="inline-result" style="display:none; margin-top:10px;"></div>
+</div>
+<% } %>
+
+<% if (closedTicketList && closedTicketList.length > 0) { %>
+<div class="alert alert-warning" style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+  <div>🗑️ There are <strong><%= closedTicketList.length %></strong> closed ticket channel(s) ready to be removed.</div>
+  <button type="button" class="btn btn-danger" onclick="toggleDeleteClosedTicketPanel()">Delete Closed Ticket Channel</button>
+</div>
+<div id="delete-closed-ticket-panel" style="display:none; margin-top:16px; padding:16px; border:1px solid #f0b27a; border-radius:8px; background:#fff6ef; max-width:720px;">
+  <label for="deleteClosedTicketId">Select closed ticket to remove</label>
+  <select id="deleteClosedTicketId" style="width:100%; padding:10px; margin-top:8px;">
+    <% closedTicketList.forEach(ticket => { %>
+      <option value="<%= ticket.id %>"><%= ticket.id %> - <%= ticket.type %> (<%= ticket.channel %>)</option>
+    <% }); %>
+  </select>
+  <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+    <button type="button" class="btn btn-danger" onclick="submitDeleteClosedTicket()">Delete Closed Ticket Channel</button>
+    <button type="button" class="btn btn-secondary" onclick="toggleDeleteClosedTicketPanel()">Cancel</button>
+  </div>
+  <div id="delete-closed-ticket-result" class="inline-result" style="display:none; margin-top:10px;"></div>
+</div>
+<% } %>
+
+<script>
+async function updateHomeTicketSystemSettings() {
+  const categoryId = document.getElementById("homeTicketCategoryId").value.trim();
+  const ticketPanelTitle = document.getElementById("homeTicketPanelTitle").value.trim();
+  const ticketPanelDescription = document.getElementById("homeTicketPanelDescription").value.trim();
+  const ticketPanelImageUrl = document.getElementById("homeTicketPanelImageUrl").value.trim();
+  const ticketPanelEphemeral = document.getElementById("homeTicketPanelEphemeral").checked;
+  const buttonLabels = document.getElementById("homeTicketButtonLabels").value
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const resultEl = document.getElementById("home-ticket-settings-result");
+  resultEl.style.display = "block";
+  resultEl.className = "inline-result";
+  resultEl.textContent = "Saving...";
+
+  try {
+    const r = await fetch("/api/settings/ticket-system", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoryId, ticketPanelTitle, ticketPanelDescription, ticketPanelImageUrl, ticketPanelEphemeral, buttonLabels })
+    });
+    const d = await r.json();
+    if (d.success) {
+      resultEl.textContent = "✅ Ticket settings saved!";
+      resultEl.classList.add("result-success");
+    } else {
+      resultEl.textContent = "❌ " + (d.error || "Failed");
+      resultEl.classList.add("result-error");
+    }
+  } catch (e) {
+    resultEl.textContent = "❌ Network error";
+    resultEl.classList.add("result-error");
+  }
+}
+
+document.querySelectorAll('[data-dept-color]').forEach((el) => {
+  const color = el.getAttribute('data-dept-color');
+  if (color) el.style.borderColor = color;
+});
+
+function toggleCloseTicketPanel() {
+  const panel = document.getElementById("close-ticket-panel");
+  if (!panel) return;
+  panel.style.display = panel.style.display === "block" ? "none" : "block";
+}
+
+function toggleDeleteClosedTicketPanel() {
+  const panel = document.getElementById("delete-closed-ticket-panel");
+  if (!panel) return;
+  panel.style.display = panel.style.display === "block" ? "none" : "block";
+}
+
+async function submitCloseTicket() {
+  const ticketId = document.getElementById("closeTicketId")?.value;
+  const reason = document.getElementById("closeTicketReason")?.value || "";
+  const resultEl = document.getElementById("close-ticket-result");
+  if (!ticketId) return;
+  resultEl.style.display = "block";
+  resultEl.className = "inline-result";
+  resultEl.textContent = "Closing ticket...";
+
+  try {
+    const r = await fetch("/api/tickets/close", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId, reason })
+    });
+    const d = await r.json();
+    if (d.success) {
+      resultEl.textContent = "✅ Ticket closed successfully. Reload the page to refresh the open ticket list.";
+      resultEl.classList.add("result-success");
+      setTimeout(() => window.location.reload(), 700);
+    } else {
+      resultEl.textContent = "❌ " + (d.error || "Failed to close ticket");
+      resultEl.classList.add("result-error");
+    }
+  } catch (e) {
+    resultEl.textContent = "❌ Network error";
+    resultEl.classList.add("result-error");
+  }
+}
+
+async function submitDeleteClosedTicket() {
+  const ticketId = document.getElementById("deleteClosedTicketId")?.value;
+  const resultEl = document.getElementById("delete-closed-ticket-result");
+  if (!ticketId) return;
+  resultEl.style.display = "block";
+  resultEl.className = "inline-result";
+  resultEl.textContent = "Deleting closed ticket channel...";
+
+  try {
+    const r = await fetch("/api/tickets/delete-closed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId })
+    });
+    const d = await r.json();
+    if (d.success) {
+      resultEl.textContent = "✅ Closed ticket channel removed!";
+      resultEl.classList.add("result-success");
+      setTimeout(() => window.location.reload(), 700);
+    } else {
+      resultEl.textContent = "❌ " + (d.error || "Failed");
+      resultEl.classList.add("result-error");
+    }
+  } catch (e) {
+    resultEl.textContent = "❌ Network error";
+    resultEl.classList.add("result-error");
+  }
+}
+</script>
+
+<%- include('partials/footer') %>

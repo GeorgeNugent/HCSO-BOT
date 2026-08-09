@@ -1,0 +1,414 @@
+/**
+ * Hendry County Project — Control Panel
+ * Main dashboard assembly point.
+ *
+ * This file wires together all sub-modules (auth, permissions, routes,
+ * departments) and starts the Express server.
+ *
+ * root dashboard.js re-exports startDashboard from here so index.js
+ * does not need to be changed.
+ */
+import express from "express";
+import session from "express-session";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+import { createPermissions }      from "./permissions.js";
+import { createAuthRouter }       from "./auth.js";
+import { createMainRoutes }       from "./routes.js";
+import { createDepartmentRoutes } from "./departments.js";
+import { createServerStats }      from "./serverStats.js";
+import { getAllDepartments, getBranding } from "../embeds/departmentThemes.js";
+
+// Locate project root: src/dashboard → src → project root
+const __dirname  = dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = join(__dirname, "../../");
+
+/**
+ * Start the Hendry County Project web dashboard.
+ * Accepts the same context object that index.js currently passes.
+ * @param {Object} context
+ */
+export function startDashboard(context) {
+    const { client } = context;
+
+    const SESSION_SECRET = process.env.SESSION_SECRET || "hendry-county-project-dashboard-secret-change-me";
+    const port           = context.port || Number(process.env.PORT) || 8100;
+    const GUILD_ID       = process.env.GUILD_ID || "1533590255603810334";
+    const MAIN_ROLE_GUILD_ID = GUILD_ID;
+    const TARGET_GUILD_ID = "1533590255603810334";
+    const HCSO_GUILD_ID = TARGET_GUILD_ID;
+    const CPD_GUILD_ID = TARGET_GUILD_ID;
+    const FHP_GUILD_ID = TARGET_GUILD_ID;
+    const BOT_OWNER_IDS = ["967375704486449222", "327951443090735104"];
+    const PRIMARY_BOT_OWNER_ID = BOT_OWNER_IDS[0];
+    const DASHBOARD_SEGMENTS = ["home", "status", "commands", "logs", "settings", "applications", "departments"];
+    const DEFAULT_DEPARTMENT_ROLE_SOURCE_BY_GUILD = {
+        [HCSO_GUILD_ID]: HCSO_GUILD_ID,
+        [CPD_GUILD_ID]: CPD_GUILD_ID,
+        [FHP_GUILD_ID]: FHP_GUILD_ID
+    };
+    const STAFF_ROLE_KEYWORDS = [
+        "administrator", "management", "developer", "bot staff",
+        "supervisor", "ia", "sheriff", "staff", "owner", "co-owner"
+    ];
+    const DEPARTMENT_APPLICATION_ROLE_IDS = {
+        hcso: ["1533590255783907460", "1533590255783907459", "1533590255775645745"],
+        cpd: ["1533590255792554051", "1533590255792554050", "1533590255792554049"],
+        fhp: ["1533590255763194088", "1533590255763194087", "1533590255750353109"],
+        cfd: ["1533590255746285581", "1533590255746285580"],
+        ems: ["1533590255746285581", "1533590255746285580"]
+    };
+
+    // ── Express app ──────────────────────────────────────────────────────────
+    const app = express();
+
+    app.set("view engine", "ejs");
+    app.set("views", join(PROJECT_ROOT, "views"));
+    app.use(express.static(join(PROJECT_ROOT, "public")));
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+
+    app.use(session({
+        secret:            SESSION_SECRET,
+        resave:            false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure:   false,   // set true behind HTTPS proxy
+            maxAge:   7 * 24 * 60 * 60 * 1000
+        }
+    }));
+
+    // ── Shared helper: resolve the configured guild ───────────────────────────
+    async function getDashboardGuild() {
+        if (!GUILD_ID) return null;
+        const cached = client.guilds.cache.get(GUILD_ID);
+        if (cached) return cached;
+        return await client.guilds.fetch(GUILD_ID).catch(() => null);
+    }
+
+    async function getMainRoleGuild() {
+        const cached = client.guilds.cache.get(MAIN_ROLE_GUILD_ID);
+        if (cached) return cached;
+        return await client.guilds.fetch(MAIN_ROLE_GUILD_ID).catch(() => null);
+    }
+
+    async function getViewerRoleIds(userId, guildId = MAIN_ROLE_GUILD_ID) {
+        if (!guildId) return [];
+        const guild = client.guilds.cache.get(guildId)
+            || await client.guilds.fetch(guildId).catch(() => null);
+        if (!guild) return [];
+        const member = await guild.members.fetch(userId).catch(() => null);
+        if (!member) return [];
+        return member.roles.cache
+            .filter(r => r.name !== "@everyone")
+            .map(r => r.id);
+    }
+
+    function getSegmentAccessConfig(guildId = MAIN_ROLE_GUILD_ID) {
+        const byGuild = context.config?.dashboardSegmentAccessByGuild;
+        if (guildId && byGuild && typeof byGuild === "object" && byGuild[guildId] && typeof byGuild[guildId] === "object") {
+            return byGuild[guildId];
+        }
+
+        const legacy = context.config?.dashboardSegmentAccess;
+        return legacy && typeof legacy === "object" ? legacy : {};
+    }
+
+    function canAccessSegment(userId, roleIds, segment, guildId = MAIN_ROLE_GUILD_ID) {
+        if (BOT_OWNER_IDS.includes(String(userId))) return true;
+        if (segment === "home") return true;
+        const access = getSegmentAccessConfig(guildId);
+        const allowedRoles = Array.isArray(access[segment]) ? access[segment] : [];
+        if (allowedRoles.length === 0) return false;
+        return allowedRoles.some(id => roleIds.includes(id));
+    }
+
+    async function requireSegment(req, res, next, segment) {
+        if (!req.session.user) {
+            req.session.returnTo = req.originalUrl;
+            return res.redirect("/auth/discord");
+        }
+
+        const userId = req.session.user.id;
+        const segmentGuildId = String(
+            req.params?.guildId
+            || req.body?.guildId
+            || req.body?.serverId
+            || req.query?.guildId
+            || req.query?.serverId
+            || GUILD_ID
+            || MAIN_ROLE_GUILD_ID
+            || ""
+        );
+        const roleIds = await getViewerRoleIds(userId, segmentGuildId || MAIN_ROLE_GUILD_ID);
+        req.viewerRoleIds = roleIds;
+        req.segmentGuildId = segmentGuildId;
+
+        if (canAccessSegment(userId, roleIds, segment, segmentGuildId || MAIN_ROLE_GUILD_ID)) return next();
+
+        if (req.path.startsWith("/api/")) {
+            return res.status(403).json({ error: `Access denied for segment: ${segment}` });
+        }
+        return res.render("access-denied", { page: "denied" });
+    }
+
+    function segmentGuard(segment) {
+        return async (req, res, next) => requireSegment(req, res, next, segment);
+    }
+
+    function collectStaffRolePolicies() {
+        const policyMap = new Map();
+
+        const departmentAccessByGuild = context.config?.departmentAccessByGuild && typeof context.config.departmentAccessByGuild === "object"
+            ? context.config.departmentAccessByGuild
+            : {};
+        const departmentRoleSourceByGuild = context.config?.departmentRoleSourceByGuild && typeof context.config.departmentRoleSourceByGuild === "object"
+            ? { ...DEFAULT_DEPARTMENT_ROLE_SOURCE_BY_GUILD, ...context.config.departmentRoleSourceByGuild }
+            : { ...DEFAULT_DEPARTMENT_ROLE_SOURCE_BY_GUILD };
+        const configuredDepartments = getAllDepartments();
+        const allowedDepartmentShortNames = new Set(["HCSO", "FHP", "CPD"]);
+
+        for (const [departmentGuildId, dept] of Object.entries(configuredDepartments || {})) {
+            const shortName = String(dept?.shortName || "").toUpperCase();
+            if (!allowedDepartmentShortNames.has(shortName)) continue;
+
+            const roleIds = Array.isArray(departmentAccessByGuild[departmentGuildId])
+                ? departmentAccessByGuild[departmentGuildId].map(String).filter(Boolean)
+                : [];
+            if (roleIds.length === 0) continue;
+
+            const sourceGuildId = String(departmentRoleSourceByGuild[departmentGuildId] || MAIN_ROLE_GUILD_ID || "");
+            const candidateGuildIds = [...new Set([departmentGuildId, sourceGuildId].map(id => String(id || "")).filter(Boolean))];
+            for (const guildId of candidateGuildIds) {
+                const existing = policyMap.get(guildId) || new Set();
+                for (const roleId of roleIds) existing.add(roleId);
+                policyMap.set(guildId, existing);
+            }
+        }
+
+        // "Staff" access is derived from dashboard segment role allow-lists.
+        const dashboardSegmentAccessByGuild = context.config?.dashboardSegmentAccessByGuild && typeof context.config.dashboardSegmentAccessByGuild === "object"
+            ? context.config.dashboardSegmentAccessByGuild
+            : {};
+        for (const [guildId, segmentMap] of Object.entries(dashboardSegmentAccessByGuild)) {
+            if (!segmentMap || typeof segmentMap !== "object") continue;
+            const existing = policyMap.get(String(guildId)) || new Set();
+            for (const ids of Object.values(segmentMap)) {
+                if (!Array.isArray(ids)) continue;
+                for (const roleId of ids) existing.add(String(roleId));
+            }
+            if (existing.size > 0) policyMap.set(String(guildId), existing);
+        }
+
+        const legacySegmentAccess = context.config?.dashboardSegmentAccess && typeof context.config.dashboardSegmentAccess === "object"
+            ? context.config.dashboardSegmentAccess
+            : {};
+        const legacyRoleIds = Object.values(legacySegmentAccess)
+            .filter(Array.isArray)
+            .flat()
+            .map(String)
+            .filter(Boolean);
+        if (legacyRoleIds.length > 0) {
+            const legacyGuildId = String(MAIN_ROLE_GUILD_ID || GUILD_ID || "");
+            if (legacyGuildId) {
+                const existing = policyMap.get(legacyGuildId) || new Set();
+                for (const roleId of legacyRoleIds) existing.add(roleId);
+                policyMap.set(legacyGuildId, existing);
+            }
+        }
+
+        return [...policyMap.entries()].map(([guildId, roleSet]) => ({
+            guildId,
+            roleIds: [...roleSet]
+        }));
+    }
+
+    async function hasStaffAccess(userId) {
+        if (BOT_OWNER_IDS.includes(String(userId))) return true;
+
+        const primaryGuild = await getDashboardGuild();
+        if (primaryGuild) {
+            const member = await primaryGuild.members.fetch(userId).catch(() => null);
+            if (member) {
+                if (member.permissions.has(8n)) return true;
+                const hasNamedStaffRole = member.roles.cache.some(role => {
+                    const roleName = String(role.name || "").toLowerCase();
+                    return STAFF_ROLE_KEYWORDS.some(keyword => roleName.includes(keyword));
+                });
+                if (hasNamedStaffRole) return true;
+            }
+        }
+
+        const rolePolicies = collectStaffRolePolicies();
+        for (const policy of rolePolicies) {
+            if (!policy.guildId || policy.roleIds.length === 0) continue;
+            const viewerRoleIds = await getViewerRoleIds(userId, policy.guildId);
+            if (policy.roleIds.some(roleId => viewerRoleIds.includes(roleId))) {
+                return true;
+            }
+        }
+
+        console.log(`[Dashboard Auth] Denied staff access for ${userId}. Checked policies: ${JSON.stringify(rolePolicies.map(p => ({ guildId: p.guildId, roleCount: p.roleIds.length })))}`);
+
+        return false;
+    }
+
+    // ── Sub-modules ───────────────────────────────────────────────────────────
+    const { requireAuth, requireStaff } = createPermissions({ hasStaffAccess });
+    const serverStats = createServerStats(client);
+
+    // ── res.locals available in every view ────────────────────────────────────
+    app.use(async (req, res, next) => {
+        const branding     = getBranding();
+        const configuredDepartments = getAllDepartments();
+        const servers      = await serverStats.getAllServers().catch(() => []);
+        const singleGuildId = String(GUILD_ID || MAIN_ROLE_GUILD_ID || "").trim();
+        const departments  = {};
+        if (singleGuildId && configuredDepartments[singleGuildId]) {
+            departments[singleGuildId] = configuredDepartments[singleGuildId];
+        }
+        const userId       = req.session.user?.id || null;
+        const roleIds      = userId ? await getViewerRoleIds(userId, GUILD_ID || MAIN_ROLE_GUILD_ID) : [];
+        const segmentAccess = {};
+
+        for (const srv of servers) {
+            if (departments[srv.id]) continue;
+            if (srv.departmentType !== "department") continue;
+            departments[srv.id] = {
+                type: "department",
+                name: srv.department,
+                shortName: srv.shortName,
+                color: srv.color,
+                logo: srv.logo,
+                footer: srv.footer,
+                description: ""
+            };
+        }
+
+        for (const segment of DASHBOARD_SEGMENTS) {
+            segmentAccess[segment] = userId ? canAccessSegment(userId, roleIds, segment, GUILD_ID || MAIN_ROLE_GUILD_ID) : false;
+        }
+
+        if (userId && BOT_OWNER_IDS.includes(String(userId))) {
+            for (const segment of DASHBOARD_SEGMENTS) {
+                segmentAccess[segment] = true;
+            }
+        }
+
+        const accessibleDepartmentIds = [];
+        const viewerRoleIds = userId ? await getViewerRoleIds(userId, GUILD_ID || MAIN_ROLE_GUILD_ID) : [];
+        const departmentApplicationAccess = Object.fromEntries(
+            Object.entries(DEPARTMENT_APPLICATION_ROLE_IDS).map(([key, roleIds]) => [
+                key,
+                BOT_OWNER_IDS.includes(String(userId)) || roleIds.some(roleId => viewerRoleIds.includes(roleId))
+            ])
+        );
+        const departmentAccessByGuild = context.config?.departmentAccessByGuild && typeof context.config.departmentAccessByGuild === "object"
+            ? context.config.departmentAccessByGuild
+            : {};
+
+        const departmentEntries = Object.entries(departments)
+            .filter(([, dept]) => dept && dept.type === "department");
+
+        if (userId) {
+            for (const [departmentGuildId] of departmentEntries) {
+                if (BOT_OWNER_IDS.includes(String(userId))) {
+                    accessibleDepartmentIds.push(departmentGuildId);
+                    continue;
+                }
+
+                const allowedRoleIds = Array.isArray(departmentAccessByGuild[departmentGuildId])
+                    ? departmentAccessByGuild[departmentGuildId].map(String).filter(Boolean)
+                    : [];
+
+                if (allowedRoleIds.length === 0) {
+                    continue;
+                }
+
+                const candidateGuildIds = [...new Set([departmentGuildId, MAIN_ROLE_GUILD_ID, GUILD_ID].map(id => String(id || "")).filter(Boolean))];
+                let hasAccess = false;
+                for (const guildId of candidateGuildIds) {
+                    const viewerRoleIds = await getViewerRoleIds(userId, guildId);
+                    if (allowedRoleIds.some(roleId => viewerRoleIds.includes(roleId))) {
+                        hasAccess = true;
+                        break;
+                    }
+                }
+
+                if (hasAccess) {
+                    accessibleDepartmentIds.push(departmentGuildId);
+                }
+            }
+        }
+
+        res.locals.botName    = branding.botName;
+        res.locals.botAvatar  = client.user?.displayAvatarURL({ size: 64 }) || "";
+        res.locals.user       = req.session.user  || null;
+        res.locals.isStaff    = req.session.isStaff || false;
+        res.locals.isBotOwner = BOT_OWNER_IDS.includes(String(userId));
+        res.locals.branding   = branding;
+        res.locals.departments = departments;
+        res.locals.servers    = servers;
+        res.locals.accessibleDepartmentIds = accessibleDepartmentIds;
+        res.locals.mainServerId = GUILD_ID || null;
+        res.locals.segmentAccess = segmentAccess;
+        res.locals.departmentApplicationAccess = departmentApplicationAccess;
+        next();
+    });
+
+    // ── Mount routers ─────────────────────────────────────────────────────────
+    app.use(createAuthRouter(context, { getDashboardGuild, requireAuth, hasStaffAccess }));
+    app.use(createMainRoutes(context,  {
+        requireAuth,
+        requireStaff,
+        getDashboardGuild,
+        getMainRoleGuild,
+        segmentGuard,
+        canAccessSegment,
+        BOT_OWNER_IDS,
+        BOT_OWNER_ID: PRIMARY_BOT_OWNER_ID,
+        DASHBOARD_SEGMENTS,
+        ROLE_SOURCE_GUILD_ID: MAIN_ROLE_GUILD_ID
+    }));
+    app.use(createDepartmentRoutes({
+        requireAuth,
+        requireStaff,
+        segmentGuard,
+        serverStats,
+        BOT_OWNER_IDS,
+        client,
+        config:               context.config,
+        saveConfig:           context.saveConfig,
+        strikes:              context.strikes,
+        saveStrikes:          context.saveStrikes,
+        getUserStrikeEntries: context.getUserStrikeEntries,
+        syncUserStrikeRoles:  context.syncUserStrikeRoles,
+        MAX_STRIKES:          context.MAX_STRIKES,
+        ROLE_SOURCE_GUILD_ID: MAIN_ROLE_GUILD_ID,
+        patrols:              context.patrols,
+        loa:                  context.loa,
+        casesData:            context.casesData,
+        saveCases:            context.saveCases,
+        saveLOA:              context.saveLOA
+    }));
+
+    // ── 404 fallback ─────────────────────────────────────────────────────────
+    app.use((req, res) => {
+        res.status(404).render("error", {
+            page:    "error",
+            message: "Page not found.",
+            branding: getBranding()
+        });
+    });
+
+    // ── Start listening ───────────────────────────────────────────────────────
+    app.listen(port, "0.0.0.0", () => {
+        const publicUrl = process.env.DASHBOARD_URL || `http://51.79.43.184:${port}`;
+        console.log(`[Dashboard] ${getBranding().dashboardTitle} listening on ${publicUrl}`);
+    });
+
+    return app;
+}
