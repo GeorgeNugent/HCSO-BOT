@@ -66,6 +66,7 @@ export function startDashboard(context) {
     app.set("view engine", "ejs");
     app.set("views", join(PROJECT_ROOT, "views"));
     app.use(express.static(join(PROJECT_ROOT, "public")));
+    app.use(express.static(join(PROJECT_ROOT, "HCP STAFF PANEL")));
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
@@ -80,6 +81,19 @@ export function startDashboard(context) {
             maxAge:   7 * 24 * 60 * 60 * 1000
         }
     }));
+
+    app.get("/login", (req, res) => res.redirect("/auth/discord"));
+    app.get("/logout", (req, res) => res.redirect("/auth/logout"));
+    app.get("/api/session", (req, res) => {
+        res.json({
+            user: req.session.user || null,
+            isStaff: req.session.isStaff || false,
+            isBotOwner: BOT_OWNER_IDS.includes(String(req.session.user?.id || ""))
+        });
+    });
+    app.get("/", (req, res) => {
+        res.sendFile(join(PROJECT_ROOT, "HCP STAFF PANEL", "index.html"));
+    });
 
     // ── Shared helper: resolve the configured guild ───────────────────────────
     async function getDashboardGuild() {
