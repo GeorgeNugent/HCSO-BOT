@@ -373,13 +373,22 @@ function loadCategory(name){
     commandGrid.innerHTML="";
 
     data.commands.forEach(command=>{
+        const [icon, name, description] = command;
         const card=document.createElement("div");
         card.className="command-card";
         card.innerHTML=`
-            <div class="command-icon">${command[0]}</div>
-            <div class="command-name">${command[1]}<span class="command-arrow">→</span></div>
-            <div class="command-description">${command[2]}</div>
+            <div class="command-icon">${icon}</div>
+            <div class="command-name">${name}<span class="command-arrow">→</span></div>
+            <div class="command-description">${description}</div>
         `;
+        card.addEventListener('click', () => {
+            const destination = commandRouteMap[name] || '/commands';
+            if (currentUser) {
+                window.location.href = destination;
+            } else {
+                window.location.href = '/login';
+            }
+        });
         commandGrid.appendChild(card);
     });
 }
@@ -416,20 +425,26 @@ async function refreshSession(){
         if (currentUser) {
             accountPanel.hidden = false;
             loginButton.hidden = true;
-            accountNameEl.textContent = currentUser.tag;
-            const avatarExtension = currentUser.avatar && currentUser.avatar.startsWith('a_') ? 'gif' : 'png';
+            accountNameEl.textContent = currentUser.tag || `${currentUser.username}#${currentUser.discriminator || '0000'}`;
+
             if (currentUser.avatar) {
-                avatarEl.src = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.${avatarExtension}?size=64`;
-                avatarEl.alt = currentUser.username;
+                if (typeof currentUser.avatar === 'string' && currentUser.avatar.startsWith('http')) {
+                    avatarEl.src = currentUser.avatar;
+                } else {
+                    const avatarExtension = currentUser.avatar.startsWith('a_') ? 'gif' : 'png';
+                    avatarEl.src = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.${avatarExtension}?size=64`;
+                }
+                avatarEl.alt = currentUser.username || currentUser.tag;
             } else {
-                const defaultAvatarId = Number(currentUser.discriminator) % 5;
+                const defaultAvatarId = Number(currentUser.discriminator || 0) % 5;
                 avatarEl.src = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarId}.png`;
-                avatarEl.alt = currentUser.username;
+                avatarEl.alt = currentUser.username || currentUser.tag;
             }
         } else {
             accountPanel.hidden = true;
             loginButton.hidden = false;
-            avatarEl.textContent = '';
+            avatarEl.src = '';
+            avatarEl.alt = 'avatar';
         }
     } catch (error) {
         console.error('Session fetch failed', error);
@@ -438,6 +453,25 @@ async function refreshSession(){
     }
     renderCommands();
 }
+
+const commandRouteMap = {
+    'Warn Member': '/commands',
+    'Ban Member': '/commands',
+    'Kick Member': '/commands',
+    'Timeout Member': '/commands',
+    'Manage Staff': '/applications',
+    'Manage Roles': '/settings',
+    'Staff Information': '/departments/joint',
+    'Permissions': '/settings',
+    'View Cases': '/commands',
+    'Search Cases': '/commands',
+    'Create Case': '/commands',
+    'Case History': '/logs',
+    'Server Settings': '/settings',
+    'Bot Controls': '/status',
+    'Announcements': '/logs',
+    'System Logs': '/logs'
+};
 
 categories.forEach(button=>{
     button.addEventListener("click",()=>{
