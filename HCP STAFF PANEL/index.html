@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hendry County Project | Staff Command Center</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;min-height:100%}
+body{
+    font-family:Arial,Helvetica,sans-serif;
+    background:#020a06;
+    color:#fff;
+}
+
+/* Header */
+.header{
+    height:78px;
+    width:100%;
+    display:flex;
+    align-items:center;
+    padding:0 30px;
+    background:#020805;
+    border-bottom:1px solid rgba(43,76,60,.45);
+    position:relative;
+    z-index:10;
+}
+.brand{display:flex;align-items:center;gap:13px;text-decoration:none}
+.brand img{width:52px;height:52px;object-fit:contain}
+.brand-text{display:flex;flex-direction:column}
+.brand-name{font-size:18px;font-weight:900;color:#fff}
+.brand-name span{color:#ff7b2d}
+.brand-subtitle{margin-top:4px;font-size:11px;color:#8fa59a}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.staff-badge{
+    padding:7px 13px;
+    border-radius:20px;
+    background:rgba(12,117,82,.28);
+    border:1px solid rgba(20,173,116,.4);
+    color:#2ed18c;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:1px;
+}
+.account{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:7px 12px;
+    border-radius:13px;
+    background:#0b1511;
+    border:1px solid #26362f;
+}
+.avatar{
+    width:35px;height:35px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    object-fit:cover;
+    background:#29342f;font-weight:900;
+}
+.account-name{font-size:12px;font-weight:800}
+.logout,
+.login-button{
+    padding:8px 13px;
+    border-radius:20px;
+    border:1px solid #39453f;
+    background:#111a16;
+    color:#fff;
+    font-size:11px;
+    font-weight:800;
+    cursor:pointer;
+}
+.login-button{
+    transition:all .2s ease;
+}
+.login-button:hover,
+.logout:hover{
+    background:#19231c;
+}
+
+.page-wrap::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+        radial-gradient(circle at 75% 20%,rgba(255,102,30,.13),transparent 32%),
+        linear-gradient(90deg,rgba(0,8,5,.76),rgba(0,8,5,.35),rgba(0,8,5,.65));
+    pointer-events:none;
+}
+
+/* Main */
+.page{
+    width:100%;
+    max-width:1120px;
+    margin:0 auto;
+    padding:55px 30px 80px;
+    position:relative;
+    z-index:1;
+}
+.eyebrow{
+    color:#20c77e;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:4px;
+    margin-bottom:13px;
+}
+.title{
+    font-size:48px;
+    line-height:1.05;
+    font-weight:950;
+    letter-spacing:-2px;
+    margin-bottom:12px;
+    text-shadow:0 3px 20px rgba(0,0,0,.55);
+}
+.description{
+    color:#c0cec6;
+    font-size:15px;
+    line-height:1.6;
+    max-width:700px;
+    text-shadow:0 2px 12px rgba(0,0,0,.7);
+}
+
+/* Categories */
+.categories{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-top:36px;
+    margin-bottom:22px;
+}
+.category{
+    border:1px solid rgba(49,70,60,.9);
+    background:rgba(5,15,10,.82);
+    color:#b2c0b8;
+    padding:12px 21px;
+    border-radius:25px;
+    font-size:13px;
+    font-weight:800;
+    cursor:pointer;
+    transition:.2s ease;
+    backdrop-filter:blur(8px);
+}
+.category:hover{border-color:#4c6b5b;color:#fff}
+.category.active{
+    background:linear-gradient(135deg,#ff8a2c,#d95e16);
+    color:#080b09;
+    border-color:#ff8a2c;
+    box-shadow:0 8px 25px rgba(255,117,38,.25);
+}
+
+/* Command panel */
+.command-panel{
+    border:1px solid rgba(43,61,52,.95);
+    border-radius:24px;
+    background:rgba(4,14,9,.88);
+    backdrop-filter:blur(12px);
+    padding:32px;
+    position:relative;
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+}
+.command-panel::before{
+    content:"";
+    position:absolute;
+    width:400px;height:250px;
+    right:-100px;top:-130px;
+    background:radial-gradient(circle,rgba(255,116,38,.16),transparent 70%);
+    pointer-events:none;
+}
+.panel-header{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:15px;
+    margin-bottom:28px;
+}
+.panel-icon{
+    width:48px;height:48px;
+    border-radius:13px;
+    display:flex;align-items:center;justify-content:center;
+    background:#102219;
+    border:1px solid #294437;
+    font-size:22px;
+}
+.panel-title{font-size:21px;font-weight:900}
+.panel-description{margin-top:5px;color:#80958a;font-size:12px}
+
+/* Cards */
+.command-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:16px;
+}
+.command-card{
+    min-height:145px;
+    padding:22px;
+    border-radius:17px;
+    border:1px solid #1e3027;
+    background:rgba(8,19,14,.86);
+    transition:transform .2s ease,border-color .2s ease,background .2s ease;
+    cursor:pointer;
+}
+.command-card:hover{
+    transform:translateY(-3px);
+    border-color:#3d614e;
+    background:rgba(11,24,18,.94);
+}
+.command-icon{font-size:20px;margin-bottom:15px}
+.command-name{font-size:16px;font-weight:900;margin-bottom:7px}
+.command-description{color:#788e82;font-size:12px;line-height:1.5}
+.command-arrow{float:right;color:#ff7b2d;font-size:15px}
+
+/* Notice */
+.notice{
+    margin-top:18px;
+    padding:18px 20px;
+    border-radius:15px;
+    border:1px solid #62431f;
+    background:rgba(21,18,9,.9);
+    backdrop-filter:blur(8px);
+    display:flex;
+    gap:13px;
+    align-items:flex-start;
+}
+.notice-icon{
+    width:34px;height:34px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid #795321;
+    color:#ff8a2c;
+    flex-shrink:0;
+}
+.notice-title{color:#ff7b2d;font-weight:900;font-size:13px;margin-bottom:5px}
+.notice-text{color:#82978c;font-size:11px;line-height:1.5}
+
+/* Responsive */
+@media(max-width:800px){
+    .header{padding:0 18px}
+    .brand-subtitle,.staff-badge{display:none}
+    .page{padding:40px 20px}
+    .title{font-size:38px}
+    .command-grid{grid-template-columns:1fr}
+}
+@media(max-width:500px){
+    .brand-name{font-size:15px}
+    .brand img{width:43px;height:43px}
+    .logout{display:none}
+    .title{font-size:32px}
+    .command-panel{padding:20px;border-radius:18px}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+    <a href="#" class="brand">
+        <img src="assets/HCP-Main.png" alt="Hendry County Project">
+        <div class="brand-text">
+            <div class="brand-name">Hendry County <span>Project</span></div>
+            <div class="brand-subtitle">Online Dashboard For Bot</div>
+        </div>
+    </a>
+
+    <div class="header-right">
+        <div class="staff-badge">STAFF DASHBOARD</div>
+        <div class="account" id="accountPanel" hidden>
+            <img class="avatar" id="avatar" src="" alt="avatar">
+            <div class="account-name" id="accountName"></div>
+            <button class="logout" id="logoutButton">Logout</button>
+        </div>
+        <button class="login-button" id="loginButton">Login with Discord</button>
+    </div>
+</header>
+
+<div class="page-wrap">
+<main class="page">
+
+    <div class="eyebrow">HENDRY COUNTY PROJECT</div>
+    <h1 class="title">Staff Command Center</h1>
+    <p class="description">
+        Manage and control the Hendry County Project from one central staff panel.
+    </p>
+
+    <div class="categories">
+        <button class="category active" data-category="moderation">🛡️ Moderation</button>
+        <button class="category" data-category="staff">👥 Staff Management</button>
+        <button class="category" data-category="cases">📋 Cases</button>
+        <button class="category" data-category="system">⚙️ System</button>
+    </div>
+
+    <section class="command-panel">
+        <div class="panel-header">
+            <div class="panel-icon">🛡️</div>
+            <div>
+                <div class="panel-title">Moderation Commands</div>
+                <div class="panel-description">Moderation tools will be available here.</div>
+            </div>
+        </div>
+
+        <div class="command-grid" id="commandGrid"></div>
+    </section>
+
+    <div class="notice">
+        <div class="notice-icon">!</div>
+        <div>
+            <div class="notice-title">How to Use</div>
+            <div class="notice-text">
+                You will recive information about this bro.
+            </div>
+        </div>
+    </div>
+
+</main>
+</div>
+
+<script>
+const categories=document.querySelectorAll(".category");
+const panelIcon=document.querySelector(".panel-icon");
+const panelTitle=document.querySelector(".panel-title");
+const panelDescription=document.querySelector(".panel-description");
+const commandGrid=document.querySelector("#commandGrid");
+
+const categoryData={
+    moderation:{
+        icon:"🛡️",
+        title:"Moderation Commands",
+        description:"Moderation tools will be available here.",
+        commands:[
+            ["⚠️","Warn Member","Issue a formal warning to a member."],
+            ["🔨","Ban Member","Ban a member from the community."],
+            ["👢","Kick Member","Remove a member from the server."],
+            ["🔇","Timeout Member","Temporarily restrict a member."]
+        ]
+    },
+    staff:{
+        icon:"👥",
+        title:"Staff Management",
+        description:"Staff management commands will be available here.",
+        commands:[
+            ["👤","Manage Staff","Manage staff members and their permissions."],
+            ["🎖️","Manage Roles","Manage staff roles and responsibilities."],
+            ["📋","Staff Information","View information about a staff member."],
+            ["🔐","Permissions","Manage staff permissions."]
+        ]
+    },
+    cases:{
+        icon:"📋",
+        title:"Cases",
+        description:"Case management commands will be available here.",
+        commands:[
+            ["📁","View Cases","View existing moderation cases."],
+            ["🔎","Search Cases","Search through previous cases."],
+            ["📝","Create Case","Create a new moderation case."],
+            ["🗃️","Case History","Review historical moderation activity."]
+        ]
+    },
+    system:{
+        icon:"⚙️",
+        title:"System Commands",
+        description:"System commands will be available here.",
+        commands:[
+            ["⚙️","Server Settings","Manage server configuration."],
+            ["🔧","Bot Controls","Manage bot functionality."],
+            ["📢","Announcements","Create staff announcements."],
+            ["📊","System Logs","View system activity and events."]
+        ]
+    }
+};
+
+function loadCategory(name){
+    const data=categoryData[name];
+    panelIcon.textContent=data.icon;
+    panelTitle.textContent=data.title;
+    panelDescription.textContent=data.description;
+    commandGrid.innerHTML="";
+
+    data.commands.forEach(command=>{
+        const card=document.createElement("div");
+        card.className="command-card";
+        card.innerHTML=`
+            <div class="command-icon">${command[0]}</div>
+            <div class="command-name">${command[1]}<span class="command-arrow">→</span></div>
+            <div class="command-description">${command[2]}</div>
+        `;
+        commandGrid.appendChild(card);
+    });
+}
+
+const accountPanel = document.getElementById('accountPanel');
+const avatarEl = document.getElementById('avatar');
+const accountNameEl = document.getElementById('accountName');
+const logoutButton = document.getElementById('logoutButton');
+const loginButton = document.getElementById('loginButton');
+let currentCategory = 'moderation';
+let currentUser = null;
+
+function renderCommands(){
+    if (!currentUser) {
+        panelIcon.textContent = '🔒';
+        panelTitle.textContent = 'Login Required';
+        panelDescription.textContent = 'Sign in with Discord to access the staff command center.';
+        commandGrid.innerHTML = `
+            <div class="command-card" style="grid-column:1/-1;text-align:center;cursor:default;">
+                <div class="command-name">Please login to continue</div>
+                <div class="command-description">Once authenticated, you will see your staff commands and controls.</div>
+            </div>
+        `;
+        return;
+    }
+    loadCategory(currentCategory);
+}
+
+async function refreshSession(){
+    try {
+        const response = await fetch('/api/session');
+        const data = await response.json();
+        currentUser = data.user;
+        if (currentUser) {
+            accountPanel.hidden = false;
+            loginButton.hidden = true;
+            accountNameEl.textContent = currentUser.tag;
+            const avatarExtension = currentUser.avatar && currentUser.avatar.startsWith('a_') ? 'gif' : 'png';
+            if (currentUser.avatar) {
+                avatarEl.src = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.${avatarExtension}?size=64`;
+                avatarEl.alt = currentUser.username;
+            } else {
+                const defaultAvatarId = Number(currentUser.discriminator) % 5;
+                avatarEl.src = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarId}.png`;
+                avatarEl.alt = currentUser.username;
+            }
+        } else {
+            accountPanel.hidden = true;
+            loginButton.hidden = false;
+            avatarEl.textContent = '';
+        }
+    } catch (error) {
+        console.error('Session fetch failed', error);
+        accountPanel.hidden = true;
+        loginButton.hidden = false;
+    }
+    renderCommands();
+}
+
+categories.forEach(button=>{
+    button.addEventListener("click",()=>{
+        categories.forEach(item=>item.classList.remove("active"));
+        button.classList.add("active");
+        currentCategory = button.dataset.category;
+        renderCommands();
+    });
+});
+
+logoutButton.addEventListener('click', ()=>{
+    window.location.href = '/logout';
+});
+
+loginButton.addEventListener('click', ()=>{
+    window.location.href = '/login';
+});
+
+refreshSession();
+</script>
+
+</body>
+</html>

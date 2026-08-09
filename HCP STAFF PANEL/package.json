@@ -1,0 +1,18 @@
+{
+  "name": "hcp-staff-panel",
+  "version": "1.0.0",
+  "description": "HCP staff command center with Discord OAuth login.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
