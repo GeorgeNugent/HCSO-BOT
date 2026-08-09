@@ -1,6 +1,5 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
-
 <head>
 
     <meta charset="UTF-8">
@@ -11,7 +10,7 @@
     >
 
     <title>
-        Hendry County Project | Staff Panel
+        Hendry County Project | Staff Command Center
     </title>
 
 
@@ -31,7 +30,7 @@
         html,
         body {
             width: 100%;
-            height: 100%;
+            min-height: 100%;
         }
 
 
@@ -42,52 +41,38 @@
                 Helvetica,
                 sans-serif;
 
-            background: #000000;
+            background: #020a06;
 
             color: #ffffff;
-
-            overflow: hidden;
 
         }
 
 
 
         /* =====================================================
-           TOP BAR
+           HEADER
         ===================================================== */
 
-        .topbar {
+        .header {
 
-            position: fixed;
-
-            top: 0;
-            left: 0;
+            height: 78px;
 
             width: 100%;
-
-            height: 80px;
 
             display: flex;
 
             align-items: center;
 
-            padding: 0 38px;
+            padding: 0 30px;
 
-            background: #030806;
+            background: #020805;
 
             border-bottom:
                 1px solid
-                rgba(72, 103, 88, 0.25);
-
-            z-index: 100;
+                rgba(43, 76, 60, 0.45);
 
         }
 
-
-
-        /* =====================================================
-           HCP BRAND
-        ===================================================== */
 
         .brand {
 
@@ -95,145 +80,63 @@
 
             align-items: center;
 
-            gap: 12px;
-
-            height: 100%;
+            gap: 13px;
 
             text-decoration: none;
-
-            flex-shrink: 0;
 
         }
 
 
         .brand img {
 
-            width: 58px;
+            width: 52px;
 
-            height: 58px;
+            height: 52px;
 
             object-fit: contain;
 
-            display: block;
+        }
+
+
+        .brand-text {
+
+            display: flex;
+
+            flex-direction: column;
 
         }
 
 
         .brand-name {
 
-            color: #ffffff;
-
             font-size: 18px;
 
-            font-weight: 800;
-
-            letter-spacing: -0.5px;
-
-            white-space: nowrap;
-
-        }
-
-
-        .brand-name strong {
-
-            color: #ff7b2d;
-
-        }
-
-
-
-        /* =====================================================
-           NAVIGATION
-        ===================================================== */
-
-        .navigation {
-
-            position: absolute;
-
-            left: 50%;
-
-            transform: translateX(-50%);
-
-            height: 100%;
-
-            display: flex;
-
-            align-items: center;
-
-            gap: 42px;
-
-        }
-
-
-        .nav-link {
-
-            position: relative;
+            font-weight: 900;
 
             color: #ffffff;
 
-            text-decoration: none;
-
-            font-size: 14px;
-
-            font-weight: 700;
-
-            padding: 31px 0;
-
-            transition:
-                color 0.2s ease;
-
         }
 
 
-        /* Hover */
-
-        .nav-link:hover {
+        .brand-name span {
 
             color: #ff7b2d;
 
         }
 
 
-        /* Active */
+        .brand-subtitle {
 
-        .nav-link.active {
+            margin-top: 4px;
 
-            color: #ff7b2d;
+            font-size: 11px;
 
-        }
-
-
-        /* Active orange line */
-
-        .nav-link.active::after {
-
-            content: "";
-
-            position: absolute;
-
-            left: 0;
-
-            right: 0;
-
-            bottom: 19px;
-
-            height: 2px;
-
-            background: #ff7b2d;
-
-            box-shadow:
-                0 0 10px
-                rgba(255, 123, 45, 0.65);
+            color: #8fa59a;
 
         }
 
 
-
-        /* =====================================================
-           ACCOUNT
-        ===================================================== */
-
-        .account {
+        .header-right {
 
             margin-left: auto;
 
@@ -241,30 +144,56 @@
 
             align-items: center;
 
-            gap: 11px;
+            gap: 12px;
 
-            min-width: 190px;
+        }
 
-            height: 51px;
 
-            padding: 6px 12px;
+        .staff-badge {
 
-            background: #0b120f;
+            padding: 7px 13px;
 
-            border:
-                1px solid
-                rgba(100, 126, 113, 0.22);
+            border-radius: 20px;
 
-            border-radius: 12px;
+            background: rgba(12, 117, 82, 0.28);
+
+            border: 1px solid rgba(20, 173, 116, 0.4);
+
+            color: #2ed18c;
+
+            font-size: 10px;
+
+            font-weight: 900;
+
+            letter-spacing: 1px;
+
+        }
+
+
+        .account {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding: 7px 12px;
+
+            border-radius: 13px;
+
+            background: #0b1511;
+
+            border: 1px solid #26362f;
 
         }
 
 
         .avatar {
 
-            width: 36px;
+            width: 35px;
 
-            height: 36px;
+            height: 35px;
 
             border-radius: 50%;
 
@@ -274,320 +203,456 @@
 
             justify-content: center;
 
-            background:
-                linear-gradient(
-                    145deg,
-                    #777d79,
-                    #242b28
-                );
+            background: #29342f;
 
-            font-size: 14px;
-
-            font-weight: 800;
-
-            color: #ffffff;
+            font-weight: 900;
 
         }
 
 
-        .account-info {
-
-            display: flex;
-
-            flex-direction: column;
-
-            flex: 1;
-
-        }
-
-
-        .username {
+        .account-name {
 
             font-size: 12px;
 
             font-weight: 800;
 
+        }
+
+
+        .logout {
+
+            padding: 8px 13px;
+
+            border-radius: 20px;
+
+            border: 1px solid #39453f;
+
+            background: #111a16;
+
             color: #ffffff;
 
-        }
-
-
-        .account-status {
-
-            margin-top: 3px;
-
-            font-size: 10px;
-
-            color: #8e9d95;
-
-        }
-
-
-        .account-arrow {
-
-            font-size: 10px;
-
-            color: #9aa69f;
-
-        }
-
-
-
-        /* =====================================================
-           MAIN HERO
-        ===================================================== */
-
-        .hero {
-
-            width: 100%;
-
-            height: 100vh;
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: center;
-
-            text-align: center;
-
-            padding-top: 80px;
-
-            position: relative;
-
-            background: #000000;
-
-        }
-
-
-        .hero-content {
-
-            position: relative;
-
-            z-index: 2;
-
-            width: 100%;
-
-            max-width: 1100px;
-
-            padding: 30px;
-
-        }
-
-
-
-        /* =====================================================
-           COMMUNITY BADGE
-        ===================================================== */
-
-        .community-badge {
-
-            display: inline-flex;
-
-            align-items: center;
-
-            justify-content: center;
-
-            gap: 11px;
-
-            padding: 10px 22px;
-
-            margin-bottom: 34px;
-
-            border:
-                1px solid
-                rgba(255, 123, 45, 0.55);
-
-            border-radius: 30px;
-
-            background:
-                rgba(38, 31, 23, 0.72);
-
-            color: #ff914d;
-
-            font-size: 12px;
+            font-size: 11px;
 
             font-weight: 800;
 
-            letter-spacing: 3px;
-
-            box-shadow:
-                inset 0 0 20px
-                rgba(255, 123, 45, 0.03),
-
-                0 0 25px
-                rgba(255, 123, 45, 0.03);
-
         }
 
 
-        .badge-dot {
 
-            width: 7px;
+        /* =====================================================
+           PAGE
+        ===================================================== */
 
-            height: 7px;
+        .page {
 
-            border-radius: 50%;
+            width: 100%;
 
-            background: #ff7b2d;
+            max-width: 1120px;
 
-            box-shadow:
-                0 0 9px
-                rgba(255, 123, 45, 0.8);
+            margin: 0 auto;
+
+            padding: 55px 30px 80px;
 
         }
 
 
 
         /* =====================================================
-           WELCOME TEXT
+           PAGE INTRO
         ===================================================== */
 
-        h1 {
+        .eyebrow {
 
-            display: flex;
+            color: #20c77e;
 
-            flex-direction: column;
+            font-size: 11px;
 
-            align-items: center;
+            font-weight: 900;
 
-            line-height: 1;
+            letter-spacing: 4px;
+
+            margin-bottom: 13px;
+
+        }
+
+
+        .title {
+
+            font-size: 48px;
+
+            line-height: 1.05;
+
+            font-weight: 950;
 
             letter-spacing: -2px;
 
-        }
-
-
-        .welcome {
-
-            font-size:
-                clamp(
-                    40px,
-                    4vw,
-                    65px
-                );
-
-            font-weight: 900;
-
-            color: #ffffff;
-
-            margin-bottom: 17px;
-
-            text-shadow:
-                0 5px 30px
-                rgba(0, 0, 0, 0.45);
+            margin-bottom: 12px;
 
         }
 
 
-        .orange {
+        .description {
 
-            font-size:
-                clamp(
-                    52px,
-                    6vw,
-                    88px
-                );
+            color: #91a79c;
 
-            font-weight: 900;
+            font-size: 15px;
 
-            color: #ff7b2d;
+            line-height: 1.6;
 
-            text-shadow:
-
-                0 4px 25px
-                rgba(0, 0, 0, 0.45),
-
-                0 0 20px
-                rgba(255, 123, 45, 0.08);
-
-        }
-
-
-        .staff-panel {
-
-            margin-top: 18px;
-
-            font-size:
-                clamp(
-                    40px,
-                    4.5vw,
-                    65px
-                );
-
-            font-weight: 900;
-
-            color: #ffffff;
-
-            text-shadow:
-                0 5px 30px
-                rgba(0, 0, 0, 0.45);
+            max-width: 700px;
 
         }
 
 
 
         /* =====================================================
-           ORANGE LINE
+           COMMAND CATEGORIES
         ===================================================== */
 
-        .hero-line {
+        .categories {
 
-            position: relative;
+            display: flex;
 
-            width: 430px;
+            flex-wrap: wrap;
 
-            max-width: 75%;
+            gap: 12px;
 
-            height: 2px;
+            margin-top: 36px;
 
-            margin: 38px auto 0;
-
-            background:
-                linear-gradient(
-                    90deg,
-                    transparent,
-                    #ff7b2d,
-                    transparent
-                );
-
-            box-shadow:
-                0 0 12px
-                rgba(255, 123, 45, 0.7);
+            margin-bottom: 22px;
 
         }
 
 
-        .hero-line::after {
+        .category {
+
+            border: 1px solid #1f3028;
+
+            background: #0a1510;
+
+            color: #9baaa3;
+
+            padding: 12px 21px;
+
+            border-radius: 25px;
+
+            font-size: 13px;
+
+            font-weight: 800;
+
+            cursor: pointer;
+
+            transition:
+                0.2s ease;
+
+        }
+
+
+        .category:hover {
+
+            border-color: #4c6b5b;
+
+            color: #ffffff;
+
+        }
+
+
+        .category.active {
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #ff8a2c,
+                    #d95e16
+                );
+
+            color: #080b09;
+
+            border-color: #ff8a2c;
+
+            box-shadow:
+                0 8px 25px
+                rgba(255, 117, 38, 0.18);
+
+        }
+
+
+
+        /* =====================================================
+           MAIN COMMAND PANEL
+        ===================================================== */
+
+        .command-panel {
+
+            border:
+                1px solid
+                #203229;
+
+            border-radius: 24px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #06100c,
+                    #08130f
+                );
+
+            padding: 32px;
+
+            position: relative;
+
+            overflow: hidden;
+
+        }
+
+
+        .command-panel::before {
 
             content: "";
 
             position: absolute;
 
-            width: 7px;
+            width: 400px;
 
-            height: 7px;
+            height: 250px;
 
-            border-radius: 50%;
+            right: -100px;
 
-            background: #ff7b2d;
+            top: -130px;
 
-            left: 50%;
-
-            top: 50%;
-
-            transform:
-                translate(
-                    -50%,
-                    -50%
+            background:
+                radial-gradient(
+                    circle,
+                    rgba(255, 116, 38, 0.13),
+                    transparent 70%
                 );
 
-            box-shadow:
+            pointer-events: none;
 
-                0 0 12px #ff7b2d,
+        }
 
-                0 0 25px
-                rgba(255, 123, 45, 0.8);
+
+        .panel-header {
+
+            position: relative;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 15px;
+
+            margin-bottom: 28px;
+
+        }
+
+
+        .panel-icon {
+
+            width: 48px;
+
+            height: 48px;
+
+            border-radius: 13px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            background: #102219;
+
+            border: 1px solid #294437;
+
+            font-size: 22px;
+
+        }
+
+
+        .panel-title {
+
+            font-size: 21px;
+
+            font-weight: 900;
+
+        }
+
+
+        .panel-description {
+
+            margin-top: 5px;
+
+            color: #80958a;
+
+            font-size: 12px;
+
+        }
+
+
+
+        /* =====================================================
+           COMMAND GRID
+        ===================================================== */
+
+        .command-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, 1fr);
+
+            gap: 16px;
+
+        }
+
+
+        .command-card {
+
+            min-height: 145px;
+
+            padding: 22px;
+
+            border-radius: 17px;
+
+            border:
+                1px solid
+                #1e3027;
+
+            background: #08130e;
+
+            transition:
+                transform 0.2s ease,
+                border-color 0.2s ease,
+                background 0.2s ease;
+
+            cursor: pointer;
+
+        }
+
+
+        .command-card:hover {
+
+            transform: translateY(-3px);
+
+            border-color: #3d614e;
+
+            background: #0b1812;
+
+        }
+
+
+        .command-icon {
+
+            font-size: 20px;
+
+            margin-bottom: 15px;
+
+        }
+
+
+        .command-name {
+
+            font-size: 16px;
+
+            font-weight: 900;
+
+            margin-bottom: 7px;
+
+        }
+
+
+        .command-description {
+
+            color: #788e82;
+
+            font-size: 12px;
+
+            line-height: 1.5;
+
+        }
+
+
+        .command-arrow {
+
+            float: right;
+
+            color: #ff7b2d;
+
+            font-size: 15px;
+
+        }
+
+
+
+        /* =====================================================
+           NOTICE
+        ===================================================== */
+
+        .notice {
+
+            margin-top: 18px;
+
+            padding: 18px 20px;
+
+            border-radius: 15px;
+
+            border: 1px solid #62431f;
+
+            background: #151209;
+
+            display: flex;
+
+            gap: 13px;
+
+            align-items: flex-start;
+
+        }
+
+
+        .notice-icon {
+
+            width: 34px;
+
+            height: 34px;
+
+            border-radius: 10px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            border: 1px solid #795321;
+
+            color: #ff8a2c;
+
+            flex-shrink: 0;
+
+        }
+
+
+        .notice-title {
+
+            color: #ff7b2d;
+
+            font-weight: 900;
+
+            font-size: 13px;
+
+            margin-bottom: 5px;
+
+        }
+
+
+        .notice-text {
+
+            color: #82978c;
+
+            font-size: 11px;
+
+            line-height: 1.5;
 
         }
 
@@ -597,184 +662,51 @@
            RESPONSIVE
         ===================================================== */
 
-        @media (max-width: 900px) {
+        @media (max-width: 800px) {
 
-            .topbar {
+            .header {
 
-                padding: 0 20px;
-
-            }
-
-
-            .navigation {
-
-                gap: 22px;
+                padding: 0 18px;
 
             }
 
 
-            .nav-link {
-
-                font-size: 12px;
-
-            }
-
-
-            .account {
-
-                min-width: 160px;
-
-            }
-
-
-            .orange {
-
-                font-size: 55px;
-
-            }
-
-        }
-
-
-
-        @media (max-width: 700px) {
-
-            .topbar {
-
-                height: 70px;
-
-                padding: 0 15px;
-
-            }
-
-
-            .brand img {
-
-                width: 48px;
-
-                height: 48px;
-
-            }
-
-
-            .brand-name {
-
-                font-size: 14px;
-
-            }
-
-
-            .navigation {
-
-                position: static;
-
-                transform: none;
-
-                margin-left: auto;
-
-                margin-right: 12px;
-
-                gap: 16px;
-
-            }
-
-
-            .nav-link {
-
-                font-size: 11px;
-
-            }
-
-
-            .account {
-
-                min-width: auto;
-
-                width: 45px;
-
-                padding: 4px;
-
-                justify-content: center;
-
-            }
-
-
-            .account-info,
-            .account-arrow {
+            .brand-subtitle,
+            .staff-badge {
 
                 display: none;
 
             }
 
 
-            .hero {
+            .page {
 
-                padding-top: 70px;
-
-            }
-
-
-            .community-badge {
-
-                font-size: 9px;
-
-                letter-spacing: 2px;
-
-                padding: 9px 15px;
+                padding: 40px 20px;
 
             }
 
 
-            .welcome {
+            .title {
 
-                font-size: 35px;
-
-            }
-
-
-            .orange {
-
-                font-size: 43px;
+                font-size: 38px;
 
             }
 
 
-            .staff-panel {
+            .command-grid {
 
-                font-size: 35px;
+                grid-template-columns: 1fr;
 
             }
 
         }
-
 
 
         @media (max-width: 500px) {
 
             .brand-name {
 
-                display: none;
-
-            }
-
-
-            .navigation {
-
-                gap: 10px;
-
-            }
-
-
-            .nav-link {
-
-                font-size: 10px;
-
-            }
-
-
-            .nav-link.active::after {
-
-                bottom: 18px;
+                font-size: 15px;
 
             }
 
@@ -788,32 +720,25 @@
             }
 
 
-            .community-badge {
+            .logout {
 
-                max-width: 95%;
-
-                text-align: center;
+                display: none;
 
             }
 
 
-            .welcome {
+            .title {
 
-                font-size: 30px;
-
-            }
-
-
-            .orange {
-
-                font-size: 36px;
+                font-size: 32px;
 
             }
 
 
-            .staff-panel {
+            .command-panel {
 
-                font-size: 30px;
+                padding: 20px;
+
+                border-radius: 18px;
 
             }
 
@@ -824,18 +749,15 @@
 </head>
 
 
-
 <body>
 
 
     <!-- =====================================================
-         TOP BAR
-    ===================================================== -->
+         HEADER
+    ====================================================== -->
 
-    <header class="topbar">
+    <header class="header">
 
-
-        <!-- HCP LOGO + NAME -->
 
         <a
             href="#"
@@ -848,150 +770,315 @@
             >
 
 
-            <span class="brand-name">
+            <div class="brand-text">
 
-                Hendry County
-                <strong>Project</strong>
+                <div class="brand-name">
 
-            </span>
+                    Hendry County
+                    <span>Project</span>
+
+                </div>
+
+
+                <div class="brand-subtitle">
+
+                    Professional staff control center
+
+                </div>
+
+            </div>
 
         </a>
 
 
-
-        <!-- =================================================
-             NAVIGATION
-        ================================================== -->
-
-        <nav class="navigation">
+        <div class="header-right">
 
 
-            <a
-                href="#"
-                class="nav-link active"
-            >
-                Staff
-            </a>
+            <div class="staff-badge">
 
+                STAFF DASHBOARD
 
-            <a
-                href="#"
-                class="nav-link"
-            >
-                Moderation
-            </a>
-
-
-            <a
-                href="#"
-                class="nav-link"
-            >
-                Logs
-            </a>
-
-
-            <a
-                href="#"
-                class="nav-link"
-            >
-                Settings
-            </a>
-
-
-        </nav>
-
-
-
-        <!-- =================================================
-             ACCOUNT
-        ================================================== -->
-
-        <div class="account">
-
-
-            <div class="avatar">
-                G
             </div>
 
 
-            <div class="account-info">
+            <div class="account">
 
-                <span class="username">
+                <div class="avatar">
+                    G
+                </div>
+
+
+                <div class="account-name">
                     George
-                </span>
+                </div>
 
 
-                <span class="account-status">
-                    Account Connected
-                </span>
+                <div class="logout">
+                    Logout
+                </div>
 
             </div>
-
-
-            <span class="account-arrow">
-                ▼
-            </span>
-
 
         </div>
-
 
     </header>
 
 
 
     <!-- =====================================================
-         MAIN WELCOME SCREEN
-    ===================================================== -->
+         PAGE
+    ====================================================== -->
 
-    <main class="hero">
-
-
-        <div class="hero-content">
+    <main class="page">
 
 
-            <!-- COMMUNITY BADGE -->
+        <div class="eyebrow">
 
-            <div class="community-badge">
+            HENDRY COUNTY PROJECT
 
-                <span class="badge-dot"></span>
+        </div>
 
-                <span>
-                    FLORIDA FIVEM ROLEPLAY COMMUNITY
-                </span>
+
+        <h1 class="title">
+
+            Staff Command Center
+
+        </h1>
+
+
+        <p class="description">
+
+            Manage and control the Hendry County Project
+            from one central staff panel.
+
+        </p>
+
+
+
+        <!-- =================================================
+             CATEGORIES
+        ================================================== -->
+
+        <div class="categories">
+
+
+            <button
+                class="category active"
+                data-category="moderation"
+            >
+                🛡️ Moderation
+            </button>
+
+
+            <button
+                class="category"
+                data-category="staff"
+            >
+                👥 Staff Management
+            </button>
+
+
+            <button
+                class="category"
+                data-category="cases"
+            >
+                📋 Cases
+            </button>
+
+
+            <button
+                class="category"
+                data-category="system"
+            >
+                ⚙️ System
+            </button>
+
+
+        </div>
+
+
+
+        <!-- =================================================
+             COMMAND PANEL
+        ================================================== -->
+
+        <section class="command-panel">
+
+
+            <div class="panel-header">
+
+
+                <div class="panel-icon">
+                    🛡️
+                </div>
+
+
+                <div>
+
+                    <div class="panel-title">
+                        Moderation Commands
+                    </div>
+
+
+                    <div class="panel-description">
+                        Moderation tools will be available here.
+                    </div>
+
+                </div>
 
             </div>
 
 
 
-            <!-- WELCOME -->
+            <!-- COMMANDS -->
 
-            <h1>
-
-
-                <span class="welcome">
-                    Welcome to the
-                </span>
+            <div
+                class="command-grid"
+                id="commandGrid"
+            >
 
 
-                <span class="orange">
-                    Hendry County Project
-                </span>
+                <div class="command-card">
+
+                    <div class="command-icon">
+                        ⚠️
+                    </div>
+
+                    <div class="command-name">
+
+                        Warn Member
+
+                        <span class="command-arrow">
+                            →
+                        </span>
+
+                    </div>
+
+                    <div class="command-description">
+
+                        Issue a formal warning to a member.
+
+                    </div>
+
+                </div>
 
 
-                <span class="staff-panel">
-                    Staff Panel
-                </span>
+
+                <div class="command-card">
+
+                    <div class="command-icon">
+                        🔨
+                    </div>
+
+                    <div class="command-name">
+
+                        Ban Member
+
+                        <span class="command-arrow">
+                            →
+                        </span>
+
+                    </div>
+
+                    <div class="command-description">
+
+                        Ban a member from the community.
+
+                    </div>
+
+                </div>
 
 
-            </h1>
+
+                <div class="command-card">
+
+                    <div class="command-icon">
+                        👢
+                    </div>
+
+                    <div class="command-name">
+
+                        Kick Member
+
+                        <span class="command-arrow">
+                            →
+                        </span>
+
+                    </div>
+
+                    <div class="command-description">
+
+                        Remove a member from the server.
+
+                    </div>
+
+                </div>
 
 
 
-            <!-- ORANGE LINE -->
+                <div class="command-card">
 
-            <div class="hero-line"></div>
+                    <div class="command-icon">
+                        🔇
+                    </div>
 
+                    <div class="command-name">
+
+                        Timeout Member
+
+                        <span class="command-arrow">
+                            →
+                        </span>
+
+                    </div>
+
+                    <div class="command-description">
+
+                        Temporarily restrict a member.
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             NOTICE
+        ================================================== -->
+
+        <div class="notice">
+
+
+            <div class="notice-icon">
+                !
+            </div>
+
+
+            <div>
+
+                <div class="notice-title">
+
+                    Command System
+
+                </div>
+
+
+                <div class="notice-text">
+
+                    Command functionality has not been connected
+                    yet. These controls are currently visual
+                    placeholders and can be connected to your
+                    Discord bot or backend later.
+
+                </div>
+
+            </div>
 
         </div>
 
@@ -999,39 +1086,224 @@
     </main>
 
 
-
     <!-- =====================================================
-         NAVIGATION JAVASCRIPT
-    ===================================================== -->
+         CATEGORY SWITCHING
+    ====================================================== -->
 
     <script>
 
-        const navLinks =
-            document.querySelectorAll(
-                ".nav-link"
-            );
+        const categories =
+            document.querySelectorAll(".category");
+
+        const panelIcon =
+            document.querySelector(".panel-icon");
+
+        const panelTitle =
+            document.querySelector(".panel-title");
+
+        const panelDescription =
+            document.querySelector(".panel-description");
+
+        const commandGrid =
+            document.querySelector("#commandGrid");
 
 
-        navLinks.forEach(link => {
+        const categoryData = {
 
-            link.addEventListener(
+            moderation: {
+
+                icon: "🛡️",
+
+                title: "Moderation Commands",
+
+                description:
+                    "Moderation tools will be available here.",
+
+                commands: [
+
+                    ["⚠️", "Warn Member",
+                     "Issue a formal warning to a member."],
+
+                    ["🔨", "Ban Member",
+                     "Ban a member from the community."],
+
+                    ["👢", "Kick Member",
+                     "Remove a member from the server."],
+
+                    ["🔇", "Timeout Member",
+                     "Temporarily restrict a member."]
+
+                ]
+
+            },
+
+
+            staff: {
+
+                icon: "👥",
+
+                title: "Staff Management",
+
+                description:
+                    "Staff management commands will be available here.",
+
+                commands: [
+
+                    ["👤", "Manage Staff",
+                     "Manage staff members and their permissions."],
+
+                    ["🎖️", "Manage Roles",
+                     "Manage staff roles and responsibilities."],
+
+                    ["📋", "Staff Information",
+                     "View information about a staff member."],
+
+                    ["🔐", "Permissions",
+                     "Manage staff permissions."]
+
+                ]
+
+            },
+
+
+            cases: {
+
+                icon: "📋",
+
+                title: "Cases",
+
+                description:
+                    "Case management commands will be available here.",
+
+                commands: [
+
+                    ["📁", "View Cases",
+                     "View existing moderation cases."],
+
+                    ["🔎", "Search Cases",
+                     "Search through previous cases."],
+
+                    ["📝", "Create Case",
+                     "Create a new moderation case."],
+
+                    ["🗃️", "Case History",
+                     "Review historical moderation activity."]
+
+                ]
+
+            },
+
+
+            system: {
+
+                icon: "⚙️",
+
+                title: "System Commands",
+
+                description:
+                    "System commands will be available here.",
+
+                commands: [
+
+                    ["⚙️", "Server Settings",
+                     "Manage server configuration."],
+
+                    ["🔧", "Bot Controls",
+                     "Manage bot functionality."],
+
+                    ["📢", "Announcements",
+                     "Create staff announcements."],
+
+                    ["📊", "System Logs",
+                     "View system activity and events."]
+
+                ]
+
+            }
+
+        };
+
+
+        function loadCategory(categoryName) {
+
+            const data =
+                categoryData[categoryName];
+
+
+            panelIcon.textContent =
+                data.icon;
+
+
+            panelTitle.textContent =
+                data.title;
+
+
+            panelDescription.textContent =
+                data.description;
+
+
+            commandGrid.innerHTML = "";
+
+
+            data.commands.forEach(command => {
+
+                const card =
+                    document.createElement("div");
+
+                card.className =
+                    "command-card";
+
+
+                card.innerHTML = `
+
+                    <div class="command-icon">
+                        ${command[0]}
+                    </div>
+
+                    <div class="command-name">
+
+                        ${command[1]}
+
+                        <span class="command-arrow">
+                            →
+                        </span>
+
+                    </div>
+
+                    <div class="command-description">
+
+                        ${command[2]}
+
+                    </div>
+
+                `;
+
+
+                commandGrid.appendChild(card);
+
+            });
+
+        }
+
+
+        categories.forEach(button => {
+
+            button.addEventListener(
                 "click",
-                function(event) {
+                () => {
 
-                    event.preventDefault();
+                    categories.forEach(item => {
 
-
-                    navLinks.forEach(item => {
-
-                        item.classList.remove(
-                            "active"
-                        );
+                        item.classList.remove("active");
 
                     });
 
 
-                    this.classList.add(
-                        "active"
+                    button.classList.add("active");
+
+
+                    loadCategory(
+                        button.dataset.category
                     );
 
                 }
