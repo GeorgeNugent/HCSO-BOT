@@ -78,6 +78,11 @@ export function createAuthRouter(context, { getDashboardGuild, requireAuth, hasS
             const userData = await userRes.json();
             if (!userData.id) throw new Error("Could not fetch Discord user info");
 
+            const avatarHash = userData.avatar || null;
+            const avatarUrl = avatarHash
+                ? `https://cdn.discordapp.com/avatars/${userData.id}/${avatarHash}.${avatarHash.startsWith('a_') ? 'gif' : 'png'}?size=64`
+                : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(userData.id) % 5n)}.png`;
+
             const isStaff = typeof hasStaffAccess === "function"
                 ? await hasStaffAccess(userData.id)
                 : await isStaffMember(userData.id);
@@ -87,7 +92,8 @@ export function createAuthRouter(context, { getDashboardGuild, requireAuth, hasS
                 username:      userData.username,
                 discriminator: userData.discriminator || "0",
                 tag:           `${userData.username}#${userData.discriminator || "0000"}`,
-                avatar:        userData.avatar || null
+                avatarHash,
+                avatarUrl
             };
             req.session.isStaff = isStaff;
 
