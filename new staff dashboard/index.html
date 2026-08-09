@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Hendry County Project | Staff Panel
+    </title>
+
+
+    <style>
+
+        /* =====================================================
+           RESET
+        ===================================================== */
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+
+        body {
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background: #000000;
+
+            color: #ffffff;
+
+            overflow: hidden;
+
+        }
+
+
+
+        /* =====================================================
+           TOP BAR
+        ===================================================== */
+
+        .topbar {
+
+            position: fixed;
+
+            top: 0;
+            left: 0;
+
+            width: 100%;
+
+            height: 80px;
+
+            display: flex;
+
+            align-items: center;
+
+            padding: 0 38px;
+
+            background: #030806;
+
+            border-bottom:
+                1px solid
+                rgba(72, 103, 88, 0.25);
+
+            z-index: 100;
+
+        }
+
+
+
+        /* =====================================================
+           HCP BRAND
+        ===================================================== */
+
+        .brand {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+
+            height: 100%;
+
+            text-decoration: none;
+
+            flex-shrink: 0;
+
+        }
+
+
+        .brand img {
+
+            width: 58px;
+
+            height: 58px;
+
+            object-fit: contain;
+
+            display: block;
+
+        }
+
+
+        .brand-name {
+
+            color: #ffffff;
+
+            font-size: 18px;
+
+            font-weight: 800;
+
+            letter-spacing: -0.5px;
+
+            white-space: nowrap;
+
+        }
+
+
+        .brand-name strong {
+
+            color: #ff7b2d;
+
+        }
+
+
+
+        /* =====================================================
+           NAVIGATION
+        ===================================================== */
+
+        .navigation {
+
+            position: absolute;
+
+            left: 50%;
+
+            transform: translateX(-50%);
+
+            height: 100%;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 42px;
+
+        }
+
+
+        .nav-link {
+
+            position: relative;
+
+            color: #ffffff;
+
+            text-decoration: none;
+
+            font-size: 14px;
+
+            font-weight: 700;
+
+            padding: 31px 0;
+
+            transition:
+                color 0.2s ease;
+
+        }
+
+
+        /* Hover */
+
+        .nav-link:hover {
+
+            color: #ff7b2d;
+
+        }
+
+
+        /* Active */
+
+        .nav-link.active {
+
+            color: #ff7b2d;
+
+        }
+
+
+        /* Active orange line */
+
+        .nav-link.active::after {
+
+            content: "";
+
+            position: absolute;
+
+            left: 0;
+
+            right: 0;
+
+            bottom: 19px;
+
+            height: 2px;
+
+            background: #ff7b2d;
+
+            box-shadow:
+                0 0 10px
+                rgba(255, 123, 45, 0.65);
+
+        }
+
+
+
+        /* =====================================================
+           ACCOUNT
+        ===================================================== */
+
+        .account {
+
+            margin-left: auto;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 11px;
+
+            min-width: 190px;
+
+            height: 51px;
+
+            padding: 6px 12px;
+
+            background: #0b120f;
+
+            border:
+                1px solid
+                rgba(100, 126, 113, 0.22);
+
+            border-radius: 12px;
+
+        }
+
+
+        .avatar {
+
+            width: 36px;
+
+            height: 36px;
+
+            border-radius: 50%;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            background:
+                linear-gradient(
+                    145deg,
+                    #777d79,
+                    #242b28
+                );
+
+            font-size: 14px;
+
+            font-weight: 800;
+
+            color: #ffffff;
+
+        }
+
+
+        .account-info {
+
+            display: flex;
+
+            flex-direction: column;
+
+            flex: 1;
+
+        }
+
+
+        .username {
+
+            font-size: 12px;
+
+            font-weight: 800;
+
+            color: #ffffff;
+
+        }
+
+
+        .account-status {
+
+            margin-top: 3px;
+
+            font-size: 10px;
+
+            color: #8e9d95;
+
+        }
+
+
+        .account-arrow {
+
+            font-size: 10px;
+
+            color: #9aa69f;
+
+        }
+
+
+
+        /* =====================================================
+           MAIN HERO
+        ===================================================== */
+
+        .hero {
+
+            width: 100%;
+
+            height: 100vh;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            text-align: center;
+
+            padding-top: 80px;
+
+            position: relative;
+
+            background: #000000;
+
+        }
+
+
+        .hero-content {
+
+            position: relative;
+
+            z-index: 2;
+
+            width: 100%;
+
+            max-width: 1100px;
+
+            padding: 30px;
+
+        }
+
+
+
+        /* =====================================================
+           COMMUNITY BADGE
+        ===================================================== */
+
+        .community-badge {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            gap: 11px;
+
+            padding: 10px 22px;
+
+            margin-bottom: 34px;
+
+            border:
+                1px solid
+                rgba(255, 123, 45, 0.55);
+
+            border-radius: 30px;
+
+            background:
+                rgba(38, 31, 23, 0.72);
+
+            color: #ff914d;
+
+            font-size: 12px;
+
+            font-weight: 800;
+
+            letter-spacing: 3px;
+
+            box-shadow:
+                inset 0 0 20px
+                rgba(255, 123, 45, 0.03),
+
+                0 0 25px
+                rgba(255, 123, 45, 0.03);
+
+        }
+
+
+        .badge-dot {
+
+            width: 7px;
+
+            height: 7px;
+
+            border-radius: 50%;
+
+            background: #ff7b2d;
+
+            box-shadow:
+                0 0 9px
+                rgba(255, 123, 45, 0.8);
+
+        }
+
+
+
+        /* =====================================================
+           WELCOME TEXT
+        ===================================================== */
+
+        h1 {
+
+            display: flex;
+
+            flex-direction: column;
+
+            align-items: center;
+
+            line-height: 1;
+
+            letter-spacing: -2px;
+
+        }
+
+
+        .welcome {
+
+            font-size:
+                clamp(
+                    40px,
+                    4vw,
+                    65px
+                );
+
+            font-weight: 900;
+
+            color: #ffffff;
+
+            margin-bottom: 17px;
+
+            text-shadow:
+                0 5px 30px
+                rgba(0, 0, 0, 0.45);
+
+        }
+
+
+        .orange {
+
+            font-size:
+                clamp(
+                    52px,
+                    6vw,
+                    88px
+                );
+
+            font-weight: 900;
+
+            color: #ff7b2d;
+
+            text-shadow:
+
+                0 4px 25px
+                rgba(0, 0, 0, 0.45),
+
+                0 0 20px
+                rgba(255, 123, 45, 0.08);
+
+        }
+
+
+        .staff-panel {
+
+            margin-top: 18px;
+
+            font-size:
+                clamp(
+                    40px,
+                    4.5vw,
+                    65px
+                );
+
+            font-weight: 900;
+
+            color: #ffffff;
+
+            text-shadow:
+                0 5px 30px
+                rgba(0, 0, 0, 0.45);
+
+        }
+
+
+
+        /* =====================================================
+           ORANGE LINE
+        ===================================================== */
+
+        .hero-line {
+
+            position: relative;
+
+            width: 430px;
+
+            max-width: 75%;
+
+            height: 2px;
+
+            margin: 38px auto 0;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    #ff7b2d,
+                    transparent
+                );
+
+            box-shadow:
+                0 0 12px
+                rgba(255, 123, 45, 0.7);
+
+        }
+
+
+        .hero-line::after {
+
+            content: "";
+
+            position: absolute;
+
+            width: 7px;
+
+            height: 7px;
+
+            border-radius: 50%;
+
+            background: #ff7b2d;
+
+            left: 50%;
+
+            top: 50%;
+
+            transform:
+                translate(
+                    -50%,
+                    -50%
+                );
+
+            box-shadow:
+
+                0 0 12px #ff7b2d,
+
+                0 0 25px
+                rgba(255, 123, 45, 0.8);
+
+        }
+
+
+
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
+
+        @media (max-width: 900px) {
+
+            .topbar {
+
+                padding: 0 20px;
+
+            }
+
+
+            .navigation {
+
+                gap: 22px;
+
+            }
+
+
+            .nav-link {
+
+                font-size: 12px;
+
+            }
+
+
+            .account {
+
+                min-width: 160px;
+
+            }
+
+
+            .orange {
+
+                font-size: 55px;
+
+            }
+
+        }
+
+
+
+        @media (max-width: 700px) {
+
+            .topbar {
+
+                height: 70px;
+
+                padding: 0 15px;
+
+            }
+
+
+            .brand img {
+
+                width: 48px;
+
+                height: 48px;
+
+            }
+
+
+            .brand-name {
+
+                font-size: 14px;
+
+            }
+
+
+            .navigation {
+
+                position: static;
+
+                transform: none;
+
+                margin-left: auto;
+
+                margin-right: 12px;
+
+                gap: 16px;
+
+            }
+
+
+            .nav-link {
+
+                font-size: 11px;
+
+            }
+
+
+            .account {
+
+                min-width: auto;
+
+                width: 45px;
+
+                padding: 4px;
+
+                justify-content: center;
+
+            }
+
+
+            .account-info,
+            .account-arrow {
+
+                display: none;
+
+            }
+
+
+            .hero {
+
+                padding-top: 70px;
+
+            }
+
+
+            .community-badge {
+
+                font-size: 9px;
+
+                letter-spacing: 2px;
+
+                padding: 9px 15px;
+
+            }
+
+
+            .welcome {
+
+                font-size: 35px;
+
+            }
+
+
+            .orange {
+
+                font-size: 43px;
+
+            }
+
+
+            .staff-panel {
+
+                font-size: 35px;
+
+            }
+
+        }
+
+
+
+        @media (max-width: 500px) {
+
+            .brand-name {
+
+                display: none;
+
+            }
+
+
+            .navigation {
+
+                gap: 10px;
+
+            }
+
+
+            .nav-link {
+
+                font-size: 10px;
+
+            }
+
+
+            .nav-link.active::after {
+
+                bottom: 18px;
+
+            }
+
+
+            .brand img {
+
+                width: 43px;
+
+                height: 43px;
+
+            }
+
+
+            .community-badge {
+
+                max-width: 95%;
+
+                text-align: center;
+
+            }
+
+
+            .welcome {
+
+                font-size: 30px;
+
+            }
+
+
+            .orange {
+
+                font-size: 36px;
+
+            }
+
+
+            .staff-panel {
+
+                font-size: 30px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+
+<body>
+
+
+    <!-- =====================================================
+         TOP BAR
+    ===================================================== -->
+
+    <header class="topbar">
+
+
+        <!-- HCP LOGO + NAME -->
+
+        <a
+            href="#"
+            class="brand"
+        >
+
+            <img
+                src="assets/HCP-Main.png"
+                alt="Hendry County Project"
+            >
+
+
+            <span class="brand-name">
+
+                Hendry County
+                <strong>Project</strong>
+
+            </span>
+
+        </a>
+
+
+
+        <!-- =================================================
+             NAVIGATION
+        ================================================== -->
+
+        <nav class="navigation">
+
+
+            <a
+                href="#"
+                class="nav-link active"
+            >
+                Staff
+            </a>
+
+
+            <a
+                href="#"
+                class="nav-link"
+            >
+                Moderation
+            </a>
+
+
+            <a
+                href="#"
+                class="nav-link"
+            >
+                Logs
+            </a>
+
+
+            <a
+                href="#"
+                class="nav-link"
+            >
+                Settings
+            </a>
+
+
+        </nav>
+
+
+
+        <!-- =================================================
+             ACCOUNT
+        ================================================== -->
+
+        <div class="account">
+
+
+            <div class="avatar">
+                G
+            </div>
+
+
+            <div class="account-info">
+
+                <span class="username">
+                    George
+                </span>
+
+
+                <span class="account-status">
+                    Account Connected
+                </span>
+
+            </div>
+
+
+            <span class="account-arrow">
+                ▼
+            </span>
+
+
+        </div>
+
+
+    </header>
+
+
+
+    <!-- =====================================================
+         MAIN WELCOME SCREEN
+    ===================================================== -->
+
+    <main class="hero">
+
+
+        <div class="hero-content">
+
+
+            <!-- COMMUNITY BADGE -->
+
+            <div class="community-badge">
+
+                <span class="badge-dot"></span>
+
+                <span>
+                    FLORIDA FIVEM ROLEPLAY COMMUNITY
+                </span>
+
+            </div>
+
+
+
+            <!-- WELCOME -->
+
+            <h1>
+
+
+                <span class="welcome">
+                    Welcome to the
+                </span>
+
+
+                <span class="orange">
+                    Hendry County Project
+                </span>
+
+
+                <span class="staff-panel">
+                    Staff Panel
+                </span>
+
+
+            </h1>
+
+
+
+            <!-- ORANGE LINE -->
+
+            <div class="hero-line"></div>
+
+
+        </div>
+
+
+    </main>
+
+
+
+    <!-- =====================================================
+         NAVIGATION JAVASCRIPT
+    ===================================================== -->
+
+    <script>
+
+        const navLinks =
+            document.querySelectorAll(
+                ".nav-link"
+            );
+
+
+        navLinks.forEach(link => {
+
+            link.addEventListener(
+                "click",
+                function(event) {
+
+                    event.preventDefault();
+
+
+                    navLinks.forEach(item => {
+
+                        item.classList.remove(
+                            "active"
+                        );
+
+                    });
+
+
+                    this.classList.add(
+                        "active"
+                    );
+
+                }
+            );
+
+        });
+
+    </script>
+
+
+</body>
+
+</html>
