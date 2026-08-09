@@ -1,0 +1,123 @@
+/**
+ * Department theme loader.
+ * All department data is read from src/config/departments.json so you can
+ * add or edit departments without touching code.
+ */
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const DEPARTMENTS_PATH = join(__dirname, "../config/departments.json");
+const BRANDING_PATH    = join(__dirname, "../config/branding.json");
+
+function load(filePath) {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function loadMergedDepartments() {
+    const depts = load(DEPARTMENTS_PATH);
+    const brand = load(BRANDING_PATH);
+    if (brand && brand.departments && typeof brand.departments === 'object') {
+        Object.entries(brand.departments).forEach(([shortKey, def]) => {
+            const targetShort = String(shortKey || "").toUpperCase();
+            Object.keys(depts).forEach(id => {
+                const d = depts[id];
+                if (String(d?.shortName || "").toUpperCase() === targetShort) {
+                    if (def.name) d.name = def.name;
+                    if (def.shortName) d.shortName = def.shortName;
+                    if (def.color) d.color = def.color;
+                    if (def.footer) d.footer = def.footer;
+                }
+            });
+        });
+    }
+    return depts;
+}
+
+function normalize(input) {
+    return String(input || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function findByShortName(departments, shortName) {
+    const target = String(shortName || "").toUpperCase();
+    const found = Object.values(departments).find(d => String(d?.shortName || "").toUpperCase() === target);
+    if (found) return found;
+
+    try {
+        const brand = load(BRANDING_PATH);
+        if (brand && brand.departments && typeof brand.departments === 'object') {
+            const def = brand.departments[target] || brand.departments[target.toUpperCase()] || brand.departments[target.toLowerCase()];
+            if (def && def.name) {
+                return {
+                    name: def.name,
+                    shortName: def.shortName || target,
+                    color: def.color || brand.defaultColor,
+                    footer: def.footer || brand.fallback?.footer || ''
+                };
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+
+    return null;
+}
+
+function inferDepartmentFromGuildName(guildName, departments) {
+    const normalizedName = normalize(guildName);
+    if (!normalizedName) return null;
+
+    const hasCpdHints = normalizedName.includes("cpd")
+        || normalizedName.includes("clewiston")
+        || (normalizedName.includes("police") && normalizedName.includes("department"));
+    if (hasCpdHints && !normalizedName.includes("highway patrol")) {
+        return findByShortName(departments, "CPD");
+    }
+
+    const hasFhpHints = normalizedName.includes("fhp")
+        || (normalizedName.includes("highway") && normalizedName.includes("patrol"))
+        || normalizedName.includes("state patrol")
+        || normalizedName.includes("florida highway");
+    if (hasFhpHints) {
+        return findByShortName(departments, "FHP");
+    }
+
+    const hasHcsoHints = normalizedName.includes("hcso")
+        || normalizedName.includes("hendry")
+        || normalizedName.includes("sheriff office")
+        || normalizedName.includes("sheriffs office");
+    if (hasHcsoHints) {
+        return findByShortName(departments, "HCSO");
+    }
+
+    return null;
+}
+
+export function getTheme(guildId) {
+    const depts  = loadMergedDepartments();
+    const brand  = load(BRANDING_PATH);
+    return (guildId && depts[guildId]) ? depts[guildId] : brand.fallback;
+}
+
+export function resolveDepartmentForGuild(guildOrId) {
+    const depts = loadMergedDepartments();
+    const guildId = typeof guildOrId === "string" ? guildOrId : String(guildOrId?.id || "");
+    const guildName = typeof guildOrId === "string" ? "" : String(guildOrId?.name || "");
+
+    if (guildId && depts[guildId]) return depts[guildId];
+
+    return inferDepartmentFromGuildName(guildName, depts);
+}
+
+export function getAllDepartments() {
+    return load(DEPARTMENTS_PATH);
+}
+
+export function getBranding() {
+    return load(BRANDING_PATH);
+}

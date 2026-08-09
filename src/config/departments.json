@@ -1,0 +1,37 @@
+{
+  "1533590255603810334": {
+    "type": "main",
+    "name": "Hendry County Project",
+    "shortName": "HCP",
+    "color": "#F8B637",
+    "footer": "Hendry County Project - Main Server",
+    "description": "Main roleplay community server"
+  },
+  "1482203107432595601": {
+    "type": "department",
+    "name": "Hendry County Sheriff's Office",
+    "shortName": "HCSO",
+    "color": "#2fbf71",
+    "logo": "/images/HCSO.png",
+    "footer": "HCSO - Law Enforcement Division",
+    "description": "Law enforcement department"
+  },
+  "1482498655523962892": {
+    "type": "department",
+    "name": "Florida Highway Patrol",
+    "shortName": "FHP",
+    "color": "#f0a500",
+    "logo": "/images/FHP.png",
+    "footer": "FHP - State Patrol Division",
+    "description": "State patrol department"
+  },
+  "1482501585803415572": {
+    "type": "department",
+    "name": "Clewiston Police Department",
+    "shortName": "CPD",
+    "color": "#3b82f6",
+    "logo": "/images/CPD.png",
+    "footer": "CPD - Municipal Police Division",
+    "description": "Municipal police department"
+  }
+}
