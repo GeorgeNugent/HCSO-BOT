@@ -418,6 +418,101 @@ function saveReports() {
     writeJsonData("reports.json", reports);
 }
 
+const statsData = readJsonData("stats.json", { dailyMessageCounts: [] });
+
+function saveStatsData() {
+    writeJsonData("stats.json", statsData);
+}
+
+function cleanupOldStatsCounts() {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const cutoffDate = cutoff.toISOString().slice(0, 10);
+    const beforeLength = statsData.dailyMessageCounts.length;
+    statsData.dailyMessageCounts = statsData.dailyMessageCounts.filter(entry => entry.date >= cutoffDate);
+    if (statsData.dailyMessageCounts.length !== beforeLength) {
+        saveStatsData();
+    }
+}
+
+function getCSTDateString(date = new Date()) {
+    const cstString = date.toLocaleDateString("en-CA", {
+        timeZone: "America/Chicago"
+    });
+    return cstString;
+}
+
+function getMessagesLast7Days(guildId) {
+    const days = [];
+    for (let i = 0; i < 7; i += 1) {
+        const date = new Date();
+        date.setUTCDate(date.getUTCDate() - i);
+        days.push(getCSTDateString(date));
+    }
+    return statsData.dailyMessageCounts
+        .filter(entry => entry.guildId === guildId && days.includes(entry.date))
+        .reduce((sum, entry) => sum + Number(entry.count || 0), 0);
+}
+
+function getCSTTimeString(date = new Date()) {
+    const formatted = date.toLocaleString("en-US", {
+        timeZone: "America/Chicago",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+    });
+    return formatted.replace(" AM", "am").replace(" PM", "pm");
+}
+
+function getStatusCounts(guild) {
+    const onlineCount = guild.members.cache.filter(m => m.presence?.status === "online").size;
+    const dndCount = guild.members.cache.filter(m => m.presence?.status === "dnd").size;
+    const idleCount = guild.members.cache.filter(m => m.presence?.status === "idle").size;
+    return { onlineCount, dndCount, idleCount };
+}
+
+async function updateStatsChannels() {
+    if (!config.statsCategoryId) return;
+    const category = await client.channels.fetch(config.statsCategoryId).catch(() => null);
+    if (!category || category.type !== ChannelType.GuildCategory) return;
+
+    const guild = category.guild;
+    const totalUsers = guild.memberCount || 0;
+    const target = Number(config.statsUserTarget) || 15000;
+    const remaining = Math.max(0, target - totalUsers);
+    const messageCount = getMessagesLast7Days(guild.id);
+    const { onlineCount, dndCount, idleCount } = getStatusCounts(guild);
+
+    const targetNames = [
+        `🕒 ${getCSTTimeString()} CST`,
+        `Users: ${totalUsers}`,
+        `${remaining} Users Until ${target}`,
+        `🟢 ${onlineCount} ⛔ ${dndCount} 🌙 ${idleCount}`,
+        `Msg Last 7 Days: ${messageCount}`
+    ];
+
+    const voiceChannels = category.children.cache
+        .filter(ch => ch.type === ChannelType.GuildVoice)
+        .sort((a, b) => a.position - b.position);
+
+    for (let index = 0; index < targetNames.length; index += 1) {
+        const targetName = targetNames[index];
+        let channel = voiceChannels[index];
+        if (!channel) {
+            channel = await guild.channels.create({
+                name: targetName,
+                type: ChannelType.GuildVoice,
+                parent: category.id
+            }).catch(() => null);
+            if (!channel) continue;
+            continue;
+        }
+
+        if (channel.name !== targetName) {
+            await channel.edit({ name: targetName }).catch(() => null);
+        }
+    }
+}
+
 function saveTickets() {
     writeJsonData("tickets.json", tickets);
 }
@@ -2428,6 +2523,11 @@ const commands = [
         )),
 
     new SlashCommandBuilder()
+        .setName("set-stats-category")
+        .setDescription("Set the category for the auto-updating stats voice channels")
+        .addChannelOption(o => o.setName("category").setDescription("Category to contain the stats channels").setRequired(true).addChannelTypes(ChannelType.GuildCategory)),
+
+    new SlashCommandBuilder()
         .setName("set-status")
         .setDescription("Change the bot's status to a preset")
         .addStringOption(o => o
@@ -2860,13 +2960,41 @@ client.on("ready", () => {
                     activities: selectedStatus.activity ? [selectedStatus.activity] : [],
                     status: selectedStatus.status
                 });
-                } else {
+            } else {
                 client.user.setActivity(branding.communityName, { type: "WATCHING" });
             }
         }
     } else {
         client.user.setActivity(branding.communityName, { type: "WATCHING" });
     }
+
+    if (config.statsCategoryId) {
+        updateStatsChannels().catch(err => console.error("Stats update failed on ready:", err));
+        setInterval(async () => {
+            try {
+                cleanupOldStatsCounts();
+                await updateStatsChannels();
+            } catch (err) {
+                console.error("Stats update failed:", err);
+            }
+        }, Math.max(1, Number(config.statsUpdateIntervalMinutes) || 5) * 60 * 1000);
+    }
+});
+
+client.on("messageCreate", async message => {
+    if (message.author.bot || !message.guild) return;
+
+    const guildId = message.guild.id;
+    const countDate = getCSTDateString(new Date());
+    const entry = statsData.dailyMessageCounts.find(e => e.guildId === guildId && e.date === countDate);
+    if (entry) {
+        entry.count = Number(entry.count || 0) + 1;
+    } else {
+        statsData.dailyMessageCounts.push({ guildId, date: countDate, count: 1 });
+    }
+
+    cleanupOldStatsCounts();
+    saveStatsData();
 });
 
 // Handle commands
