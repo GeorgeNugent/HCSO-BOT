@@ -3,6 +3,8 @@ import { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuil
 import fs from "fs";
 import path from "node:path";
 import sharp from "sharp";
+import * as play from "play-dl";
+import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, getVoiceConnection } from "@discordjs/voice";
 import { createTicketSystem, ticketCommands } from "./ticket-system.js";
 import { startDashboard } from "./dashboard.js";
 import { createDepartmentEmbed, getDepartmentName } from "./src/embeds/embedHandler.js";
@@ -17,6 +19,7 @@ const PORT = Number(process.env.PORT) || 8100;
 const DASHBOARD_URL = process.env.DASHBOARD_URL || `http://51.79.43.184:${PORT}`;
 const VEHICLE_OWNERSHIP_API_URL = process.env.VEHICLE_OWNERSHIP_API_URL || null;
 const VEHICLE_OWNERSHIP_API_TOKEN = process.env.VEHICLE_OWNERSHIP_API_TOKEN || "HendryCountyProject";
+const musicSubscriptions = new Map();
 
 const branding = getBranding();
 
@@ -469,6 +472,114 @@ async function getStatusCounts(guild) {
     const dndCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === "dnd").size;
     const idleCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === "idle").size;
     return { onlineCount, dndCount, idleCount };
+}
+
+async function resolveMusicTrack(query) {
+    const url = String(query || "").trim();
+    let info = null;
+
+    if (/^https?:\/\//i.test(url)) {
+        try {
+            const spotifyValidation = await play.sp_validate(url).catch(() => null);
+            if (spotifyValidation === "track" || spotifyValidation === "playlist" || spotifyValidation === "album") {
+                const result = await play.spotify(url).catch(err => {
+                    console.error("Spotify resolve error:", err);
+                    return null;
+                });
+                if (!result) return null;
+
+                if (result.type === "track") {
+                    return { title: result.name || url, url: result.url || url };
+                }
+
+                const trackItem = (result.tracks && result.tracks[0]) || (result.items && result.items[0]) || null;
+                if (trackItem) {
+                    return { title: trackItem.name || url, url: trackItem.url || url };
+                }
+
+                return null;
+            }
+
+            const validation = await play.yt_validate(url);
+            if (validation === "video") {
+                info = await play.video_info(url);
+                return { title: info.video_details.title, url: info.video_details.url };
+            }
+        } catch (err) {
+            console.error("Music resolve URL error:", err);
+        }
+    }
+
+    const searchResults = await play.search(url, { limit: 1 });
+    if (!searchResults || searchResults.length === 0) return null;
+    return { title: searchResults[0].title, url: searchResults[0].url };
+}
+
+async function createMusicResource(track) {
+    const stream = await play.stream(track.url, { discordPlayerCompatibility: true }).catch(err => {
+        console.error("Music stream error:", err);
+        return null;
+    });
+    if (!stream || !stream.stream) return null;
+    return createAudioResource(stream.stream, { inputType: stream.type, metadata: track });
+}
+
+async function ensureMusicSubscription(interaction) {
+    if (!interaction.guildId || !interaction.guild) return null;
+    const member = interaction.member;
+    const voiceChannel = member?.voice?.channel;
+    if (!voiceChannel) return null;
+
+    let connection = getVoiceConnection(interaction.guildId);
+    if (!connection) {
+        connection = joinVoiceChannel({
+            channelId: voiceChannel.id,
+            guildId: interaction.guildId,
+            adapterCreator: interaction.guild.voiceAdapterCreator,
+            selfDeaf: false,
+            selfMute: false
+        });
+
+        try {
+            await entersState(connection, VoiceConnectionStatus.Ready, 15000);
+        } catch (err) {
+            console.error("Voice connection ready error:", err);
+        }
+    }
+
+    let subscription = musicSubscriptions.get(interaction.guildId);
+    if (!subscription) {
+        const player = createAudioPlayer();
+        player.on(AudioPlayerStatus.Error, error => console.error("Audio player error:", error));
+        connection.subscribe(player);
+        subscription = { connection, player };
+        musicSubscriptions.set(interaction.guildId, subscription);
+    }
+
+    return subscription;
+}
+
+function stopMusicSubscription(guildId) {
+    const subscription = musicSubscriptions.get(guildId);
+    if (!subscription) return false;
+
+    try {
+        subscription.player.stop();
+    } catch (err) {
+        console.error("Error stopping audio player:", err);
+    }
+
+    const connection = getVoiceConnection(guildId);
+    if (connection) {
+        try {
+            connection.destroy();
+        } catch (err) {
+            console.error("Error destroying voice connection:", err);
+        }
+    }
+
+    musicSubscriptions.delete(guildId);
+    return true;
 }
 
 async function updateStatsChannels() {
@@ -2535,6 +2646,23 @@ const commands = [
         .setName("set-stats-category")
         .setDescription("Set the category for the auto-updating stats voice channels")
         .addChannelOption(o => o.setName("category").setDescription("Category to contain the stats channels").setRequired(true).addChannelTypes(ChannelType.GuildCategory)),
+
+    new SlashCommandBuilder()
+        .setName("join")
+        .setDescription("Join your current voice channel"),
+
+    new SlashCommandBuilder()
+        .setName("play")
+        .setDescription("Play a song by link or search term")
+        .addStringOption(o => o.setName("query").setDescription("YouTube link or song name").setRequired(true)),
+
+    new SlashCommandBuilder()
+        .setName("stop")
+        .setDescription("Stop playback and leave the voice channel"),
+
+    new SlashCommandBuilder()
+        .setName("leave")
+        .setDescription("Leave the current voice channel"),
 
     new SlashCommandBuilder()
         .setName("set-status")
@@ -7172,6 +7300,61 @@ client.on("interactionCreate", async interaction => {
             console.error("Set stats category error:", error);
             await safeInteractionErrorReply(interaction, `❌ Failed to set stats category: ${error.message || "Unknown error"}`);
         }
+    }
+
+    // /join
+    if (interaction.commandName === "join") {
+        if (!interaction.guildId || !interaction.guild) {
+            return interaction.reply({ content: "❌ This command can only be used in a server.", flags: MessageFlags.Ephemeral });
+        }
+
+        const subscription = await ensureMusicSubscription(interaction);
+        if (!subscription) {
+            return interaction.reply({ content: "❌ You need to be in a voice channel for me to join.", flags: MessageFlags.Ephemeral });
+        }
+
+        return interaction.reply({ content: `✅ Joined <#${interaction.member.voice.channel.id}>. You can now use /play.`, flags: MessageFlags.Ephemeral });
+    }
+
+    // /play
+    if (interaction.commandName === "play") {
+        if (!interaction.guildId || !interaction.guild) {
+            return interaction.reply({ content: "❌ This command can only be used in a server.", flags: MessageFlags.Ephemeral });
+        }
+
+        await interaction.deferReply();
+        const query = interaction.options.getString("query", true);
+        const subscription = await ensureMusicSubscription(interaction);
+        if (!subscription) {
+            return interaction.editReply({ content: "❌ You need to be in a voice channel for me to join and play music." });
+        }
+
+        const track = await resolveMusicTrack(query);
+        if (!track) {
+            return interaction.editReply({ content: "❌ Could not find that song. Try a different title or link." });
+        }
+
+        const resource = await createMusicResource(track);
+        if (!resource) {
+            return interaction.editReply({ content: "❌ Could not play that song. There was a playback error." });
+        }
+
+        subscription.player.play(resource);
+        return interaction.editReply({ content: `🎵 Now playing: **${track.title}**` });
+    }
+
+    // /stop and /leave
+    if (interaction.commandName === "stop" || interaction.commandName === "leave") {
+        if (!interaction.guildId || !interaction.guild) {
+            return interaction.reply({ content: "❌ This command can only be used in a server.", flags: MessageFlags.Ephemeral });
+        }
+
+        const stopped = stopMusicSubscription(interaction.guildId);
+        if (!stopped) {
+            return interaction.reply({ content: "❌ I am not currently connected to voice in this server.", flags: MessageFlags.Ephemeral });
+        }
+
+        return interaction.reply({ content: "✅ Stopped playback and left the voice channel.", flags: MessageFlags.Ephemeral });
     }
 
     // /suggestionschannel
