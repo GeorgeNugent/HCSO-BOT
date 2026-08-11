@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActivityType, ChannelType, AuditLogEvent, StringSelectMenuBuilder } from "discord.js";
+import { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActivityType, ChannelType, AuditLogEvent, StringSelectMenuBuilder, UserSelectMenuBuilder } from "discord.js";
 import fs from "fs";
 import path from "node:path";
 import sharp from "sharp";
@@ -7,6 +7,7 @@ import { createTicketSystem, ticketCommands } from "./ticket-system.js";
 import { startDashboard } from "./dashboard.js";
 import { createDepartmentEmbed, getDepartmentName } from "./src/embeds/embedHandler.js";
 import { getAllDepartments, getBranding } from "./src/embeds/departmentThemes.js";
+import { handleAssignVehicle, handleMyCars, handleGiveButton, handleGiveSelect, handleRevertButton } from "./src/vehicleOwnership.js";
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -2466,6 +2467,18 @@ const commands = [
         .addUserOption(o => o.setName("user").setDescription("User to look up").setRequired(false)),
 
     new SlashCommandBuilder()
+        .setName("mycars")
+        .setDescription("View and manage the vehicles you own"),
+
+    new SlashCommandBuilder()
+        .setName("assign-vehicle")
+        .setDescription("Assign a vehicle + spawn code to a player (staff only)")
+        .addUserOption(o => o.setName("player").setDescription("The owner").setRequired(true))
+        .addStringOption(o => o.setName("model").setDescription("Vehicle spawn model, e.g. adder").setRequired(true))
+        .addStringOption(o => o.setName("plate").setDescription("License plate").setRequired(true))
+        .addStringOption(o => o.setName("code").setDescription("Custom spawn code (leave blank to auto-generate)")),
+
+    new SlashCommandBuilder()
         .setName("assignvehicle")
         .setDescription("Transfer ownership of a vehicle")
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
@@ -3004,6 +3017,21 @@ client.on("interactionCreate", async interaction => {
                 content: `❌ ${error.message || "The vehicle ownership request failed."}`
             });
             return;
+        }
+    }
+
+    if (interaction.isButton()) {
+        if (interaction.customId.startsWith("give_")) {
+            return await handleGiveButton(interaction);
+        }
+        if (interaction.customId.startsWith("revert_")) {
+            return await handleRevertButton(interaction);
+        }
+    }
+
+    if (interaction.isUserSelectMenu()) {
+        if (interaction.customId.startsWith("giveselect_")) {
+            return await handleGiveSelect(interaction);
         }
     }
 
