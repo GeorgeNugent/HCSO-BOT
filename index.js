@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "node:path";
 import sharp from "sharp";
 import * as play from "play-dl";
+import ytdl from "ytdl-core";
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, getVoiceConnection } from "@discordjs/voice";
 import { createTicketSystem, ticketCommands } from "./ticket-system.js";
 import { startDashboard } from "./dashboard.js";
@@ -516,12 +517,27 @@ async function resolveMusicTrack(query) {
 }
 
 async function createMusicResource(track) {
-    const stream = await play.stream(track.url, { discordPlayerCompatibility: true }).catch(err => {
-        console.error("Music stream error:", err);
-        return null;
-    });
-    if (!stream || !stream.stream) return null;
-    return createAudioResource(stream.stream, { inputType: stream.type, metadata: track });
+    try {
+        const stream = await play.stream(track.url, { discordPlayerCompatibility: true });
+        if (stream && stream.stream) {
+            return createAudioResource(stream.stream, { inputType: stream.type, metadata: track });
+        }
+    } catch (err) {
+        console.error("play-dl stream failed:", err && err.message ? err.message : err);
+    }
+
+    // Fallback to ytdl-core for YouTube links
+    try {
+        if (/https?:\/\/(www\.)?youtube\.com|youtu\.be/i.test(String(track.url || ""))) {
+            const ytStream = ytdl(track.url, { filter: "audioonly", quality: "highestaudio", highWaterMark: 1 << 25 });
+            ytStream.on("error", err => console.error("ytdl stream error:", err && err.message ? err.message : err));
+            return createAudioResource(ytStream, { metadata: track });
+        }
+    } catch (err) {
+        console.error("ytdl-core fallback failed:", err && err.message ? err.message : err);
+    }
+
+    return null;
 }
 
 async function ensureMusicSubscription(interaction) {
