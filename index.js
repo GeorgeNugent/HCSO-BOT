@@ -463,10 +463,11 @@ function getCSTTimeString(date = new Date()) {
     return formatted.replace(" AM", "am").replace(" PM", "pm");
 }
 
-function getStatusCounts(guild) {
-    const onlineCount = guild.members.cache.filter(m => m.presence?.status === "online").size;
-    const dndCount = guild.members.cache.filter(m => m.presence?.status === "dnd").size;
-    const idleCount = guild.members.cache.filter(m => m.presence?.status === "idle").size;
+async function getStatusCounts(guild) {
+    await guild.members.fetch({ withPresences: true }).catch(() => null);
+    const onlineCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === "online").size;
+    const dndCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === "dnd").size;
+    const idleCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === "idle").size;
     return { onlineCount, dndCount, idleCount };
 }
 
@@ -477,17 +478,15 @@ async function updateStatsChannels() {
 
     const guild = category.guild;
     const totalUsers = guild.memberCount || 0;
-    const target = Number(config.statsUserTarget) || 15000;
+    const target = Number(config.statsUserTarget) || 100;
     const remaining = Math.max(0, target - totalUsers);
-    const messageCount = getMessagesLast7Days(guild.id);
-    const { onlineCount, dndCount, idleCount } = getStatusCounts(guild);
+    const { onlineCount, dndCount, idleCount } = await getStatusCounts(guild);
 
     const targetNames = [
         `🕒 ${getCSTTimeString()} CST`,
         `Users: ${totalUsers}`,
         `${remaining} Users Until ${target}`,
-        `🟢 ${onlineCount} ⛔ ${dndCount} 🌙 ${idleCount}`,
-        `Msg Last 7 Days: ${messageCount}`
+        `🟢 ${onlineCount} ⛔ ${dndCount} 🌙 ${idleCount}`
     ];
 
     const voiceChannels = category.children.cache
@@ -2764,6 +2763,7 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildPresences,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.DirectMessageTyping,
