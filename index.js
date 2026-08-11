@@ -7125,6 +7125,45 @@ client.on("interactionCreate", async interaction => {
         }
     }
 
+    // /set-stats-category
+    if (interaction.commandName === "set-stats-category") {
+        try {
+            if (!interaction.guildId) {
+                return interaction.reply({
+                    content: "❌ This command can only be used in a server.",
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+                return interaction.reply({
+                    content: "❌ You do not have permission to configure the stats category.",
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            const category = interaction.options.getChannel("category");
+            if (!category || category.type !== ChannelType.GuildCategory) {
+                return interaction.reply({
+                    content: "❌ Please select a valid category.",
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            config.statsCategoryId = category.id;
+            saveConfig();
+
+            await interaction.reply({
+                content: `✅ Stats category updated to <#${category.id}>. The bot will now update channels in CST.`,
+                flags: MessageFlags.Ephemeral
+            });
+            await updateStatsChannels().catch(() => {});
+        } catch (error) {
+            console.error("Set stats category error:", error);
+            await safeInteractionErrorReply(interaction, `❌ Failed to set stats category: ${error.message || "Unknown error"}`);
+        }
+    }
+
     // /suggestionschannel
     if (interaction.commandName === "suggestionschannel") {
         try {
