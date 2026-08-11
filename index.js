@@ -477,6 +477,7 @@ async function updateStatsChannels() {
     if (!category || category.type !== ChannelType.GuildCategory) return;
 
     const guild = category.guild;
+    await guild.channels.fetch().catch(() => null);
     const totalUsers = guild.memberCount || 0;
     const target = Number(config.statsUserTarget) || 100;
     const remaining = Math.max(0, target - totalUsers);
@@ -489,26 +490,35 @@ async function updateStatsChannels() {
         `🟢 ${onlineCount} ⛔ ${dndCount} 🌙 ${idleCount}`
     ];
 
-    const voiceChannels = category.children.cache
-        .filter(ch => ch.type === ChannelType.GuildVoice)
+    const voiceChannels = guild.channels.cache
+        .filter(ch => ch.type === ChannelType.GuildVoice && ch.parentId === category.id)
         .sort((a, b) => a.position - b.position);
 
-    for (let index = 0; index < targetNames.length; index += 1) {
-        const targetName = targetNames[index];
-        let channel = voiceChannels[index];
-        if (!channel) {
-            channel = await guild.channels.create({
+    const expectedCount = targetNames.length;
+    if (voiceChannels.size === 0) {
+        for (const targetName of targetNames) {
+            await guild.channels.create({
                 name: targetName,
                 type: ChannelType.GuildVoice,
                 parent: category.id
             }).catch(() => null);
-            if (!channel) continue;
-            continue;
         }
+        return;
+    }
 
+    if (voiceChannels.size !== expectedCount) {
+        return;
+    }
+
+    const managedChannelIds = [];
+    for (let index = 0; index < targetNames.length; index += 1) {
+        const targetName = targetNames[index];
+        const channel = voiceChannels[index];
+        if (!channel) continue;
         if (channel.name !== targetName) {
             await channel.edit({ name: targetName }).catch(() => null);
         }
+        managedChannelIds.push(channel.id);
     }
 }
 
