@@ -3062,8 +3062,8 @@ client.on("guildMemberRemove", async member => {
     const memberName = getMemberDisplayName(member);
     const leaveEmbed = new EmbedBuilder()
         .setColor("#8b0000")
-        .setTitle(`Goodbye <@${member.id}>`)
-        .setDescription(`<@${member.id}> has left the server.\nWe hope to see you again.`)
+        .setTitle(`Goodbye User`)
+        .setDescription(`<@${member.id}> has left the server. We hope to see you again`)
         .setTimestamp();
 
     await sendConfiguredLogMessage(
