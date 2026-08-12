@@ -1689,13 +1689,53 @@ async function sendModerationLogEmbed(guildId, logType, sourceChannelId, embed) 
     await logChannel.send({ embeds: [embed] }).catch(() => {});
 }
 
-async function renderWelcomeImage(memberName) {
+async function renderWelcomeImage(member) {
+    const memberName = getMemberDisplayName(member);
     const safeName = escapeSvgText(memberName);
+
+    // helper to download an image buffer
+    const fetchBuffer = (url) => new Promise((resolve, reject) => {
+        try {
+            const mod = url.startsWith("https") ? https : http;
+            mod.get(url, res => {
+                const chunks = [];
+                res.on("data", c => chunks.push(c));
+                res.on("end", () => resolve(Buffer.concat(chunks)));
+                res.on("error", err => reject(err));
+            }).on("error", err => reject(err));
+        } catch (err) {
+            reject(err);
+        }
+    });
+
+    const avatarUrl = member.user?.displayAvatarURL ? member.user.displayAvatarURL({ extension: "png", size: 512 }) : null;
+    let avatarBase64 = null;
+    if (avatarUrl) {
+        try {
+            const buf = await fetchBuffer(avatarUrl);
+            avatarBase64 = buf.toString("base64");
+        } catch (err) {
+            avatarBase64 = null;
+        }
+    }
+
+    const avatarImageTag = avatarBase64
+        ? `<image href="data:image/png;base64,${avatarBase64}" x="20" y="60" width="240" height="240" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatarClip)"/>`
+        : `<circle cx="140" cy="180" r="120" fill="#ffffff" />`;
+
     const svg = `
-        <svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
-            <rect width="1280" height="720" fill="#05080b"/>
-            <text x="640" y="360" text-anchor="middle" fill="#ffffff" font-size="160" font-family="Brush Script MT, Segoe Script, Pacifico, cursive" font-weight="700">Welcome</text>
-            <text x="640" y="470" text-anchor="middle" fill="#d9e1ea" font-size="56" font-family="Georgia, Times New Roman, serif" letter-spacing="2">${safeName}</text>
+        <svg width="1280" height="360" viewBox="0 0 1280 360" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <clipPath id="avatarClip">
+                    <circle cx="140" cy="180" r="120" />
+                </clipPath>
+            </defs>
+            <rect width="1280" height="360" fill="#05080b" />
+            <rect x="0" y="0" width="1280" height="360" fill="rgba(0,0,0,0.25)" />
+            ${avatarImageTag}
+            <circle cx="140" cy="180" r="124" fill="none" stroke="#e6e6e6" stroke-width="6" />
+            <text x="420" y="120" text-anchor="start" fill="#ffffff" font-size="72" font-family="Segoe UI, Arial, sans-serif" font-weight="800">Welcome</text>
+            <text x="420" y="210" text-anchor="start" fill="#ffffff" font-size="88" font-family="Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${safeName}</text>
         </svg>
     `;
 
@@ -3029,7 +3069,7 @@ client.on("guildMemberAdd", async member => {
 
     const memberName = getMemberDisplayName(member);
     const memberCountLabel = formatOrdinal(member.guild.memberCount);
-    const welcomeImage = await renderWelcomeImage(memberName).catch(error => {
+    const welcomeImage = await renderWelcomeImage(member).catch(error => {
         console.error("Failed to render welcome image:", error);
         return null;
     });
