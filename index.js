@@ -55,7 +55,7 @@ async function sendVehicleOwnershipRequest(payload) {
             store.vehicles.push(entry);
             store.nextId = id + 1;
             writeJsonData(storeFile, store);
-            return { success: true, message: "Imported locally (fallback)", vehicle: entry };
+            return { success: true, message:    "Imported locally (fallback)", vehicle: entry };
         }
 
         if (action === "list") {
@@ -3062,8 +3062,8 @@ client.on("guildMemberRemove", async member => {
     const memberName = getMemberDisplayName(member);
     const leaveEmbed = new EmbedBuilder()
         .setColor("#8b0000")
-        .setTitle(`Goodbye ${memberName}`)
-        .setDescription(`${memberName} has left the server.\nWe hope to see you again.`)
+        .setTitle(`Goodbye <@${member.id}>`)
+        .setDescription(`<@${member.id}> has left the server.\nWe hope to see you again.`)
         .setTimestamp();
 
     await sendConfiguredLogMessage(
