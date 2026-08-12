@@ -1723,19 +1723,47 @@ async function renderWelcomeImage(member) {
         ? `<image href="data:image/png;base64,${avatarBase64}" x="20" y="60" width="240" height="240" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatarClip)"/>`
         : `<circle cx="140" cy="180" r="120" fill="#ffffff" />`;
 
+    // Try to load a custom font file from ./assets/fonts/welcome-font.* (ttf/otf/woff)
+    let embeddedFontCss = "";
+    try {
+        const fontCandidates = [
+            path.join(process.cwd(), "assets", "fonts", "welcome-font.ttf"),
+            path.join(process.cwd(), "assets", "fonts", "welcome-font.otf"),
+            path.join(process.cwd(), "assets", "fonts", "welcome-font.woff"),
+        ];
+
+        for (const fp of fontCandidates) {
+            if (fs.existsSync(fp)) {
+                const ext = path.extname(fp).toLowerCase();
+                const buf = fs.readFileSync(fp);
+                const b64 = buf.toString("base64");
+                let mime = "font/ttf";
+                let fmt = "truetype";
+                if (ext === ".otf") { mime = "font/otf"; fmt = "opentype"; }
+                if (ext === ".woff") { mime = "font/woff"; fmt = "woff"; }
+
+                embeddedFontCss = `@font-face { font-family: 'WelcomeFont'; src: url('data:${mime};base64,${b64}') format('${fmt}'); font-weight: normal; font-style: normal; }`;
+                break;
+            }
+        }
+    } catch (err) {
+        embeddedFontCss = "";
+    }
+
     const svg = `
         <svg width="1280" height="360" viewBox="0 0 1280 360" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <clipPath id="avatarClip">
                     <circle cx="140" cy="180" r="120" />
                 </clipPath>
+                <style><![CDATA[ ${embeddedFontCss} ]]></style>
             </defs>
             <rect width="1280" height="360" fill="#05080b" />
             <rect x="0" y="0" width="1280" height="360" fill="rgba(0,0,0,0.25)" />
             ${avatarImageTag}
             <circle cx="140" cy="180" r="124" fill="none" stroke="#e6e6e6" stroke-width="6" />
-            <text x="420" y="120" text-anchor="start" fill="#ffffff" font-size="72" font-family="Segoe UI, Arial, sans-serif" font-weight="800">Welcome</text>
-            <text x="420" y="210" text-anchor="start" fill="#ffffff" font-size="88" font-family="Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${safeName}</text>
+            <text x="420" y="120" text-anchor="start" fill="#ffffff" font-size="72" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="800">Welcome</text>
+            <text x="420" y="210" text-anchor="start" fill="#ffffff" font-size="88" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${safeName}</text>
         </svg>
     `;
 
