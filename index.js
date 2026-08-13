@@ -1719,6 +1719,25 @@ async function renderWelcomeImage(member) {
         }
     }
 
+    // If a welcome banner avatar was uploaded/saved in config, prefer that local file
+    try {
+        if (!avatarBase64 && cfg && cfg.avatar && typeof cfg.avatar === 'string') {
+            const avatarPath = String(cfg.avatar || '');
+            let candidate = null;
+            if (avatarPath.startsWith('/uploads/') || avatarPath.startsWith('uploads/')) {
+                candidate = path.join(process.cwd(), 'public', avatarPath.replace(/^\//, ''));
+            } else if (avatarPath.startsWith('/assets/') || avatarPath.startsWith('assets/')) {
+                candidate = path.join(process.cwd(), avatarPath.replace(/^\//, ''));
+            }
+            if (candidate && fs.existsSync(candidate)) {
+                const buf = fs.readFileSync(candidate);
+                avatarBase64 = buf.toString('base64');
+            }
+        }
+    } catch (err) {
+        // ignore
+    }
+
     // Default layout values (and target size)
     let cfg = (typeof config === 'object' && config && config.welcomeBanner) ? config.welcomeBanner : {};
     const defAvatarX = Number(cfg.avatarX || 20);
@@ -1792,7 +1811,100 @@ async function renderWelcomeImage(member) {
     }
 
     // Build an SVG overlay that contains the avatar circle and the username text.
-    // Coordinates assume a 1280x360 canvas. Adjust if your template differs.
+    // We'll attempt to detect the large WELCOME artwork edges on the resized template
+    // so we can align the first letter and shrink the username to avoid overlap.
+    let computedUsernameX = defUsernameX;
+    let computedUsernameSize = defUsernameSize;
+    try {
+        if (templateBuffer) {
+            const base = await sharp(templateBuffer).resize(targetWidth, targetHeight, { fit: 'cover' }).png().toBuffer();
+            const { data, info } = await sharp(base).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+            const y0 = Math.floor(info.height * 0.15);
+            const y1 = Math.floor(info.height * 0.75);
+
+            const leftSearchMinX = Math.floor(info.width * 0.15);
+            const leftSearchMaxX = Math.floor(info.width * 0.6);
+            let foundLeft = info.width;
+            for (let y = y0; y < y1; y++) {
+                for (let x = leftSearchMinX; x < leftSearchMaxX; x++) {
+                    const idx = (y * info.width + x) * 4;
+                    const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+                    if (a > 200 && r > 200 && g > 200 && b > 200) {
+                        if (x < foundLeft) foundLeft = x;
+                    }
+                }
+            }
+            if (foundLeft < info.width) {
+                computedUsernameX = Math.max(8, foundLeft - 8);
+            }
+
+            const rightSearchMinX = Math.floor(info.width * 0.6);
+            const rightSearchMaxX = Math.floor(info.width * 0.98);
+            let foundRightStart = 0;
+            for (let x = rightSearchMaxX; x > rightSearchMinX; x--) {
+                let colWhiteCount = 0;
+                for (let y = y0; y < y1; y++) {
+                    const idx = (y * info.width + x) * 4;
+                    const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+                    if (a > 200 && r > 200 && g > 200 && b > 200) colWhiteCount++;
+                }
+                if (colWhiteCount > (y1 - y0) * 0.15) {
+                    foundRightStart = x;
+                }
+            }
+            let safeRight = Math.round(info.width * 0.95);
+            if (foundRightStart > 0) {
+                safeRight = Math.max(Math.round(foundRightStart - 24), Math.round(info.width * 0.75));
+            }
+
+            const username = String(memberName || '').toUpperCase();
+            const usernameY = Math.round(targetHeight * 0.68);
+            let usernameSize = Math.max(24, Number(defUsernameSize) || 72);
+            const maxWidth = Math.max(120, safeRight - computedUsernameX - 20);
+            const shrinkToFit = (size) => {
+                const approxCharWidth = size * 0.58;
+                return approxCharWidth * username.length <= maxWidth;
+            };
+            // start slightly smaller and shrink gently
+            usernameSize = Math.min(usernameSize, 78);
+            while (usernameSize > 24 && !shrinkToFit(usernameSize)) {
+                usernameSize = Math.max(24, Math.floor(usernameSize * 0.9));
+            }
+            computedUsernameSize = usernameSize;
+
+            // Now build overlay using computed values
+            const overlaySvg = `
+        <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <clipPath id="avatarClip">
+                    <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2)}" />
+                </clipPath>
+                <style><![CDATA[ ${embeddedFontCss} ]]></style>
+            </defs>
+            <rect width="${targetWidth}" height="${targetHeight}" fill="transparent" />
+            ${avatarImageTag}
+            <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2 + 4)}" fill="none" stroke="#e6e6e6" stroke-width="6" />
+            <text x="${computedUsernameX}" y="${usernameY}" text-anchor="start" fill="#ffffff" font-size="${computedUsernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="1">${escapeSvgText(String(memberName || '').toUpperCase())}</text>
+        </svg>
+    `;
+
+            try {
+                if (templateBuffer) {
+                    return await sharp(templateBuffer)
+                        .resize(targetWidth, targetHeight, { fit: 'cover' })
+                        .composite([{ input: Buffer.from(overlaySvg), blend: 'over' }])
+                        .png()
+                        .toBuffer();
+                }
+            } catch (err) {
+                console.error('Error compositing template welcome image:', err);
+            }
+        }
+    } catch (err) {
+        // fallback to original overlay if anything goes wrong
+    }
+
+    // Fallback overlay (original behavior)
     const overlaySvg = `
         <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
             <defs>
