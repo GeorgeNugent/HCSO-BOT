@@ -137,10 +137,17 @@ import sharp from 'sharp';
       .png()
       .toBuffer();
 
+    // a filled white backing circle to fully cover any template artwork under the avatar
+    const backingRadius = Math.round(avatarSize/2 + 8);
+    const backingCx = avatarX + Math.round(avatarSize/2);
+    const backingCy = avatarY + Math.round(avatarSize/2);
+    const backingSvg = `<svg width="${targetW}" height="${targetH}" xmlns="http://www.w3.org/2000/svg"><circle cx="${backingCx}" cy="${backingCy}" r="${backingRadius}" fill="#ffffff" /></svg>`;
+
     // border svg
     const borderSvg = `<svg width="${targetW}" height="${targetH}" xmlns="http://www.w3.org/2000/svg"><circle cx="${avatarX + avatarSize/2}" cy="${avatarY + avatarSize/2}" r="${avatarSize/2 + 6}" fill="none" stroke="#e6e6e6" stroke-width="6" /></svg>`;
 
     const composites = [
+      { input: Buffer.from(backingSvg), blend: 'over' },
       { input: rounded, left: avatarX, top: avatarY },
       { input: Buffer.from(borderSvg), blend: 'over' },
       { input: Buffer.from(textSvg), blend: 'over' }

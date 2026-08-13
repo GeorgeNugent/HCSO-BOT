@@ -1910,6 +1910,9 @@ async function renderWelcomeImage(member) {
             computedUsernameSize = usernameSize;
 
             // Now build overlay using computed values
+            const backingRadius = Math.round(defAvatarSize/2 + 8);
+            const backingCx = defAvatarX + Math.round(defAvatarSize/2);
+            const backingCy = defAvatarY + Math.round(defAvatarSize/2);
             const overlaySvg = `
         <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -1919,6 +1922,7 @@ async function renderWelcomeImage(member) {
                 <style><![CDATA[ ${embeddedFontCss} ]]></style>
             </defs>
             <rect width="${targetWidth}" height="${targetHeight}" fill="transparent" />
+            <circle cx="${backingCx}" cy="${backingCy}" r="${backingRadius}" fill="#ffffff" />
             ${avatarImageTag}
             <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2 + 4)}" fill="none" stroke="#e6e6e6" stroke-width="6" />
             <text x="${computedUsernameX}" y="${usernameY}" text-anchor="start" fill="#ffffff" font-size="${computedUsernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="1">${escapeSvgText(String(memberName || '').toUpperCase())}</text>
@@ -1942,6 +1946,9 @@ async function renderWelcomeImage(member) {
     }
 
     // Fallback overlay (original behavior)
+    const backingRadius = Math.round(defAvatarSize/2 + 8);
+    const backingCx = defAvatarX + Math.round(defAvatarSize/2);
+    const backingCy = defAvatarY + Math.round(defAvatarSize/2);
     const overlaySvg = `
         <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -1951,6 +1958,7 @@ async function renderWelcomeImage(member) {
                 <style><![CDATA[ ${embeddedFontCss} ]]></style>
             </defs>
             <rect width="${targetWidth}" height="${targetHeight}" fill="transparent" />
+            <circle cx="${backingCx}" cy="${backingCy}" r="${backingRadius}" fill="#ffffff" />
             ${avatarImageTag}
             <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2 + 4)}" fill="none" stroke="#e6e6e6" stroke-width="6" />
             <!-- Template contains main WELCOME artwork; we only draw the username here -->
