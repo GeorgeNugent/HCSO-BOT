@@ -57,6 +57,11 @@
         <input id="usernameSize" type="number" style="width:100px;padding:8px" />
       </div>
 
+      <div style="margin-top:12px;">
+        <label>Template text (double-click on canvas to edit)</label>
+        <div id="templateTextDisplay" contenteditable="true" style="min-height:48px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"> <%= (welcomeCfg && welcomeCfg.templateText) ? welcomeCfg.templateText : 'USERNAME' %> </div>
+      </div>
+
       <div style="margin-top:16px;display:flex;gap:8px;">
         <button id="previewBtn" class="btn btn-primary">Preview</button>
         <button id="saveBtn" class="btn btn-info">Save</button>
