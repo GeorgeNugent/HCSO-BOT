@@ -1692,6 +1692,13 @@ async function sendModerationLogEmbed(guildId, logType, sourceChannelId, embed) 
 async function renderWelcomeImage(member) {
     const memberName = getMemberDisplayName(member);
     const safeName = escapeSvgText(memberName);
+    console.log(`[renderWelcomeImage] Rendering welcome for member:`, {
+        memberId: member?.id,
+        memberName,
+        displayName: member?.displayName,
+        globalName: member?.globalName,
+        username: member?.user?.username
+    });
 
     // helper to download an image buffer
     const fetchBuffer = (url) => new Promise((resolve, reject) => {
