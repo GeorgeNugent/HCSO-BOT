@@ -145,11 +145,8 @@
         layer.add(border);
       }
 
-      // transformer for pfp (corner scale)
-      if (!transformer) {
-        transformer = new Konva.Transformer({ nodes: [pfpGroup], keepRatio: true, enabledAnchors: ['top-left','top-right','bottom-left','bottom-right'] });
-        layer.add(transformer);
-      } else {
+      // attach global transformer to pfp
+      if (transformer) {
         transformer.nodes([pfpGroup]);
       }
 
