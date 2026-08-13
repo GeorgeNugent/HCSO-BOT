@@ -19,6 +19,7 @@
   const zoom200Btn = el.getElementById('zoom200Btn');
   const zoomInput = el.getElementById('zoomInput');
   const konvaContainer = el.getElementById('konvaContainer');
+  const removeBtn = el.getElementById('removeBtn');
 
   // Konva stage and layers
   let stage, layer, bgImage, pfpImageNode, pfpGroup, templateTextGroup, templateTextNode, usernameNode, transformer;
@@ -113,7 +114,7 @@
       const asz = parseInt(avatarSize.value || 240, 10);
 
       if (!pfpGroup) {
-        pfpGroup = new Konva.Group({ x: ax, y: ay, draggable: true });
+        pfpGroup = new Konva.Group({ x: ax, y: ay, draggable: true, name: 'selectable-pfp' });
         // clip as circle within group
         pfpGroup.clipFunc(function(ctx) {
           ctx.beginPath();
@@ -194,7 +195,7 @@
     const text = document.getElementById('templateTextDisplay') ? document.getElementById('templateTextDisplay').innerText : '';
 
     if (!templateTextGroup) {
-      templateTextGroup = new Konva.Group({ x: tx, y: ty - 90, draggable: true });
+      templateTextGroup = new Konva.Group({ x: tx, y: ty - 90, draggable: true, name: 'selectable-templateText' });
       const rect = new Konva.Rect({ width: bboxW, height: bboxH, stroke: 'rgba(255,255,255,0.25)', dash: [6,4], listening: false });
       templateTextNode = new Konva.Text({ x: 6, y: 6, text: text, fontSize: tsize, fontFamily: 'Plus Jakarta Sans, WelcomeFont, Segoe UI, Arial', fontStyle: '800', fill: '#ffffff', width: bboxW - 12, height: bboxH - 12, ellipsis: true });
       templateTextGroup.add(rect);
@@ -361,6 +362,45 @@
     });
   }
 
+  // remove selected node (from transformer)
+  function removeSelected() {
+    if (!transformer) return;
+    const nodes = transformer.nodes();
+    if (!nodes || nodes.length===0) return;
+    const node = nodes[0];
+    const name = (typeof node.name === 'function') ? node.name() : '';
+    if (name === 'selectable-pfp') {
+      // remove pfp and border
+      const border = stage.findOne('.pfpBorder');
+      if (border) border.remove();
+      if (pfpGroup) { pfpGroup.remove(); pfpGroup = null; pfpImageNode = null; }
+      // clear inputs
+      avatarSelect.value = '';
+      avatarX.value = '';
+      avatarY.value = '';
+      avatarSize.value = '';
+    } else if (name === 'selectable-templateText') {
+      if (templateTextGroup) { templateTextGroup.remove(); templateTextGroup = null; templateTextNode = null; }
+      document.getElementById('templateTextDisplay').innerText = '';
+      usernameX.value = '';
+      usernameY.value = '';
+      usernameSize.value = '';
+    } else {
+      // other uploaded image
+      node.remove();
+    }
+    transformer.nodes([]);
+    layer.batchDraw();
+  }
+
+  // wire remove button and delete key
+  if (removeBtn) removeBtn.addEventListener('click', (e)=>{ e.preventDefault(); removeSelected(); });
+  window.addEventListener('keydown', (e)=>{
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      removeSelected();
+    }
+  });
+
   // helper to add an arbitrary image to canvas as selectable/draggable node
   async function addImageNodeToCanvas(url, filename) {
     if (!ensureKonva()) return;
@@ -374,7 +414,14 @@
       ensureTransformer();
       transformer.nodes([kImg]);
       kImg.on('dragend', () => { layer.batchDraw(); });
-      kImg.on('transformend', () => { kImg.scaleX(1); kImg.scaleY(1); layer.batchDraw(); });
+      kImg.on('transformend', () => {
+        // apply transform to width/height and reset scale so transforms persist
+        const newW = Math.max(8, Math.round(kImg.width() * kImg.scaleX()));
+        const newH = Math.max(8, Math.round(kImg.height() * kImg.scaleY()));
+        kImg.scaleX(1); kImg.scaleY(1);
+        kImg.width(newW); kImg.height(newH);
+        layer.batchDraw();
+      });
     } catch (err) {
       console.error('addImageNodeToCanvas failed', err);
     }
