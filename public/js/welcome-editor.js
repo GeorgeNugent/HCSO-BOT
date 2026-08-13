@@ -54,23 +54,35 @@
     const t = templateSelect.value;
     if (t) setTemplate(t);
     const av = avatarSelect.value;
+    const pfpLayer = document.getElementById('pfpLayer');
+    const pfpImage = document.getElementById('pfpImage');
+    const pfpHandle = document.getElementById('pfpHandle');
+    const templateTextBox = document.getElementById('templateTextBox');
+    const templateTextDisplay = document.getElementById('templateTextDisplay');
+    const usernameLayer = document.getElementById('usernameLayer');
+
     if (av) {
-      previewAvatar.src = av;
-      previewAvatar.style.display = 'block';
-      previewAvatar.style.left = (parseInt(avatarX.value||20,10)) + 'px';
-      previewAvatar.style.top = (parseInt(avatarY.value||60,10)) + 'px';
+      pfpImage.src = av;
+      pfpLayer.style.display = 'flex';
+      pfpLayer.style.left = (parseInt(avatarX.value||20,10)) + 'px';
+      pfpLayer.style.top = (parseInt(avatarY.value||60,10)) + 'px';
       const s = parseInt(avatarSize.value||240,10);
-      previewAvatar.style.width = s + 'px';
-      previewAvatar.style.height = s + 'px';
-      previewAvatar.style.borderWidth = Math.max(2, Math.round(s * 0.025)) + 'px';
-      previewAvatar.style.borderColor = 'rgba(230,230,230,0.95)';
+      pfpLayer.style.width = s + 'px';
+      pfpLayer.style.height = s + 'px';
+      pfpImage.style.width = '100%';
+      pfpImage.style.height = '100%';
     } else {
-      previewAvatar.style.display = 'none';
+      pfpLayer.style.display = 'none';
     }
 
-    previewName.style.left = (parseInt(usernameX.value||420,10)) + 'px';
-    previewName.style.top = (parseInt(usernameY.value||210,10)-60) + 'px';
-    previewName.style.fontSize = (parseInt(usernameSize.value||72,10)) + 'px';
+    templateTextBox.style.left = (parseInt(usernameX.value||420,10)) + 'px';
+    templateTextBox.style.top = (parseInt(usernameY.value||210,10)-90) + 'px';
+    templateTextBox.style.width = (parseInt(document.getElementById('templateTextBox').style.width) || 520) + 'px';
+    templateTextDisplay.style.fontSize = (parseInt(usernameSize.value||72,10)) + 'px';
+
+    usernameLayer.style.left = (parseInt(usernameX.value||420,10)) + 'px';
+    usernameLayer.style.top = (parseInt(usernameY.value||210,10)) + 'px';
+    usernameLayer.style.fontSize = (parseInt(usernameSize.value||72,10)) + 'px';
   }
 
   previewBtn.addEventListener('click', (e)=>{ e.preventDefault(); updatePreview(); });
@@ -112,7 +124,8 @@
         avatarSize: parseInt(avatarSize.value||240,10),
         usernameX: parseInt(usernameX.value||420,10),
         usernameY: parseInt(usernameY.value||210,10),
-        usernameSize: parseInt(usernameSize.value||72,10)
+        usernameSize: parseInt(usernameSize.value||72,10),
+        templateText: document.getElementById('templateTextDisplay').innerText || ''
       }
     };
     saveResult.textContent = 'Saving...';
