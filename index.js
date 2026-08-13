@@ -1689,185 +1689,17 @@ async function sendModerationLogEmbed(guildId, logType, sourceChannelId, embed) 
     await logChannel.send({ embeds: [embed] }).catch(() => {});
 }
 
-async function renderWelcomeImage(member) {
-    console.log(`[renderWelcomeImage] START - member.id: ${member?.id}`);
-    const memberName = getMemberDisplayName(member);
+async function renderWelcomeImage(memberName) {
     const safeName = escapeSvgText(memberName);
-    console.log(`[renderWelcomeImage] memberName from getMemberDisplayName: "${memberName}"`);
-    console.log(`[renderWelcomeImage] safeName (escaped): "${safeName}"`);
-
-    // Load config FIRST before using it
-    const cfg = (typeof config === 'object' && config && config.welcomeBanner) ? config.welcomeBanner : {};
-
-    // helper to download an image buffer
-    const fetchBuffer = (url) => new Promise((resolve, reject) => {
-        try {
-            const mod = url.startsWith("https") ? https : http;
-            mod.get(url, res => {
-                const chunks = [];
-                res.on("data", c => chunks.push(c));
-                res.on("end", () => resolve(Buffer.concat(chunks)));
-                res.on("error", err => reject(err));
-            }).on("error", err => reject(err));
-        } catch (err) {
-            reject(err);
-        }
-    });
-
-    const avatarUrl = member.user?.displayAvatarURL ? member.user.displayAvatarURL({ extension: "png", size: 512 }) : null;
-    let avatarBase64 = null;
-    if (avatarUrl) {
-        try {
-            const buf = await fetchBuffer(avatarUrl);
-            avatarBase64 = buf.toString("base64");
-        } catch (err) {
-            avatarBase64 = null;
-        }
-    }
-
-    // If a welcome banner avatar was uploaded/saved in config, prefer that local file
-    try {
-        if (!avatarBase64 && cfg && cfg.avatar && typeof cfg.avatar === 'string') {
-            const avatarPath = String(cfg.avatar || '');
-            let candidate = null;
-            if (avatarPath.startsWith('/uploads/') || avatarPath.startsWith('uploads/')) {
-                candidate = path.join(process.cwd(), 'public', avatarPath.replace(/^\//, ''));
-            } else if (avatarPath.startsWith('/assets/') || avatarPath.startsWith('assets/')) {
-                candidate = path.join(process.cwd(), avatarPath.replace(/^\//, ''));
-            }
-            if (candidate && fs.existsSync(candidate)) {
-                const buf = fs.readFileSync(candidate);
-                avatarBase64 = buf.toString('base64');
-            }
-        }
-    } catch (err) {
-        // ignore
-    }
-
-    // Default layout values (and target size)
-    let defAvatarX = Number(cfg.avatarX || 20);
-    let defAvatarY = Number(cfg.avatarY || 60);
-    let defAvatarSize = Number(cfg.avatarSize || 240);
-    let defUsernameX = Number(cfg.usernameX || 420);
-    let defUsernameY = Number(cfg.usernameY || 210);
-    let defUsernameSize = Number(cfg.usernameSize || 72);
-    let defAvatarX = Number(cfg.avatarX || 20);
-    let defAvatarY = Number(cfg.avatarY || 60);
-    let defAvatarSize = Number(cfg.avatarSize || 240);
-    let defUsernameX = Number(cfg.usernameX || 420);
-    let defUsernameY = Number(cfg.usernameY || 210);
-    let defUsernameSize = Number(cfg.usernameSize || 72);
-    const targetWidth = Number.isFinite(Number(cfg.width)) && Number(cfg.width) > 0 ? Number(cfg.width) : 1280;
-    const targetHeight = Number.isFinite(Number(cfg.height)) && Number(cfg.height) > 0 ? Number(cfg.height) : 360;
-
-    const avatarImageTag = avatarBase64
-        ? `<image href="data:image/png;base64,${avatarBase64}" x="${defAvatarX}" y="${defAvatarY}" width="${defAvatarSize}" height="${defAvatarSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatarClip)"/>`
-        : `<circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2)}" fill="#ffffff" />`;
-
-    // Try to load a custom font file from ./assets/fonts/welcome-font.* (ttf/otf/woff)
-    let embeddedFontCss = "";
-    try {
-        const fontCandidates = [
-            path.join(process.cwd(), "assets", "fonts", "welcome-font.ttf"),
-            path.join(process.cwd(), "assets", "fonts", "welcome-font.otf"),
-            path.join(process.cwd(), "assets", "fonts", "welcome-font.woff"),
-        ];
-
-        for (const fp of fontCandidates) {
-            if (fs.existsSync(fp)) {
-                const ext = path.extname(fp).toLowerCase();
-                const buf = fs.readFileSync(fp);
-                const b64 = buf.toString("base64");
-                let mime = "font/ttf";
-                let fmt = "truetype";
-                if (ext === ".otf") { mime = "font/otf"; fmt = "opentype"; }
-                if (ext === ".woff") { mime = "font/woff"; fmt = "woff"; }
-
-                embeddedFontCss = `@font-face { font-family: 'WelcomeFont'; src: url('data:${mime};base64,${b64}') format('${fmt}'); font-weight: normal; font-style: normal; }`;
-                break;
-            }
-        }
-    } catch (err) {
-        embeddedFontCss = "";
-    }
-
-    // Load template image
-    let templateBuffer = null;
-    try {
-        const templateCandidates = [];
-        if (cfg && cfg.template && typeof cfg.template === 'string') {
-            const t = String(cfg.template || '');
-            if (t.startsWith('/uploads/') || t.startsWith('uploads/')) {
-                templateCandidates.push(path.join(process.cwd(), 'public', t.replace(/^\//, '')));
-            } else if (t.startsWith('/assets/') || t.startsWith('assets/')) {
-                templateCandidates.push(path.join(process.cwd(), t.replace(/^\//, '')));
-            }
-        }
-        // fallback locations
-        templateCandidates.push(path.join(process.cwd(), "assets", "banners", "welcome-template.png"));
-        templateCandidates.push(path.join(process.cwd(), "assets", "images", "welcome-template.png"));
-
-        for (const tp of templateCandidates) {
-            if (tp && fs.existsSync(tp)) {
-                templateBuffer = fs.readFileSync(tp);
-                console.log(`[renderWelcomeImage] Loaded template: ${tp}`);
-                break;
-            }
-        }
-    } catch (err) {
-        console.error(`[renderWelcomeImage] Failed to load template:`, err.message);
-        templateBuffer = null;
-    }
-
-    // Create the overlay SVG with avatar and username
-    // Use the actual memberName variable directly in the SVG
-    const backingRadius = Math.round(defAvatarSize/2 + 8);
-    const backingCx = defAvatarX + Math.round(defAvatarSize/2);
-    const backingCy = defAvatarY + Math.round(defAvatarSize/2);
-    const usernameToRender = String(memberName || '').toUpperCase();
-    console.log(`[renderWelcomeImage] usernameToRender: "${usernameToRender}" (from memberName: "${memberName}")`);
-    console.log(`[renderWelcomeImage] Position: x=${defUsernameX}, y=${defUsernameY}, size=${defUsernameSize}`);
-    
-    const overlaysvg = `
-        <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <clipPath id="avatarClip">
-                    <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2)}" />
-                </clipPath>
-                <style><![CDATA[ ${embeddedFontCss} ]]></style>
-            </defs>
-            <rect width="${targetWidth}" height="${targetHeight}" fill="transparent" />
-            <circle cx="${backingCx}" cy="${backingCy}" r="${backingRadius}" fill="#ffffff" />
-            ${avatarImageTag}
-            <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2 + 4)}" fill="none" stroke="#e6e6e6" stroke-width="6" />
-            <text x="${defUsernameX}" y="${defUsernameY}" text-anchor="start" fill="#ffffff" font-size="${defUsernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${escapeSvgText(usernameToRender)}</text>
+    const svg = `
+        <svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1280" height="720" fill="#05080b"/>
+            <text x="640" y="360" text-anchor="middle" fill="#ffffff" font-size="160" font-family="Brush Script MT, Segoe Script, Pacifico, cursive" font-weight="700">Welcome</text>
+            <text x="640" y="470" text-anchor="middle" fill="#d9e1ea" font-size="56" font-family="Georgia, Times New Roman, serif" letter-spacing="2">${safeName}</text>
         </svg>
     `;
-    
-    // Log the SVG text element to see what's being rendered
-    const svgTextMatch = overlaysvg.match(/<text[^>]*>([^<]+)<\/text>/);
-    console.log(`[renderWelcomeImage] SVG text content: "${svgTextMatch ? svgTextMatch[1] : 'NOT FOUND'}"`);
 
-
-    try {
-        if (templateBuffer) {
-            console.log(`[renderWelcomeImage] Compositing overlay with username: "${usernameToRender}"`);
-            const result = await sharp(templateBuffer)
-                .resize(targetWidth, targetHeight, { fit: 'cover' })
-                .composite([{ input: Buffer.from(overlaysvg), blend: 'over' }])
-                .png()
-                .toBuffer();
-            console.log(`[renderWelcomeImage] Successfully rendered welcome image`);
-            return result;
-        }
-    } catch (err) {
-        console.error(`[renderWelcomeImage] Failed to composite template:`, err.message);
-    }
-
-    // Fallback: SVG-only rendering
-    console.log(`[renderWelcomeImage] Using SVG-only fallback for: "${usernameToRender}"`);
-    const fallbackSvg = overlaysvg.replace('fill="transparent"', 'fill="#05080b"');
-    return sharp(Buffer.from(fallbackSvg)).png().toBuffer();
+    return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
 async function renderVerificationCodeImage(code) {
@@ -3197,7 +3029,7 @@ client.on("guildMemberAdd", async member => {
 
     const memberName = getMemberDisplayName(member);
     const memberCountLabel = formatOrdinal(member.guild.memberCount);
-    const welcomeImage = await renderWelcomeImage(member).catch(error => {
+    const welcomeImage = await renderWelcomeImage(memberName).catch(error => {
         console.error("Failed to render welcome image:", error);
         return null;
     });
@@ -3230,8 +3062,8 @@ client.on("guildMemberRemove", async member => {
     const memberName = getMemberDisplayName(member);
     const leaveEmbed = new EmbedBuilder()
         .setColor("#8b0000")
-        .setTitle(`Goodbye ${memberName}`)
-        .setDescription(`<@${member.id}> has left the server. We hope to see you again.`)
+        .setTitle(`Goodbye <@${member.id}>`)
+        .setDescription(`<@${member.id}> has left the server.\nWe hope to see you again.`)
         .setTimestamp();
 
     await sendConfiguredLogMessage(
@@ -7647,8 +7479,8 @@ client.on("interactionCreate", async interaction => {
                 idle: "Idle",
                 dnd: "Do Not Disturb",
                 invisible: "Invisible",
-                watching_patrol: "Watching Watching Patrol Logs",
-                listening_radio: "Listening Listening to Radio Traffic",
+                watching_patrol: "Watching Patrol Logs",
+                listening_radio: "Listening to Radio Traffic",
                 playing_hcp: `Playing ${branding.fallback.shortName} Operations`,
                 watching_hcp: `Watching Over ${branding.communityName}`,
                 competing_patrol: "Competing in Patrol Hours"
