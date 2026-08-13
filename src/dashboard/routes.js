@@ -173,14 +173,14 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         }
     });
 
-    router.post('/api/welcome/upload', requireAuth, upload.single('image'), (req, res) => {
+    router.post('/api/welcome/upload', requireAuth, upload.array('images', 12), (req, res) => {
         const userId = String(req.session.user?.id || '');
         if (!Array.isArray(BOT_OWNER_IDS) || !BOT_OWNER_IDS.map(String).includes(userId)) {
             return res.status(403).json({ error: 'Access denied' });
         }
-        if (!req.file) return res.status(400).json({ success: false, error: 'No file' });
-        const url = `/uploads/${req.file.filename}`;
-        return res.json({ success: true, url, filename: req.file.filename });
+        if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, error: 'No files' });
+        const items = req.files.map(f => ({ url: `/uploads/${f.filename}`, filename: f.filename }));
+        return res.json({ success: true, files: items });
     });
 
 

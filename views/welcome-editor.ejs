@@ -19,10 +19,11 @@
       </select>
 
       <div style="margin-top:12px;">
-        <label>Upload image</label>
-        <input id="uploadInput" type="file" accept="image/*">
+        <label>Upload image(s)</label>
+        <input id="uploadInput" type="file" accept="image/*" multiple>
         <button id="uploadBtn" class="btn btn-primary" style="margin-top:8px;">Upload</button>
         <div id="uploadResult" style="margin-top:8px;color:var(--text-muted);"></div>
+        <div id="uploadsList" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;"></div>
       </div>
 
       <hr style="margin:16px 0">

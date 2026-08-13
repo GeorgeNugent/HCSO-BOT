@@ -260,22 +260,38 @@
 
   uploadBtn.addEventListener('click', async (e)=>{
     e.preventDefault();
-    if (!uploadInput.files || uploadInput.files.length===0) return uploadResult.textContent = 'Please choose a file';
+    if (!uploadInput.files || uploadInput.files.length===0) return uploadResult.textContent = 'Please choose one or more files';
     const fd = new FormData();
-    fd.append('image', uploadInput.files[0]);
+    for (let i=0;i<uploadInput.files.length;i++) fd.append('images', uploadInput.files[i]);
     uploadResult.textContent = 'Uploading...';
     try {
       const r = await fetch('/api/welcome/upload', { method: 'POST', body: fd });
       const j = await r.json();
-      if (j && j.success) {
-        uploadResult.textContent = 'Uploaded: ' + j.url;
-        // add to avatarSelect and templateSelect uploads
-        const opt = document.createElement('option'); opt.value = j.url; opt.textContent = j.filename + ' (uploads)';
-        avatarSelect.appendChild(opt.cloneNode(true));
-        templateSelect.appendChild(opt.cloneNode(true));
-        avatarSelect.value = j.url;
-        setTemplate(j.url);
-        updatePreview();
+      if (j && j.success && Array.isArray(j.files)) {
+        uploadResult.textContent = 'Uploaded ' + j.files.length + ' files';
+        for (const file of j.files) {
+          const opt = document.createElement('option'); opt.value = file.url; opt.textContent = file.filename + ' (uploads)';
+          avatarSelect.appendChild(opt.cloneNode(true));
+          templateSelect.appendChild(opt.cloneNode(true));
+          // add thumbnail to uploadsList
+          const thumb = document.createElement('div');
+          thumb.style.width = '80px'; thumb.style.height = '80px'; thumb.style.border = '1px solid var(--border)'; thumb.style.borderRadius = '6px'; thumb.style.overflow = 'hidden'; thumb.style.cursor = 'pointer';
+          const img = document.createElement('img'); img.src = file.url; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover';
+          thumb.appendChild(img);
+          thumb.title = file.filename;
+          thumb.addEventListener('click', () => {
+            // add this image as a movable layer on the canvas
+            addImageNodeToCanvas(file.url, file.filename);
+          });
+          document.getElementById('uploadsList').appendChild(thumb);
+        }
+        // auto-select first uploaded as avatar and preview
+        const first = j.files[0];
+        if (first) {
+          avatarSelect.value = first.url;
+          setTemplate(first.url);
+          updatePreview();
+        }
       } else {
         uploadResult.textContent = 'Upload failed';
       }
@@ -315,6 +331,77 @@
 
   // live update when changing selects/inputs
   [templateSelect, avatarSelect, avatarX, avatarY, avatarSize, usernameX, usernameY, usernameSize].forEach(i=>{ if(i) i.addEventListener('input', updatePreview); });
+
+  // create a global transformer for selection
+  function ensureTransformer() {
+    if (!ensureKonva()) return;
+    if (!transformer) {
+      transformer = new Konva.Transformer({ keepRatio: false, rotateEnabled: true, enabledAnchors: ['top-left','top-right','bottom-left','bottom-right','middle-left','middle-right','top-center','bottom-center'] });
+      layer.add(transformer);
+    }
+  }
+
+  // when clicking on stage, select node or deselect
+  function wireStageSelection() {
+    if (!ensureKonva()) return;
+    stage.on('click tap', function(e) {
+      if (e.target === stage || e.target === bgImage) {
+        if (transformer) transformer.nodes([]);
+        layer.batchDraw();
+        return;
+      }
+      // find top-level group or shape to select
+      let node = e.target;
+      // prefer group parent (if inside group)
+      while (node && node.getParent && node.getParent() !== stage && !(node.getName && node.getName().startsWith('selectable'))) {
+        node = node.getParent();
+      }
+      if (node && node !== stage && node !== bgImage) {
+        ensureTransformer();
+        transformer.nodes([node]);
+        layer.batchDraw();
+      }
+    });
+  }
+
+  // helper to add an arbitrary image to canvas as selectable/draggable node
+  async function addImageNodeToCanvas(url, filename) {
+    if (!ensureKonva()) return;
+    try {
+      const img = await loadImage(url);
+      const w = Math.min(300, img.naturalWidth);
+      const h = Math.min(300, img.naturalHeight * (w / img.naturalWidth));
+      const kImg = new Konva.Image({ image: img, x: 40, y: 40, width: w, height: h, draggable: true, name: 'selectable-' + (filename || Date.now()) });
+      layer.add(kImg);
+      layer.batchDraw();
+      ensureTransformer();
+      transformer.nodes([kImg]);
+      kImg.on('dragend', () => { layer.batchDraw(); });
+      kImg.on('transformend', () => { kImg.scaleX(1); kImg.scaleY(1); layer.batchDraw(); });
+    } catch (err) {
+      console.error('addImageNodeToCanvas failed', err);
+    }
+  }
+
+  // initialize stage selection and transformer
+  ensureKonva(); ensureTransformer(); wireStageSelection();
+
+  // load existing uploads into uploadsList (if any)
+  function loadInitial() {
+    const opts = Array.from(document.querySelectorAll('#templateSelect option'));
+    opts.forEach(o => {
+      if (o.value && o.textContent && o.textContent.includes('(uploads)')) {
+        const url = o.value; const filename = o.textContent.replace(' (uploads)','');
+        const thumb = document.createElement('div');
+        thumb.style.width = '80px'; thumb.style.height = '80px'; thumb.style.border = '1px solid var(--border)'; thumb.style.borderRadius = '6px'; thumb.style.overflow = 'hidden'; thumb.style.cursor = 'pointer';
+        const img = document.createElement('img'); img.src = url; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover';
+        thumb.appendChild(img);
+        thumb.title = filename;
+        thumb.addEventListener('click', () => addImageNodeToCanvas(url, filename));
+        document.getElementById('uploadsList').appendChild(thumb);
+      }
+    });
+  }
 
   loadInitial();
 })();
