@@ -1719,9 +1719,18 @@ async function renderWelcomeImage(member) {
         }
     }
 
+    // Default layout values
+    let cfg = (typeof config === 'object' && config && config.welcomeBanner) ? config.welcomeBanner : {};
+    const defAvatarX = Number(cfg.avatarX || 20);
+    const defAvatarY = Number(cfg.avatarY || 60);
+    const defAvatarSize = Number(cfg.avatarSize || 240);
+    const defUsernameX = Number(cfg.usernameX || 420);
+    const defUsernameY = Number(cfg.usernameY || 210);
+    const defUsernameSize = Number(cfg.usernameSize || 72);
+
     const avatarImageTag = avatarBase64
-        ? `<image href="data:image/png;base64,${avatarBase64}" x="20" y="60" width="240" height="240" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatarClip)"/>`
-        : `<circle cx="140" cy="180" r="120" fill="#ffffff" />`;
+        ? `<image href="data:image/png;base64,${avatarBase64}" x="${defAvatarX}" y="${defAvatarY}" width="${defAvatarSize}" height="${defAvatarSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatarClip)"/>`
+        : `<circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2)}" fill="#ffffff" />`;
 
     // Try to load a custom font file from ./assets/fonts/welcome-font.* (ttf/otf/woff)
     let embeddedFontCss = "";
@@ -1750,24 +1759,71 @@ async function renderWelcomeImage(member) {
         embeddedFontCss = "";
     }
 
-    const svg = `
+    // Look for a configured template image (uploads or assets/banners), else fallback to assets/images
+    let templateBuffer = null;
+    try {
+        const templateCandidates = [];
+        if (cfg && cfg.template && typeof cfg.template === 'string') {
+            const t = String(cfg.template || '');
+            if (t.startsWith('/uploads/') || t.startsWith('uploads/')) {
+                templateCandidates.push(path.join(process.cwd(), 'public', t.replace(/^\//, '')));
+            } else if (t.startsWith('/assets/') || t.startsWith('assets/')) {
+                templateCandidates.push(path.join(process.cwd(), t.replace(/^\//, '')));
+            }
+        }
+        // fallback locations
+        templateCandidates.push(path.join(process.cwd(), "assets", "images", "welcome-template.png"));
+        templateCandidates.push(path.join(process.cwd(), "assets", "images", "welcome-template.jpg"));
+        templateCandidates.push(path.join(process.cwd(), "assets", "images", "welcome-template.jpeg"));
+        templateCandidates.push(path.join(process.cwd(), "assets", "banners", "welcome-template.png"));
+        templateCandidates.push(path.join(process.cwd(), "assets", "banners", "welcome-template.jpg"));
+        templateCandidates.push(path.join(process.cwd(), "assets", "banners", "welcome-template.jpeg"));
+
+        for (const tp of templateCandidates) {
+            if (tp && fs.existsSync(tp)) {
+                templateBuffer = fs.readFileSync(tp);
+                break;
+            }
+        }
+    } catch (err) {
+        templateBuffer = null;
+    }
+
+    // Build an SVG overlay that contains the avatar circle and the username text.
+    // Coordinates assume a 1280x360 canvas. Adjust if your template differs.
+    const overlaySvg = `
         <svg width="1280" height="360" viewBox="0 0 1280 360" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <clipPath id="avatarClip">
-                    <circle cx="140" cy="180" r="120" />
+                    <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2)}" />
                 </clipPath>
                 <style><![CDATA[ ${embeddedFontCss} ]]></style>
             </defs>
-            <rect width="1280" height="360" fill="#05080b" />
-            <rect x="0" y="0" width="1280" height="360" fill="rgba(0,0,0,0.25)" />
+            <rect width="1280" height="360" fill="transparent" />
             ${avatarImageTag}
-            <circle cx="140" cy="180" r="124" fill="none" stroke="#e6e6e6" stroke-width="6" />
-            <text x="420" y="120" text-anchor="start" fill="#ffffff" font-size="72" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="800">Welcome</text>
-            <text x="420" y="210" text-anchor="start" fill="#ffffff" font-size="88" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${safeName}</text>
+            <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2 + 4)}" fill="none" stroke="#e6e6e6" stroke-width="6" />
+            <!-- Template contains main WELCOME artwork; we only draw the username here -->
+            <text x="${defUsernameX}" y="${defUsernameY}" text-anchor="start" fill="#ffffff" font-size="${defUsernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${safeName}</text>
         </svg>
     `;
 
-    return sharp(Buffer.from(svg)).png().toBuffer();
+    try {
+        if (templateBuffer) {
+            // Composite the SVG overlay over the template image
+            return await sharp(templateBuffer)
+                .composite([{ input: Buffer.from(overlaySvg), blend: 'over' }])
+                .png()
+                .toBuffer();
+        }
+    } catch (err) {
+        // fall through to SVG-only rendering on error
+        console.error('Error compositing template welcome image:', err);
+    }
+
+    // Fallback: render the overlay SVG on its own (solid background defined by SVG if needed)
+    // If no template, create a background rect in the SVG so image isn't transparent
+    const fallbackSvg = overlaySvg.replace('fill="transparent"', 'fill="#05080b"');
+    return sharp(Buffer.from(fallbackSvg)).png().toBuffer();
 }
 
 async function renderVerificationCodeImage(code) {

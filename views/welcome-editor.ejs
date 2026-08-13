@@ -1,0 +1,79 @@
+<%- include('partials/header') %>
+
+<div class="page-header">
+  <h2 class="page-title">Welcome Banner Editor</h2>
+  <p class="page-subtitle">Edit the welcome banner layout and save settings. Bot Owners only.</p>
+</div>
+
+<div class="section-card">
+  <div style="display:flex;gap:12px;align-items:flex-start;">
+    <div style="flex:1;min-width:420px;">
+      <label>Choose template</label>
+      <select id="templateSelect" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
+        <% (assetFiles||[]).forEach(function(f){ %>
+          <option value="/assets/banners/<%= f %>"><%= f %> (assets)</option>
+        <% }) %>
+        <% (uploadFiles||[]).forEach(function(f){ %>
+          <option value="/uploads/<%= f %>"><%= f %> (uploads)</option>
+        <% }) %>
+      </select>
+
+      <div style="margin-top:12px;">
+        <label>Upload image</label>
+        <input id="uploadInput" type="file" accept="image/*">
+        <button id="uploadBtn" class="btn btn-primary" style="margin-top:8px;">Upload</button>
+        <div id="uploadResult" style="margin-top:8px;color:var(--text-muted);"></div>
+      </div>
+
+      <hr style="margin:16px 0">
+
+      <h4>Avatar</h4>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label style="width:100%">Avatar image (uploads)</label>
+        <select id="avatarSelect" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
+          <option value="">(use template circle)</option>
+          <% (uploadFiles||[]).forEach(function(f){ %>
+            <option value="/uploads/<%= f %>"><%= f %></option>
+          <% }) %>
+        </select>
+        <label style="width:100%">Avatar X</label>
+        <input id="avatarX" type="number" style="width:100px;padding:8px" />
+        <label>Avatar Y</label>
+        <input id="avatarY" type="number" style="width:100px;padding:8px" />
+        <label>Avatar Size</label>
+        <input id="avatarSize" type="number" style="width:100px;padding:8px" />
+      </div>
+
+      <hr style="margin:16px 0">
+
+      <h4>Username</h4>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label>Username X</label>
+        <input id="usernameX" type="number" style="width:100px;padding:8px" />
+        <label>Username Y</label>
+        <input id="usernameY" type="number" style="width:100px;padding:8px" />
+        <label>Font Size</label>
+        <input id="usernameSize" type="number" style="width:100px;padding:8px" />
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:8px;">
+        <button id="previewBtn" class="btn btn-primary">Preview</button>
+        <button id="saveBtn" class="btn btn-info">Save</button>
+      </div>
+
+      <div id="saveResult" style="margin-top:12px"></div>
+    </div>
+
+    <div style="flex:1;min-width:480px;">
+      <label>Preview</label>
+      <div id="previewArea" style="width:100%;height:240px;border-radius:8px;border:1px solid var(--border);overflow:hidden;position:relative;background:#000;">
+        <img id="previewTemplate" src="" style="width:100%;height:100%;object-fit:cover;display:block;">
+        <img id="previewAvatar" src="" style="position:absolute;width:240px;height:240px;left:20px;top:20px;border-radius:999px;border:6px solid rgba(230,230,230,0.9);object-fit:cover;display:none;" />
+        <div id="previewName" style="position:absolute;left:420px;top:120px;color:#fff;font-weight:900;font-size:72px;letter-spacing:2px;">Syn.GODSENT</div>
+      </div>
+      <div style="margin-top:8px;color:var(--text-muted);font-size:13px;">Tip: use the inputs to align elements; upload files first to use them.</div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/welcome-editor.js"></script>
