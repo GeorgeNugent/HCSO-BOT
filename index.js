@@ -1843,6 +1843,11 @@ async function renderWelcomeImage(member) {
             <text x="${defUsernameX}" y="${defUsernameY}" text-anchor="start" fill="#ffffff" font-size="${defUsernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${escapeSvgText(usernameToRender)}</text>
         </svg>
     `;
+    
+    // Log the SVG text element to see what's being rendered
+    const svgTextMatch = overlaysvg.match(/<text[^>]*>([^<]+)<\/text>/);
+    console.log(`[renderWelcomeImage] SVG text content: "${svgTextMatch ? svgTextMatch[1] : 'NOT FOUND'}"`);
+
 
     try {
         if (templateBuffer) {
