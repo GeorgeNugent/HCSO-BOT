@@ -19,11 +19,19 @@
   const zoom200Btn = el.getElementById('zoom200Btn');
   const zoomInput = el.getElementById('zoomInput');
   const konvaContainer = el.getElementById('konvaContainer');
+  const bannerWidthInput = el.getElementById('bannerWidth');
+  const bannerHeightInput = el.getElementById('bannerHeight');
   const removeBtn = el.getElementById('removeBtn');
 
   // Konva stage and layers
   let stage, layer, bgImage, pfpImageNode, pfpGroup, templateTextGroup, templateTextNode, usernameNode, transformer;
   let bannerWidth = 1280, bannerHeight = 360;
+  // initialize banner size from inputs if present
+  if (bannerWidthInput && bannerHeightInput) {
+    const bw = parseInt(bannerWidthInput.value || bannerWidth, 10);
+    const bh = parseInt(bannerHeightInput.value || bannerHeight, 10);
+    if (Number.isFinite(bw) && Number.isFinite(bh)) { bannerWidth = bw; bannerHeight = bh; }
+  }
 
   function ensureKonva() {
     if (typeof Konva === 'undefined') {
@@ -57,20 +65,17 @@
     if (!ensureKonva()) return;
     try {
       const img = await loadImage(url);
-      bannerWidth = img.naturalWidth || 1280;
-      bannerHeight = img.naturalHeight || 360;
+      // respect user-targeted banner size if provided, otherwise use template size
+      const targetW = bannerWidthInput ? parseInt(bannerWidthInput.value||img.naturalWidth||1280,10) : (img.naturalWidth || 1280);
+      const targetH = bannerHeightInput ? parseInt(bannerHeightInput.value||img.naturalHeight||360,10) : (img.naturalHeight || 360);
+      bannerWidth = Number.isFinite(targetW) ? targetW : (img.naturalWidth || 1280);
+      bannerHeight = Number.isFinite(targetH) ? targetH : (img.naturalHeight || 360);
       if (bgImage) {
         bgImage.image(img);
         bgImage.width(bannerWidth);
         bgImage.height(bannerHeight);
       } else {
-        bgImage = new Konva.Image({
-          x: 0, y: 0,
-          image: img,
-          width: bannerWidth,
-          height: bannerHeight,
-          listening: false
-        });
+        bgImage = new Konva.Image({ x: 0, y: 0, image: img, width: bannerWidth, height: bannerHeight, listening: false });
         layer.add(bgImage);
         // ensure bg is at bottom
         bgImage.moveToBottom();
@@ -310,7 +315,9 @@
         usernameX: parseInt(usernameX.value||420,10),
         usernameY: parseInt(usernameY.value||210,10),
         usernameSize: parseInt(usernameSize.value||72,10),
-        templateText: document.getElementById('templateTextDisplay').innerText || ''
+        templateText: document.getElementById('templateTextDisplay').innerText || '',
+        width: bannerWidthInput ? parseInt(bannerWidthInput.value||bannerWidth,10) : bannerWidth,
+        height: bannerHeightInput ? parseInt(bannerHeightInput.value||bannerHeight,10) : bannerHeight
       }
     };
     saveResult.textContent = 'Saving...';
@@ -328,7 +335,7 @@
   });
 
   // live update when changing selects/inputs
-  [templateSelect, avatarSelect, avatarX, avatarY, avatarSize, usernameX, usernameY, usernameSize].forEach(i=>{ if(i) i.addEventListener('input', updatePreview); });
+  [templateSelect, avatarSelect, avatarX, avatarY, avatarSize, usernameX, usernameY, usernameSize, bannerWidthInput, bannerHeightInput].forEach(i=>{ if(i) i.addEventListener('input', updatePreview); });
 
   // create a global transformer for selection
   function ensureTransformer() {

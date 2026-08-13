@@ -29,6 +29,12 @@
       <hr style="margin:16px 0">
 
       <h4>Avatar</h4>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="width:110px">Banner Width</label>
+        <input id="bannerWidth" type="number" style="width:140px;padding:8px" value="<%= (welcomeCfg && Number.isFinite(welcomeCfg.width)) ? welcomeCfg.width : 1200 %>" />
+        <label style="width:110px">Banner Height</label>
+        <input id="bannerHeight" type="number" style="width:140px;padding:8px" value="<%= (welcomeCfg && Number.isFinite(welcomeCfg.height)) ? welcomeCfg.height : 441 %>" />
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <label style="width:100%">Avatar image (uploads)</label>
         <select id="avatarSelect" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">

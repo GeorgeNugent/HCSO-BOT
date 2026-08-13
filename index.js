@@ -1719,7 +1719,7 @@ async function renderWelcomeImage(member) {
         }
     }
 
-    // Default layout values
+    // Default layout values (and target size)
     let cfg = (typeof config === 'object' && config && config.welcomeBanner) ? config.welcomeBanner : {};
     const defAvatarX = Number(cfg.avatarX || 20);
     const defAvatarY = Number(cfg.avatarY || 60);
@@ -1727,6 +1727,8 @@ async function renderWelcomeImage(member) {
     const defUsernameX = Number(cfg.usernameX || 420);
     const defUsernameY = Number(cfg.usernameY || 210);
     const defUsernameSize = Number(cfg.usernameSize || 72);
+    const targetWidth = Number.isFinite(Number(cfg.width)) && Number(cfg.width) > 0 ? Number(cfg.width) : 1280;
+    const targetHeight = Number.isFinite(Number(cfg.height)) && Number(cfg.height) > 0 ? Number(cfg.height) : 360;
 
     const avatarImageTag = avatarBase64
         ? `<image href="data:image/png;base64,${avatarBase64}" x="${defAvatarX}" y="${defAvatarY}" width="${defAvatarSize}" height="${defAvatarSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatarClip)"/>`
@@ -1792,14 +1794,14 @@ async function renderWelcomeImage(member) {
     // Build an SVG overlay that contains the avatar circle and the username text.
     // Coordinates assume a 1280x360 canvas. Adjust if your template differs.
     const overlaySvg = `
-        <svg width="1280" height="360" viewBox="0 0 1280 360" xmlns="http://www.w3.org/2000/svg">
+        <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <clipPath id="avatarClip">
                     <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2)}" />
                 </clipPath>
                 <style><![CDATA[ ${embeddedFontCss} ]]></style>
             </defs>
-            <rect width="1280" height="360" fill="transparent" />
+            <rect width="${targetWidth}" height="${targetHeight}" fill="transparent" />
             ${avatarImageTag}
             <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2 + 4)}" fill="none" stroke="#e6e6e6" stroke-width="6" />
             <!-- Template contains main WELCOME artwork; we only draw the username here -->
@@ -1809,8 +1811,9 @@ async function renderWelcomeImage(member) {
 
     try {
         if (templateBuffer) {
-            // Composite the SVG overlay over the template image
+            // Resize template to target size then composite the SVG overlay over it
             return await sharp(templateBuffer)
+                .resize(targetWidth, targetHeight, { fit: 'cover' })
                 .composite([{ input: Buffer.from(overlaySvg), blend: 'over' }])
                 .png()
                 .toBuffer();
