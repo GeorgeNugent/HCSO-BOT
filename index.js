@@ -1690,9 +1690,11 @@ async function sendModerationLogEmbed(guildId, logType, sourceChannelId, embed) 
 }
 
 async function renderWelcomeImage(member) {
+    console.log(`[renderWelcomeImage] START - member.id: ${member?.id}`);
     const memberName = getMemberDisplayName(member);
     const safeName = escapeSvgText(memberName);
-    console.log(`[renderWelcomeImage] Rendering for: ${memberName}`);
+    console.log(`[renderWelcomeImage] memberName from getMemberDisplayName: "${memberName}"`);
+    console.log(`[renderWelcomeImage] safeName (escaped): "${safeName}"`);
 
     // Load config FIRST before using it
     const cfg = (typeof config === 'object' && config && config.welcomeBanner) ? config.welcomeBanner : {};
@@ -1823,6 +1825,8 @@ async function renderWelcomeImage(member) {
     const backingCx = defAvatarX + Math.round(defAvatarSize/2);
     const backingCy = defAvatarY + Math.round(defAvatarSize/2);
     const usernameToRender = String(memberName || '').toUpperCase();
+    console.log(`[renderWelcomeImage] usernameToRender: "${usernameToRender}" (from memberName: "${memberName}")`);
+    console.log(`[renderWelcomeImage] Position: x=${defUsernameX}, y=${defUsernameY}, size=${defUsernameSize}`);
     
     const overlaysvg = `
         <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
