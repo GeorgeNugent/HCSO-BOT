@@ -10,11 +10,11 @@
     <div style="flex:1;min-width:420px;">
       <label>Choose template</label>
       <select id="templateSelect" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
-        <% (assetFiles||[]).forEach(function(f){ %>
-          <option value="/assets/banners/<%= f %>"><%= f %> (assets)</option>
+        <% (assetFiles||[]).forEach(function(f){ const v = '/assets/banners/' + f; %>
+          <option value="<%= v %>" <%= (welcomeCfg && welcomeCfg.template===v) ? 'selected' : '' %>><%= f %> (assets)</option>
         <% }) %>
-        <% (uploadFiles||[]).forEach(function(f){ %>
-          <option value="/uploads/<%= f %>"><%= f %> (uploads)</option>
+        <% (uploadFiles||[]).forEach(function(f){ const v = '/uploads/' + f; %>
+          <option value="<%= v %>" <%= (welcomeCfg && welcomeCfg.template===v) ? 'selected' : '' %>><%= f %> (uploads)</option>
         <% }) %>
       </select>
 
@@ -33,16 +33,16 @@
         <label style="width:100%">Avatar image (uploads)</label>
         <select id="avatarSelect" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
           <option value="">(use template circle)</option>
-          <% (uploadFiles||[]).forEach(function(f){ %>
-            <option value="/uploads/<%= f %>"><%= f %></option>
+          <% (uploadFiles||[]).forEach(function(f){ const v = '/uploads/' + f; %>
+            <option value="<%= v %>" <%= (welcomeCfg && welcomeCfg.avatar===v) ? 'selected' : '' %>><%= f %></option>
           <% }) %>
         </select>
         <label style="width:100%">Avatar X</label>
-        <input id="avatarX" type="number" style="width:100px;padding:8px" />
+        <input id="avatarX" type="number" style="width:100px;padding:8px" value="<%= (welcomeCfg && Number.isFinite(welcomeCfg.avatarX)) ? welcomeCfg.avatarX : '' %>" />
         <label>Avatar Y</label>
-        <input id="avatarY" type="number" style="width:100px;padding:8px" />
+        <input id="avatarY" type="number" style="width:100px;padding:8px" value="<%= (welcomeCfg && Number.isFinite(welcomeCfg.avatarY)) ? welcomeCfg.avatarY : '' %>" />
         <label>Avatar Size</label>
-        <input id="avatarSize" type="number" style="width:100px;padding:8px" />
+        <input id="avatarSize" type="number" style="width:100px;padding:8px" value="<%= (welcomeCfg && Number.isFinite(welcomeCfg.avatarSize)) ? welcomeCfg.avatarSize : '' %>" />
       </div>
 
       <hr style="margin:16px 0">
@@ -50,11 +50,11 @@
       <h4>Username</h4>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <label>Username X</label>
-        <input id="usernameX" type="number" style="width:100px;padding:8px" />
+        <input id="usernameX" type="number" style="width:100px;padding:8px" value="<%= (welcomeCfg && Number.isFinite(welcomeCfg.usernameX)) ? welcomeCfg.usernameX : '' %>" />
         <label>Username Y</label>
-        <input id="usernameY" type="number" style="width:100px;padding:8px" />
+        <input id="usernameY" type="number" style="width:100px;padding:8px" value="<%= (welcomeCfg && Number.isFinite(welcomeCfg.usernameY)) ? welcomeCfg.usernameY : '' %>" />
         <label>Font Size</label>
-        <input id="usernameSize" type="number" style="width:100px;padding:8px" />
+        <input id="usernameSize" type="number" style="width:100px;padding:8px" value="<%= (welcomeCfg && Number.isFinite(welcomeCfg.usernameSize)) ? welcomeCfg.usernameSize : '' %>" />
       </div>
 
       <div style="margin-top:12px;">
