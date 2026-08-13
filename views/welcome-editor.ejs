@@ -65,29 +65,22 @@
     </div>
 
     <div style="flex:1;min-width:480px;display:flex;flex-direction:column;gap:8px;">
-      <label>Preview (drag to reposition; use corner handle to scale {pfp})</label>
-      <div id="previewArea" style="width:100%;height:300px;border-radius:8px;border:1px solid var(--border);overflow:hidden;position:relative;background:#000;">
-        <img id="previewTemplate" src="" style="width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;user-select:none;">
-
-        <!-- {pfp} placeholder element (masked) -->
-        <div id="pfpLayer" style="position:absolute;left:20px;top:30px;width:240px;height:240px;border-radius:999px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;background:#fff;border:6px solid rgba(230,230,230,0.95);">
-          <img id="pfpImage" src="" style="width:100%;height:100%;object-fit:cover;display:block;" />
-          <div id="pfpHandle" style="position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;background:#fff;border:1px solid var(--border);border-radius:4px;cursor:nwse-resize;display:flex;align-items:center;justify-content:center;font-size:10px;color:#333;">↘</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+        <label style="margin:0">Preview</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="zoomFitBtn" class="btn btn-sm">Fit</button>
+          <button id="zoom100Btn" class="btn btn-sm">100%</button>
+          <button id="zoom200Btn" class="btn btn-sm">200%</button>
+          <label style="margin:0 6px">Zoom</label>
+          <input id="zoomInput" type="number" value="100" style="width:80px;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);" />
         </div>
-
-        <!-- {template text} bounding box (visualized) -->
-        <div id="templateTextBox" style="position:absolute;left:420px;top:120px;width:520px;height:120px;border:2px dashed rgba(255,255,255,0.25);pointer-events:auto;display:flex;align-items:center;">
-          <div id="templateTextDisplay" contenteditable="true" style="width:100%;padding:6px;color:#fff;font-weight:800;font-family:WelcomeFont, Segoe UI, Arial, sans-serif;outline:none;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">Template Text</div>
-        </div>
-
-        <!-- username layer (editable) -->
-        <div id="usernameLayer" style="position:absolute;left:420px;top:210px;color:#fff;font-weight:900;font-size:64px;letter-spacing:2px;pointer-events:none;">Syn.GODSENT</div>
       </div>
-      <div style="display:flex;gap:12px;align-items:center;">
-        <div style="flex:1;color:var(--text-muted);font-size:13px;">Tip: drag the {pfp} circle, edit {template text} directly in the box, or use the properties panel.</div>
-      </div>
+
+      <div id="konvaContainer" style="width:100%;height:360px;border-radius:8px;border:1px solid var(--border);overflow:hidden;position:relative;background:#000;"></div>
+      <div style="margin-top:8px;color:var(--text-muted);font-size:13px;">Tip: use the transform handles in the canvas; drag layers to move them. Zoom does not change layout.</div>
     </div>
   </div>
 </div>
 
+<script src="https://unpkg.com/konva@8/konva.min.js"></script>
 <script src="/js/welcome-editor.js"></script>
