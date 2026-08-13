@@ -1838,6 +1838,43 @@ async function renderWelcomeImage(member) {
                 computedUsernameX = Math.max(8, foundLeft - 8);
             }
 
+            // Detect if the default avatar placement overlaps existing artwork/logos
+            try {
+                const circleCx = defAvatarX + Math.round(defAvatarSize / 2);
+                const circleCy = defAvatarY + Math.round(defAvatarSize / 2);
+                const r = Math.round(defAvatarSize / 2);
+                let pixelsInCircle = 0;
+                let nonBackground = 0;
+                const thresholdBrightness = 24; // low threshold to consider a pixel 'content'
+                const minX = Math.max(0, circleCx - r);
+                const maxX = Math.min(info.width - 1, circleCx + r);
+                const minY = Math.max(0, circleCy - r);
+                const maxY = Math.min(info.height - 1, circleCy + r);
+                for (let y = minY; y <= maxY; y++) {
+                    for (let x = minX; x <= maxX; x++) {
+                        const dx = x - circleCx;
+                        const dy = y - circleCy;
+                        if (dx * dx + dy * dy <= r * r) {
+                            pixelsInCircle++;
+                            const idx = (y * info.width + x) * 4;
+                            const rpx = data[idx], gpx = data[idx+1], bpx = data[idx+2], apx = data[idx+3];
+                            const brightness = (rpx + gpx + bpx) / 3;
+                            if (apx > 200 && brightness > thresholdBrightness) nonBackground++;
+                        }
+                    }
+                }
+                if (pixelsInCircle > 0 && (nonBackground / pixelsInCircle) > 0.06) {
+                    // area is busy — shrink avatar and nudge right to avoid covering logos
+                    const shrinkFactor = 0.78;
+                    const newSize = Math.max(64, Math.floor(defAvatarSize * shrinkFactor));
+                    const shift = Math.max(24, Math.round(defAvatarSize * 0.14));
+                    defAvatarSize = newSize;
+                    defAvatarX = Math.min(info.width - defAvatarSize - 8, defAvatarX + shift);
+                }
+            } catch (ex) {
+                // ignore avatar collision detection failures
+            }
+
             const rightSearchMinX = Math.floor(info.width * 0.6);
             const rightSearchMaxX = Math.floor(info.width * 0.98);
             let foundRightStart = 0;

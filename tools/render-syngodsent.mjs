@@ -22,17 +22,8 @@ import sharp from 'sharp';
     const avatarX = 20; // left offset
     const avatarY = Math.round((targetH - avatarSize) / 2);
 
-    // create circular avatar
+    // We'll create the circular avatar after we analyze the template area
     const avBuf = fs.readFileSync(avatar);
-    const maskSvg = `<svg width="${avatarSize}" height="${avatarSize}" xmlns="http://www.w3.org/2000/svg"><circle cx="${avatarSize/2}" cy="${avatarSize/2}" r="${avatarSize/2}" fill="white"/></svg>`;
-    const rounded = await sharp(avBuf)
-      .resize(avatarSize, avatarSize, { fit: 'cover' })
-      .composite([{ input: Buffer.from(maskSvg), blend: 'dest-in' }])
-      .png()
-      .toBuffer();
-
-    // border svg
-    const borderSvg = `<svg width="${targetW}" height="${targetH}" xmlns="http://www.w3.org/2000/svg"><circle cx="${avatarX + avatarSize/2}" cy="${avatarY + avatarSize/2}" r="${avatarSize/2 + 6}" fill="none" stroke="#e6e6e6" stroke-width="6" /></svg>`;
 
     // username text SVG (we'll place just the username, template already contains big WELCOME)
     const username = 'syngodsent';
@@ -83,6 +74,43 @@ import sharp from 'sharp';
       if (foundRightStart > 0) {
         safeRight = Math.max( Math.round(foundRightStart - 24), Math.round(info.width * 0.75) );
       }
+
+      // Detect if default avatar placement overlaps existing artwork/logos
+      try {
+        const circleCx = avatarX + Math.round(avatarSize / 2);
+        const circleCy = avatarY + Math.round(avatarSize / 2);
+        const r = Math.round(avatarSize / 2);
+        let pixelsInCircle = 0;
+        let nonBackground = 0;
+        const thresholdBrightness = 24;
+        const minX = Math.max(0, circleCx - r);
+        const maxX = Math.min(info.width - 1, circleCx + r);
+        const minY = Math.max(0, circleCy - r);
+        const maxY = Math.min(info.height - 1, circleCy + r);
+        for (let y = minY; y <= maxY; y++) {
+          for (let x = minX; x <= maxX; x++) {
+            const dx = x - circleCx;
+            const dy = y - circleCy;
+            if (dx * dx + dy * dy <= r * r) {
+              pixelsInCircle++;
+              const idx = (y * info.width + x) * 4;
+              const rpx = data[idx], gpx = data[idx+1], bpx = data[idx+2], apx = data[idx+3];
+              const brightness = (rpx + gpx + bpx) / 3;
+              if (apx > 200 && brightness > thresholdBrightness) nonBackground++;
+            }
+          }
+        }
+        if (pixelsInCircle > 0 && (nonBackground / pixelsInCircle) > 0.06) {
+          // area is busy — shrink avatar and nudge right to avoid covering logos
+          const shrinkFactor = 0.78;
+          const newSize = Math.max(64, Math.floor(avatarSize * shrinkFactor));
+          const shift = Math.max(24, Math.round(avatarSize * 0.14));
+          avatarSize = newSize;
+          avatarX = Math.min(info.width - avatarSize - 8, avatarX + shift);
+        }
+      } catch (ex) {
+        // ignore avatar collision detection failures
+      }
     } catch (err) {
       // fallback: keep defaults
     }
@@ -100,6 +128,17 @@ import sharp from 'sharp';
       usernameSize = Math.max(24, Math.floor(usernameSize * 0.9));
     }
     const textSvg = `<svg width="${targetW}" height="${targetH}" xmlns="http://www.w3.org/2000/svg"><text x="${usernameX}" y="${usernameY}" text-anchor="start" fill="#ffffff" font-size="${usernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="1">${username.toUpperCase()}</text></svg>`;
+
+    // create circular avatar with possibly adjusted size/position
+    const maskSvg = `<svg width="${avatarSize}" height="${avatarSize}" xmlns="http://www.w3.org/2000/svg"><circle cx="${avatarSize/2}" cy="${avatarSize/2}" r="${avatarSize/2}" fill="white"/></svg>`;
+    const rounded = await sharp(avBuf)
+      .resize(avatarSize, avatarSize, { fit: 'cover' })
+      .composite([{ input: Buffer.from(maskSvg), blend: 'dest-in' }])
+      .png()
+      .toBuffer();
+
+    // border svg
+    const borderSvg = `<svg width="${targetW}" height="${targetH}" xmlns="http://www.w3.org/2000/svg"><circle cx="${avatarX + avatarSize/2}" cy="${avatarY + avatarSize/2}" r="${avatarSize/2 + 6}" fill="none" stroke="#e6e6e6" stroke-width="6" /></svg>`;
 
     const composites = [
       { input: rounded, left: avatarX, top: avatarY },
