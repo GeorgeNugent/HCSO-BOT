@@ -1851,17 +1851,16 @@ async function renderWelcomeImage(member) {
 
     try {
         if (templateBuffer) {
-            console.log(`[renderWelcomeImage] Compositing overlay with username: "${usernameToRender}"`);
+            console.log(`[renderWelcomeImage] Compositing template only (no overlay) for: "${usernameToRender}"`);
             const result = await sharp(templateBuffer)
                 .resize(targetWidth, targetHeight, { fit: 'cover' })
-                .composite([{ input: Buffer.from(overlaysvg), blend: 'over' }])
                 .png()
                 .toBuffer();
-            console.log(`[renderWelcomeImage] Successfully rendered welcome image`);
+            console.log(`[renderWelcomeImage] Successfully rendered welcome image (template only)`);
             return result;
         }
     } catch (err) {
-        console.error(`[renderWelcomeImage] Failed to composite template:`, err.message);
+        console.error(`[renderWelcomeImage] Failed to render template:`, err.message);
     }
 
     // Fallback: SVG-only rendering
