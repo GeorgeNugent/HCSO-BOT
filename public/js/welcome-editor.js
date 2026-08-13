@@ -85,6 +85,107 @@
     usernameLayer.style.fontSize = (parseInt(usernameSize.value||72,10)) + 'px';
   }
 
+  // Draggable and resize handlers
+  function makeDraggable(handleEl, dragEl, onUpdate) {
+    let dragging = false;
+    let startX = 0, startY = 0, origLeft = 0, origTop = 0;
+    handleEl.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      dragging = true;
+      const rect = dragEl.getBoundingClientRect();
+      const parentRect = document.getElementById('previewArea').getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      origLeft = rect.left - parentRect.left;
+      origTop = rect.top - parentRect.top;
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    function onMouseMove(e) {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const newLeft = Math.max(0, Math.round(origLeft + dx));
+      const newTop = Math.max(0, Math.round(origTop + dy));
+      dragEl.style.left = newLeft + 'px';
+      dragEl.style.top = newTop + 'px';
+      if (onUpdate) onUpdate(newLeft, newTop);
+    }
+
+    function onUp() {
+      dragging = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+  }
+
+  function makeResizer(handleEl, targetEl, onResize) {
+    let resizing = false;
+    let startX = 0, startW = 0;
+    handleEl.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      resizing = true;
+      startX = e.clientX;
+      startW = targetEl.getBoundingClientRect().width;
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    function onMouseMove(e) {
+      if (!resizing) return;
+      const dx = e.clientX - startX;
+      const newW = Math.max(16, Math.round(startW + dx));
+      targetEl.style.width = newW + 'px';
+      targetEl.style.height = newW + 'px';
+      if (onResize) onResize(newW);
+    }
+
+    function onUp() {
+      resizing = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+  }
+
+  // Initialize draggables after DOM is ready
+  window.addEventListener('load', () => {
+    const pfpLayer = document.getElementById('pfpLayer');
+    const pfpHandle = document.getElementById('pfpHandle');
+    const templateTextBox = document.getElementById('templateTextBox');
+
+    if (pfpLayer) {
+      makeDraggable(pfpLayer, pfpLayer, (x,y) => {
+        avatarX.value = x;
+        avatarY.value = y;
+        updatePreview();
+      });
+    }
+    if (pfpHandle && pfpLayer) {
+      makeResizer(pfpHandle, pfpLayer, (newSize) => {
+        avatarSize.value = newSize;
+        updatePreview();
+      });
+    }
+
+    if (templateTextBox) {
+      makeDraggable(templateTextBox, templateTextBox, (x,y) => {
+        // templateTextBox top mapping: preview uses usernameY-90
+        usernameX.value = x;
+        usernameY.value = y + 90;
+        updatePreview();
+      });
+
+      // ensure clicking the box doesn't start text selection drag
+      const tplDisplay = document.getElementById('templateTextDisplay');
+      tplDisplay.addEventListener('input', () => {
+        // autosave to inputs for persistence
+        // (actual autoshrink handled later)
+        // keep display size; update preview text content
+      });
+    }
+  });
+
   previewBtn.addEventListener('click', (e)=>{ e.preventDefault(); updatePreview(); });
 
   uploadBtn.addEventListener('click', async (e)=>{
