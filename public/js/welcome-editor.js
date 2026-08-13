@@ -404,4 +404,6 @@
   }
 
   loadInitial();
+  // render initial preview from selected inputs
+  setTimeout(()=>{ updatePreview(); }, 50);
 })();
