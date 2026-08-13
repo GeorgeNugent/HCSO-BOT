@@ -1692,13 +1692,10 @@ async function sendModerationLogEmbed(guildId, logType, sourceChannelId, embed) 
 async function renderWelcomeImage(member) {
     const memberName = getMemberDisplayName(member);
     const safeName = escapeSvgText(memberName);
-    console.log(`[renderWelcomeImage] Rendering welcome for member:`, {
-        memberId: member?.id,
-        memberName,
-        displayName: member?.displayName,
-        globalName: member?.globalName,
-        username: member?.user?.username
-    });
+    console.log(`[renderWelcomeImage] Rendering for: ${memberName}`);
+
+    // Load config FIRST before using it
+    const cfg = (typeof config === 'object' && config && config.welcomeBanner) ? config.welcomeBanner : {};
 
     // helper to download an image buffer
     const fetchBuffer = (url) => new Promise((resolve, reject) => {
@@ -1746,7 +1743,12 @@ async function renderWelcomeImage(member) {
     }
 
     // Default layout values (and target size)
-    let cfg = (typeof config === 'object' && config && config.welcomeBanner) ? config.welcomeBanner : {};
+    let defAvatarX = Number(cfg.avatarX || 20);
+    let defAvatarY = Number(cfg.avatarY || 60);
+    let defAvatarSize = Number(cfg.avatarSize || 240);
+    let defUsernameX = Number(cfg.usernameX || 420);
+    let defUsernameY = Number(cfg.usernameY || 210);
+    let defUsernameSize = Number(cfg.usernameSize || 72);
     let defAvatarX = Number(cfg.avatarX || 20);
     let defAvatarY = Number(cfg.avatarY || 60);
     let defAvatarSize = Number(cfg.avatarSize || 240);
@@ -1787,7 +1789,7 @@ async function renderWelcomeImage(member) {
         embeddedFontCss = "";
     }
 
-    // Look for a configured template image (uploads or assets/banners), else fallback to assets/images
+    // Load template image
     let templateBuffer = null;
     try {
         const templateCandidates = [];
@@ -1800,165 +1802,29 @@ async function renderWelcomeImage(member) {
             }
         }
         // fallback locations
-        templateCandidates.push(path.join(process.cwd(), "assets", "images", "welcome-template.png"));
-        templateCandidates.push(path.join(process.cwd(), "assets", "images", "welcome-template.jpg"));
-        templateCandidates.push(path.join(process.cwd(), "assets", "images", "welcome-template.jpeg"));
         templateCandidates.push(path.join(process.cwd(), "assets", "banners", "welcome-template.png"));
-        templateCandidates.push(path.join(process.cwd(), "assets", "banners", "welcome-template.jpg"));
-        templateCandidates.push(path.join(process.cwd(), "assets", "banners", "welcome-template.jpeg"));
+        templateCandidates.push(path.join(process.cwd(), "assets", "images", "welcome-template.png"));
 
         for (const tp of templateCandidates) {
             if (tp && fs.existsSync(tp)) {
                 templateBuffer = fs.readFileSync(tp);
+                console.log(`[renderWelcomeImage] Loaded template: ${tp}`);
                 break;
             }
         }
     } catch (err) {
+        console.error(`[renderWelcomeImage] Failed to load template:`, err.message);
         templateBuffer = null;
     }
 
-    // Build an SVG overlay that contains the avatar circle and the username text.
-    // We'll attempt to detect the large WELCOME artwork edges on the resized template
-    // so we can align the first letter and shrink the username to avoid overlap.
-    let computedUsernameX = defUsernameX;
-    let computedUsernameSize = defUsernameSize;
-    try {
-        if (templateBuffer) {
-            const base = await sharp(templateBuffer).resize(targetWidth, targetHeight, { fit: 'cover' }).png().toBuffer();
-            const { data, info } = await sharp(base).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-            const y0 = Math.floor(info.height * 0.15);
-            const y1 = Math.floor(info.height * 0.75);
-
-            const leftSearchMinX = Math.floor(info.width * 0.15);
-            const leftSearchMaxX = Math.floor(info.width * 0.6);
-            let foundLeft = info.width;
-            for (let y = y0; y < y1; y++) {
-                for (let x = leftSearchMinX; x < leftSearchMaxX; x++) {
-                    const idx = (y * info.width + x) * 4;
-                    const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
-                    if (a > 200 && r > 200 && g > 200 && b > 200) {
-                        if (x < foundLeft) foundLeft = x;
-                    }
-                }
-            }
-            if (foundLeft < info.width) {
-                computedUsernameX = Math.max(8, foundLeft - 8);
-            }
-
-            // Detect if the default avatar placement overlaps existing artwork/logos
-            try {
-                const circleCx = defAvatarX + Math.round(defAvatarSize / 2);
-                const circleCy = defAvatarY + Math.round(defAvatarSize / 2);
-                const r = Math.round(defAvatarSize / 2);
-                let pixelsInCircle = 0;
-                let nonBackground = 0;
-                const thresholdBrightness = 24; // low threshold to consider a pixel 'content'
-                const minX = Math.max(0, circleCx - r);
-                const maxX = Math.min(info.width - 1, circleCx + r);
-                const minY = Math.max(0, circleCy - r);
-                const maxY = Math.min(info.height - 1, circleCy + r);
-                for (let y = minY; y <= maxY; y++) {
-                    for (let x = minX; x <= maxX; x++) {
-                        const dx = x - circleCx;
-                        const dy = y - circleCy;
-                        if (dx * dx + dy * dy <= r * r) {
-                            pixelsInCircle++;
-                            const idx = (y * info.width + x) * 4;
-                            const rpx = data[idx], gpx = data[idx+1], bpx = data[idx+2], apx = data[idx+3];
-                            const brightness = (rpx + gpx + bpx) / 3;
-                            if (apx > 200 && brightness > thresholdBrightness) nonBackground++;
-                        }
-                    }
-                }
-                if (pixelsInCircle > 0 && (nonBackground / pixelsInCircle) > 0.06) {
-                    // area is busy — shrink avatar and nudge right to avoid covering logos
-                    const shrinkFactor = 0.78;
-                    const newSize = Math.max(64, Math.floor(defAvatarSize * shrinkFactor));
-                    const shift = Math.max(24, Math.round(defAvatarSize * 0.14));
-                    defAvatarSize = newSize;
-                    defAvatarX = Math.min(info.width - defAvatarSize - 8, defAvatarX + shift);
-                }
-            } catch (ex) {
-                // ignore avatar collision detection failures
-            }
-
-            const rightSearchMinX = Math.floor(info.width * 0.6);
-            const rightSearchMaxX = Math.floor(info.width * 0.98);
-            let foundRightStart = 0;
-            for (let x = rightSearchMaxX; x > rightSearchMinX; x--) {
-                let colWhiteCount = 0;
-                for (let y = y0; y < y1; y++) {
-                    const idx = (y * info.width + x) * 4;
-                    const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
-                    if (a > 200 && r > 200 && g > 200 && b > 200) colWhiteCount++;
-                }
-                if (colWhiteCount > (y1 - y0) * 0.15) {
-                    foundRightStart = x;
-                }
-            }
-            let safeRight = Math.round(info.width * 0.95);
-            if (foundRightStart > 0) {
-                safeRight = Math.max(Math.round(foundRightStart - 24), Math.round(info.width * 0.75));
-            }
-
-            const username = String(memberName || '').toUpperCase();
-            const usernameY = Math.round(targetHeight * 0.68);
-            let usernameSize = Math.max(24, Number(defUsernameSize) || 72);
-            const maxWidth = Math.max(120, safeRight - computedUsernameX - 20);
-            const shrinkToFit = (size) => {
-                const approxCharWidth = size * 0.58;
-                return approxCharWidth * username.length <= maxWidth;
-            };
-            // start slightly smaller and shrink gently
-            usernameSize = Math.min(usernameSize, 78);
-            while (usernameSize > 24 && !shrinkToFit(usernameSize)) {
-                usernameSize = Math.max(24, Math.floor(usernameSize * 0.9));
-            }
-            computedUsernameSize = usernameSize;
-
-            // Now build overlay using computed values
-            const backingRadius = Math.round(defAvatarSize/2 + 8);
-            const backingCx = defAvatarX + Math.round(defAvatarSize/2);
-            const backingCy = defAvatarY + Math.round(defAvatarSize/2);
-            const computedOverlaySvg = `
-        <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <clipPath id="avatarClip">
-                    <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2)}" />
-                </clipPath>
-                <style><![CDATA[ ${embeddedFontCss} ]]></style>
-            </defs>
-            <rect width="${targetWidth}" height="${targetHeight}" fill="transparent" />
-            <circle cx="${backingCx}" cy="${backingCy}" r="${backingRadius}" fill="#ffffff" />
-            ${avatarImageTag}
-            <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2 + 4)}" fill="none" stroke="#e6e6e6" stroke-width="6" />
-            <text x="${computedUsernameX}" y="${usernameY}" text-anchor="start" fill="#ffffff" font-size="${computedUsernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="1">${escapeSvgText(String(memberName || '').toUpperCase())}</text>
-        </svg>
-    `;
-
-            try {
-                if (templateBuffer) {
-                    // Try to composite using the computed overlay first
-                    return await sharp(templateBuffer)
-                        .resize(targetWidth, targetHeight, { fit: 'cover' })
-                        .composite([{ input: Buffer.from(computedOverlaySvg), blend: 'over' }])
-                        .png()
-                        .toBuffer();
-                }
-            } catch (err) {
-                console.error('Error compositing template welcome image with computed overlay:', err);
-            }
-            // keep computedOverlaySvg available for later fallback
-        }
-    } catch (err) {
-        // fallback to original overlay if anything goes wrong
-    }
-
-    // Fallback overlay (original behavior)
+    // Create the overlay SVG with avatar and username
+    // Use the actual memberName variable directly in the SVG
     const backingRadius = Math.round(defAvatarSize/2 + 8);
     const backingCx = defAvatarX + Math.round(defAvatarSize/2);
     const backingCy = defAvatarY + Math.round(defAvatarSize/2);
-    const fallbackOverlaySvg = `
+    const usernameToRender = String(memberName || '').toUpperCase();
+    
+    const overlaysvg = `
         <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <clipPath id="avatarClip">
@@ -1970,30 +1836,29 @@ async function renderWelcomeImage(member) {
             <circle cx="${backingCx}" cy="${backingCy}" r="${backingRadius}" fill="#ffffff" />
             ${avatarImageTag}
             <circle cx="${defAvatarX + defAvatarSize/2}" cy="${defAvatarY + defAvatarSize/2}" r="${Math.round(defAvatarSize/2 + 4)}" fill="none" stroke="#e6e6e6" stroke-width="6" />
-            <!-- Template contains main WELCOME artwork; we only draw the username here -->
-            <text x="${defUsernameX}" y="${defUsernameY}" text-anchor="start" fill="#ffffff" font-size="${defUsernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${safeName}</text>
+            <text x="${defUsernameX}" y="${defUsernameY}" text-anchor="start" fill="#ffffff" font-size="${defUsernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${escapeSvgText(usernameToRender)}</text>
         </svg>
     `;
-    // Prefer the computed overlay if available; otherwise use fallback overlay
-    const finalOverlaySvg = (typeof computedOverlaySvg === 'string' && computedOverlaySvg) ? computedOverlaySvg : fallbackOverlaySvg;
+
     try {
         if (templateBuffer) {
-            // Resize template to target size then composite the SVG overlay over it
-            return await sharp(templateBuffer)
+            console.log(`[renderWelcomeImage] Compositing overlay with username: "${usernameToRender}"`);
+            const result = await sharp(templateBuffer)
                 .resize(targetWidth, targetHeight, { fit: 'cover' })
-                .composite([{ input: Buffer.from(finalOverlaySvg), blend: 'over' }])
+                .composite([{ input: Buffer.from(overlaysvg), blend: 'over' }])
                 .png()
                 .toBuffer();
+            console.log(`[renderWelcomeImage] Successfully rendered welcome image`);
+            return result;
         }
     } catch (err) {
-        // fall through to SVG-only rendering on error
-        console.error('Error compositing template welcome image:', err);
+        console.error(`[renderWelcomeImage] Failed to composite template:`, err.message);
     }
 
-    // Fallback: render the overlay SVG on its own (solid background defined by SVG if needed)
-    // If no template, create a background rect in the SVG so image isn't transparent
-    const finalSvgForRender = finalOverlaySvg.replace('fill="transparent"', 'fill="#05080b"');
-    return sharp(Buffer.from(finalSvgForRender)).png().toBuffer();
+    // Fallback: SVG-only rendering
+    console.log(`[renderWelcomeImage] Using SVG-only fallback for: "${usernameToRender}"`);
+    const fallbackSvg = overlaysvg.replace('fill="transparent"', 'fill="#05080b"');
+    return sharp(Buffer.from(fallbackSvg)).png().toBuffer();
 }
 
 async function renderVerificationCodeImage(code) {
