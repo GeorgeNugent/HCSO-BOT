@@ -1740,12 +1740,12 @@ async function renderWelcomeImage(member) {
 
     // Default layout values (and target size)
     let cfg = (typeof config === 'object' && config && config.welcomeBanner) ? config.welcomeBanner : {};
-    const defAvatarX = Number(cfg.avatarX || 20);
-    const defAvatarY = Number(cfg.avatarY || 60);
-    const defAvatarSize = Number(cfg.avatarSize || 240);
-    const defUsernameX = Number(cfg.usernameX || 420);
-    const defUsernameY = Number(cfg.usernameY || 210);
-    const defUsernameSize = Number(cfg.usernameSize || 72);
+    let defAvatarX = Number(cfg.avatarX || 20);
+    let defAvatarY = Number(cfg.avatarY || 60);
+    let defAvatarSize = Number(cfg.avatarSize || 240);
+    let defUsernameX = Number(cfg.usernameX || 420);
+    let defUsernameY = Number(cfg.usernameY || 210);
+    let defUsernameSize = Number(cfg.usernameSize || 72);
     const targetWidth = Number.isFinite(Number(cfg.width)) && Number(cfg.width) > 0 ? Number(cfg.width) : 1280;
     const targetHeight = Number.isFinite(Number(cfg.height)) && Number(cfg.height) > 0 ? Number(cfg.height) : 360;
 
@@ -1913,7 +1913,7 @@ async function renderWelcomeImage(member) {
             const backingRadius = Math.round(defAvatarSize/2 + 8);
             const backingCx = defAvatarX + Math.round(defAvatarSize/2);
             const backingCy = defAvatarY + Math.round(defAvatarSize/2);
-            const overlaySvg = `
+            const computedOverlaySvg = `
         <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <clipPath id="avatarClip">
@@ -1931,15 +1931,17 @@ async function renderWelcomeImage(member) {
 
             try {
                 if (templateBuffer) {
+                    // Try to composite using the computed overlay first
                     return await sharp(templateBuffer)
                         .resize(targetWidth, targetHeight, { fit: 'cover' })
-                        .composite([{ input: Buffer.from(overlaySvg), blend: 'over' }])
+                        .composite([{ input: Buffer.from(computedOverlaySvg), blend: 'over' }])
                         .png()
                         .toBuffer();
                 }
             } catch (err) {
-                console.error('Error compositing template welcome image:', err);
+                console.error('Error compositing template welcome image with computed overlay:', err);
             }
+            // keep computedOverlaySvg available for later fallback
         }
     } catch (err) {
         // fallback to original overlay if anything goes wrong
@@ -1949,7 +1951,7 @@ async function renderWelcomeImage(member) {
     const backingRadius = Math.round(defAvatarSize/2 + 8);
     const backingCx = defAvatarX + Math.round(defAvatarSize/2);
     const backingCy = defAvatarY + Math.round(defAvatarSize/2);
-    const overlaySvg = `
+    const fallbackOverlaySvg = `
         <svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <clipPath id="avatarClip">
@@ -1965,13 +1967,14 @@ async function renderWelcomeImage(member) {
             <text x="${defUsernameX}" y="${defUsernameY}" text-anchor="start" fill="#ffffff" font-size="${defUsernameSize}" font-family="WelcomeFont, Segoe UI, Arial, sans-serif" font-weight="900" letter-spacing="2">${safeName}</text>
         </svg>
     `;
-
+    // Prefer the computed overlay if available; otherwise use fallback overlay
+    const finalOverlaySvg = (typeof computedOverlaySvg === 'string' && computedOverlaySvg) ? computedOverlaySvg : fallbackOverlaySvg;
     try {
         if (templateBuffer) {
             // Resize template to target size then composite the SVG overlay over it
             return await sharp(templateBuffer)
                 .resize(targetWidth, targetHeight, { fit: 'cover' })
-                .composite([{ input: Buffer.from(overlaySvg), blend: 'over' }])
+                .composite([{ input: Buffer.from(finalOverlaySvg), blend: 'over' }])
                 .png()
                 .toBuffer();
         }
@@ -1982,8 +1985,8 @@ async function renderWelcomeImage(member) {
 
     // Fallback: render the overlay SVG on its own (solid background defined by SVG if needed)
     // If no template, create a background rect in the SVG so image isn't transparent
-    const fallbackSvg = overlaySvg.replace('fill="transparent"', 'fill="#05080b"');
-    return sharp(Buffer.from(fallbackSvg)).png().toBuffer();
+    const finalSvgForRender = finalOverlaySvg.replace('fill="transparent"', 'fill="#05080b"');
+    return sharp(Buffer.from(finalSvgForRender)).png().toBuffer();
 }
 
 async function renderVerificationCodeImage(code) {
@@ -7763,8 +7766,8 @@ client.on("interactionCreate", async interaction => {
                 idle: "Idle",
                 dnd: "Do Not Disturb",
                 invisible: "Invisible",
-                watching_patrol: "Watching Patrol Logs",
-                listening_radio: "Listening to Radio Traffic",
+                watching_patrol: "Watching Watching Patrol Logs",
+                listening_radio: "Listening Listening to Radio Traffic",
                 playing_hcp: `Playing ${branding.fallback.shortName} Operations`,
                 watching_hcp: `Watching Over ${branding.communityName}`,
                 competing_patrol: "Competing in Patrol Hours"
