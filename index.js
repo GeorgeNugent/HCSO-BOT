@@ -1360,6 +1360,33 @@ function setLogChannelId(guildId, logType, channelId) {
     }
 }
 
+function removeLogChannelId(guildId, logType) {
+    if (guildId) {
+        const guildChannels = getGuildLogChannels(guildId);
+        if (Object.prototype.hasOwnProperty.call(guildChannels, logType)) {
+            delete guildChannels[logType];
+        }
+
+        if (logType === "moderation") {
+            delete guildChannels.strike;
+            delete guildChannels.ban;
+            delete guildChannels.blacklist;
+        }
+    }
+
+    if (config.logChannels && typeof config.logChannels === "object") {
+        if (Object.prototype.hasOwnProperty.call(config.logChannels, logType)) {
+            delete config.logChannels[logType];
+        }
+
+        if (logType === "moderation") {
+            delete config.logChannels.strike;
+            delete config.logChannels.ban;
+            delete config.logChannels.blacklist;
+        }
+    }
+}
+
 const ticketSystem = createTicketSystem({
     config,
     tickets,
@@ -2632,6 +2659,38 @@ const commands = [
     new SlashCommandBuilder()
         .setName("set-log-channel")
         .setDescription("Set the log channel for a specific log type")
+        .addStringOption(o => o.setName("log-type").setDescription("Log type").setRequired(true).addChoices(
+            { name: "Patrol Logs", value: "patrol" },
+            { name: "Case Logs", value: "case" },
+            { name: "Moderation Logs (Strike/Ban/Blacklist)", value: "moderation" },
+            { name: "LOA Logs", value: "loa" },
+            { name: "Transcript Logs", value: "transcript" },
+            { name: "Timeout Logs", value: "timeout" },
+            { name: "Discord Logs", value: "discord" },
+            { name: "Commendation Logs", value: "commendations" },
+            { name: "Member Join Logs", value: "memberjoin" },
+            { name: "Member Leave Logs", value: "memberleave" }
+        )),
+
+    new SlashCommandBuilder()
+        .setName("setlogchannels")
+        .setDescription("Set the log channel for a specific log type")
+        .addStringOption(o => o.setName("log-type").setDescription("Log type").setRequired(true).addChoices(
+            { name: "Patrol Logs", value: "patrol" },
+            { name: "Case Logs", value: "case" },
+            { name: "Moderation Logs (Strike/Ban/Blacklist)", value: "moderation" },
+            { name: "LOA Logs", value: "loa" },
+            { name: "Transcript Logs", value: "transcript" },
+            { name: "Timeout Logs", value: "timeout" },
+            { name: "Discord Logs", value: "discord" },
+            { name: "Commendation Logs", value: "commendations" },
+            { name: "Member Join Logs", value: "memberjoin" },
+            { name: "Member Leave Logs", value: "memberleave" }
+        )),
+
+    new SlashCommandBuilder()
+        .setName("removelogschannels")
+        .setDescription("Remove the configured log channel for a specific log type")
         .addStringOption(o => o.setName("log-type").setDescription("Log type").setRequired(true).addChoices(
             { name: "Patrol Logs", value: "patrol" },
             { name: "Case Logs", value: "case" },
@@ -7179,8 +7238,8 @@ client.on("interactionCreate", async interaction => {
         }
     }
 
-    // /set-log-channel
-    if (interaction.commandName === "set-log-channel") {
+    // /set-log-channel and /setlogchannels
+    if (interaction.commandName === "set-log-channel" || interaction.commandName === "setlogchannels") {
         try {
             if (!interaction.guildId) {
                 return interaction.reply({
@@ -7255,6 +7314,81 @@ client.on("interactionCreate", async interaction => {
                 .setTimestamp();
 
             await safeInteractionErrorReply(interaction, `❌ Logging Configuration Failed\n${error.message || "Unknown error"}`);
+        }
+    }
+
+    // /removelogschannels
+    if (interaction.commandName === "removelogschannels") {
+        try {
+            if (!interaction.guildId) {
+                return interaction.reply({
+                    content: "❌ This command can only be used in a server.",
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+                const errorEmbed = new EmbedBuilder()
+                    .setColor("#8b0000")
+                    .setTitle("❌ Permission Denied")
+                    .setDescription("You do not have permission to remove log channels.")
+                    .setTimestamp();
+                return interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
+            }
+
+            const logType = interaction.options.getString("log-type");
+            if (!LOG_TYPES.includes(logType)) {
+                const errorEmbed = new EmbedBuilder()
+                    .setColor("#8b0000")
+                    .setTitle("❌ Invalid Log Type")
+                    .setDescription("Valid options: patrol, case, moderation, loa, transcript, timeout, discord, commendations, memberjoin, memberleave.")
+                    .setTimestamp();
+                return interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
+            }
+
+            const guildChannels = getGuildLogChannels(interaction.guildId);
+            const hadChannel = Boolean(guildChannels[logType] || getLogChannelId(interaction.guildId, logType));
+
+            removeLogChannelId(interaction.guildId, logType);
+            saveConfig();
+
+            const typeNames = {
+                patrol: "Patrol Logs",
+                case: "Case Logs",
+                moderation: "Moderation Logs",
+                strike: "Strike Logs",
+                loa: "LOA Logs",
+                transcript: "Transcript Logs",
+                timeout: "Timeout Logs",
+                ban: "Ban Logs",
+                blacklist: "Blacklist Logs",
+                discord: "Discord Logs",
+                commendations: "Commendation Logs",
+                memberjoin: "Member Join",
+                memberleave: "Member Leave"
+            };
+
+            const successEmbed = new EmbedBuilder()
+                .setColor("#8b0000")
+                .setTitle("✅ Log Channel Removed")
+                .addFields(
+                    { name: "Log Type", value: typeNames[logType], inline: true },
+                    { name: "Status", value: hadChannel ? "Removed from this server" : "No channel was set for this type", inline: true },
+                    { name: "Updated By", value: `<@${interaction.user.id}>`, inline: true }
+                )
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [successEmbed] });
+        } catch (error) {
+            console.error("Remove log channel error:", error);
+            const errorEmbed = new EmbedBuilder()
+                .setColor("#8b0000")
+                .setTitle("❌ Log Removal Failed")
+                .setDescription("The remove-log command did not work. Please try again.")
+                .addFields({ name: "Error Details", value: error.message || "Unknown error", inline: false })
+                .setTimestamp();
+
+            await safeInteractionErrorReply(interaction, `❌ Log Removal Failed\n${error.message || "Unknown error"}`);
         }
     }
 
