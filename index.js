@@ -2689,6 +2689,22 @@ const commands = [
         )),
 
     new SlashCommandBuilder()
+        .setName("remove-log-channel")
+        .setDescription("Remove the configured log channel for a specific log type")
+        .addStringOption(o => o.setName("log-type").setDescription("Log type").setRequired(true).addChoices(
+            { name: "Patrol Logs", value: "patrol" },
+            { name: "Case Logs", value: "case" },
+            { name: "Moderation Logs (Strike/Ban/Blacklist)", value: "moderation" },
+            { name: "LOA Logs", value: "loa" },
+            { name: "Transcript Logs", value: "transcript" },
+            { name: "Timeout Logs", value: "timeout" },
+            { name: "Discord Logs", value: "discord" },
+            { name: "Commendation Logs", value: "commendations" },
+            { name: "Member Join Logs", value: "memberjoin" },
+            { name: "Member Leave Logs", value: "memberleave" }
+        )),
+
+    new SlashCommandBuilder()
         .setName("removelogschannels")
         .setDescription("Remove the configured log channel for a specific log type")
         .addStringOption(o => o.setName("log-type").setDescription("Log type").setRequired(true).addChoices(
@@ -7317,8 +7333,8 @@ client.on("interactionCreate", async interaction => {
         }
     }
 
-    // /removelogschannels
-    if (interaction.commandName === "removelogschannels") {
+    // /remove-log-channel and /removelogschannels
+    if (interaction.commandName === "remove-log-channel" || interaction.commandName === "removelogschannels") {
         try {
             if (!interaction.guildId) {
                 return interaction.reply({
