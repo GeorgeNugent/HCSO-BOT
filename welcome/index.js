@@ -1,10 +1,10 @@
-console.log("🔥🔥🔥 WELCOME FILE LOADED 🔥🔥🔥");
-
 import { AttachmentBuilder, EmbedBuilder } from "discord.js";
 import sharp from "sharp";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+
+console.log("🔥🔥🔥 WELCOME FILE LOADED 🔥🔥🔥");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -78,17 +78,14 @@ async function makeWelcomeImage() {
 }
 
 function setupWelcome(client) {
-
     console.log("[WELCOME] Welcome system loaded.");
 
     client.on("guildMemberAdd", async (member) => {
-
         console.log(
             `[WELCOME] MEMBER JOINED: ${member.user.tag} (${member.id})`
         );
 
         try {
-
             if (WELCOME_CHANNEL_ID === "YOUR_CHANNEL_ID_HERE") {
                 console.error(
                     "[WELCOME] ERROR: You have not set WELCOME_CHANNEL_ID!"
@@ -151,13 +148,11 @@ function setupWelcome(client) {
             );
 
         } catch (error) {
-
             console.error(
                 "[WELCOME] FAILED TO SEND WELCOME MESSAGE:"
             );
 
             console.error(error);
-
         }
     });
 }
