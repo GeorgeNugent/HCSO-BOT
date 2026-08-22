@@ -1689,19 +1689,6 @@ async function sendModerationLogEmbed(guildId, logType, sourceChannelId, embed) 
     await logChannel.send({ embeds: [embed] }).catch(() => {});
 }
 
-async function renderWelcomeImage(memberName) {
-    const safeName = escapeSvgText(memberName);
-    const svg = `
-        <svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
-            <rect width="1280" height="720" fill="#05080b"/>
-            <text x="640" y="360" text-anchor="middle" fill="#ffffff" font-size="160" font-family="Brush Script MT, Segoe Script, Pacifico, cursive" font-weight="700">Welcome</text>
-            <text x="640" y="470" text-anchor="middle" fill="#d9e1ea" font-size="56" font-family="Georgia, Times New Roman, serif" letter-spacing="2">${safeName}</text>
-        </svg>
-    `;
-
-    return sharp(Buffer.from(svg)).png().toBuffer();
-}
-
 async function renderVerificationCodeImage(code) {
     const safeCode = escapeSvgText(code);
     const svg = `
@@ -3029,10 +3016,6 @@ client.on("guildMemberAdd", async member => {
 
     const memberName = getMemberDisplayName(member);
     const memberCountLabel = formatOrdinal(member.guild.memberCount);
-    const welcomeImage = await renderWelcomeImage(memberName).catch(error => {
-        console.error("Failed to render welcome image:", error);
-        return null;
-    });
 
     const welcomeEmbed = new EmbedBuilder()
         .setColor("#2d5a3d")
@@ -3043,11 +3026,6 @@ client.on("guildMemberAdd", async member => {
     const payload = {
         embeds: [welcomeEmbed]
     };
-
-    if (welcomeImage) {
-        payload.files = [{ attachment: welcomeImage, name: `welcome-${member.id}.png` }];
-        welcomeEmbed.setImage(`attachment://welcome-${member.id}.png`);
-    }
 
     await sendConfiguredLogMessage(
         client,
@@ -8749,3 +8727,6 @@ startDashboard({
 });
 
 client.login(TOKEN);
+
+const { setupWelcome } = require("./welcome");
+setupWelcome(client);

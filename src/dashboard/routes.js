@@ -125,65 +125,6 @@ export function createMainRoutes(context, { requireAuth, requireStaff, getDashbo
         }
     };
 
-    // --- Welcome banner editor (Bot Owner only) ---------------------------
-    router.get('/welcome-editor', requireAuth, async (req, res) => {
-        const userId = String(req.session.user?.id || '');
-        if (!Array.isArray(BOT_OWNER_IDS) || !BOT_OWNER_IDS.map(String).includes(userId)) {
-            return res.render('access-denied', { page: 'denied' });
-        }
-
-        // Load current welcome config from app config (stored in config.json)
-        const welcomeCfg = (config && config.welcomeBanner) ? config.welcomeBanner : null;
-
-        // Gather available banner templates from assets/banners and public/uploads
-        const assetsBannersDir = path.join(process.cwd(), 'assets', 'banners');
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-        const assetFiles = fs.existsSync(assetsBannersDir) ? fs.readdirSync(assetsBannersDir).filter(f => /\.png$|\.jpe?g$/i.test(f)) : [];
-        const uploadFiles = fs.existsSync(uploadDir) ? fs.readdirSync(uploadDir).filter(f => /\.png$|\.jpe?g$/i.test(f)) : [];
-
-        res.render('welcome-editor', {
-            page: 'welcome-editor',
-            branding: getBranding(),
-            welcomeCfg,
-            assetFiles,
-            uploadFiles
-        });
-    });
-
-    router.get('/api/welcome', requireAuth, (req, res) => {
-        const userId = String(req.session.user?.id || '');
-        if (!Array.isArray(BOT_OWNER_IDS) || !BOT_OWNER_IDS.map(String).includes(userId)) {
-            return res.status(403).json({ error: 'Access denied' });
-        }
-        return res.json({ success: true, welcome: config.welcomeBanner || {} });
-    });
-
-    router.post('/api/welcome', requireAuth, async (req, res) => {
-        const userId = String(req.session.user?.id || '');
-        if (!Array.isArray(BOT_OWNER_IDS) || !BOT_OWNER_IDS.map(String).includes(userId)) {
-            return res.status(403).json({ error: 'Access denied' });
-        }
-        const body = req.body || {};
-        config.welcomeBanner = body.welcome || {};
-        try {
-            await saveConfig();
-            return res.json({ success: true });
-        } catch (err) {
-            return res.status(500).json({ success: false, error: 'Failed to save' });
-        }
-    });
-
-    router.post('/api/welcome/upload', requireAuth, upload.array('images', 12), (req, res) => {
-        const userId = String(req.session.user?.id || '');
-        if (!Array.isArray(BOT_OWNER_IDS) || !BOT_OWNER_IDS.map(String).includes(userId)) {
-            return res.status(403).json({ error: 'Access denied' });
-        }
-        if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, error: 'No files' });
-        const items = req.files.map(f => ({ url: `/uploads/${f.filename}`, filename: f.filename }));
-        return res.json({ success: true, files: items });
-    });
-
-
     async function getDepartmentApplicationAccess(userId, departmentKey) {
         const spec = DEPARTMENT_APPLICATION_SPECS[departmentKey];
         if (!spec) return false;
