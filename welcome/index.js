@@ -1,9 +1,13 @@
 console.log("🔥🔥🔥 WELCOME FILE LOADED 🔥🔥🔥");
 
-const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
-const sharp = require("sharp");
-const path = require("path");
-const fs = require("fs");
+import { AttachmentBuilder, EmbedBuilder } from "discord.js";
+import sharp from "sharp";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const ASSETS = path.join(__dirname, "assets");
 
