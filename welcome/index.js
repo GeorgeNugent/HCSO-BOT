@@ -9,34 +9,60 @@ const BACKGROUND = path.join(ASSETS, "background.png");
 const HOPE = path.join(ASSETS, "hope you enjoy your stay.png");
 const PANELS = path.join(ASSETS, "side pannels.png");
 
-// Put your Discord welcome channel ID here.
-// Example: const WELCOME_CHANNEL_ID = "123456789012345678";
-const WELCOME_CHANNEL_ID = process.env.WELCOME_CHANNEL_ID || "1533590256354590725";
+// PUT YOUR WELCOME CHANNEL ID HERE
+const WELCOME_CHANNEL_ID = "1533590256354590725";
 
 async function makeWelcomeImage() {
+    console.log("[WELCOME] Creating welcome image...");
+
     if (!fs.existsSync(BACKGROUND)) {
-        throw new Error('Missing "assets/background.png"');
+        throw new Error(`Missing: ${BACKGROUND}`);
     }
 
     const meta = await sharp(BACKGROUND).metadata();
 
     if (!meta.width || !meta.height) {
-        throw new Error("Could not read the size of background.png");
+        throw new Error("Could not read background.png dimensions.");
     }
+
+    console.log(
+        `[WELCOME] Background size: ${meta.width}x${meta.height}`
+    );
 
     const overlays = [];
 
-    for (const file of [PANELS, HOPE]) {
-        if (fs.existsSync(file)) {
-            overlays.push({
-                input: await sharp(file)
-                    .resize(meta.width, meta.height, { fit: "fill" })
-                    .png()
-                    .toBuffer(),
-                top: 0,
-                left: 0
-            });
-        }
+    if (fs.existsSync(PANELS)) {
+        console.log("[WELCOME] Found side pannels.png");
+
+        overlays.push({
+            input: await sharp(PANELS)
+                .resize(meta.width, meta.height, {
+                    fit: "fill"
+                })
+                .png()
+                .toBuffer(),
+            top: 0,
+            left: 0
+        });
+    } else {
+        console.log("[WELCOME] WARNING: side pannels.png not found");
+    }
+
+    if (fs.existsSync(HOPE)) {
+        console.log("[WELCOME] Found hope you enjoy your stay.png");
+
+        overlays.push({
+            input: await sharp(HOPE)
+                .resize(meta.width, meta.height, {
+                    fit: "fill"
+                })
+                .png()
+                .toBuffer(),
+            top: 0,
+            left: 0
+        });
+    } else {
+        console.log("[WELCOME] WARNING: hope you enjoy your stay.png not found");
     }
 
     return sharp(BACKGROUND)
@@ -46,21 +72,53 @@ async function makeWelcomeImage() {
 }
 
 function setupWelcome(client) {
+
+    console.log("[WELCOME] Welcome system loaded.");
+
     client.on("guildMemberAdd", async (member) => {
+
+        console.log(
+            `[WELCOME] MEMBER JOINED: ${member.user.tag} (${member.id})`
+        );
+
         try {
-            if (WELCOME_CHANNEL_ID === "PUT_CHANNEL_ID_HERE") {
-                console.error("[WELCOME] Set WELCOME_CHANNEL_ID in welcome/index.js first.");
+
+            if (WELCOME_CHANNEL_ID === "YOUR_CHANNEL_ID_HERE") {
+                console.error(
+                    "[WELCOME] ERROR: You have not set WELCOME_CHANNEL_ID!"
+                );
                 return;
             }
 
-            const channel = await member.guild.channels.fetch(WELCOME_CHANNEL_ID);
+            console.log(
+                `[WELCOME] Looking for channel: ${WELCOME_CHANNEL_ID}`
+            );
 
-            if (!channel || !channel.isTextBased()) {
-                console.error("[WELCOME] The configured channel could not be found or is not a text channel.");
+            const channel = await member.guild.channels.fetch(
+                WELCOME_CHANNEL_ID
+            );
+
+            if (!channel) {
+                console.error(
+                    "[WELCOME] ERROR: Channel was not found."
+                );
+                return;
+            }
+
+            console.log(
+                `[WELCOME] Found channel: #${channel.name}`
+            );
+
+            if (!channel.isTextBased()) {
+                console.error(
+                    "[WELCOME] ERROR: Channel is not a text channel."
+                );
                 return;
             }
 
             const image = await makeWelcomeImage();
+
+            console.log("[WELCOME] Image created successfully.");
 
             const attachment = new AttachmentBuilder(image, {
                 name: "welcome.png"
@@ -70,8 +128,8 @@ function setupWelcome(client) {
                 .setColor(0x2f9e68)
                 .setTitle("Welcome!")
                 .setDescription(
-                    `Welcome ${member}!\\n` +
-                    `You are our **${member.guild.memberCount}th Member**.\\n` +
+                    `Welcome ${member}!\n` +
+                    `You are our **${member.guild.memberCount}th Member**.\n` +
                     `Please look around and talk to some of our members.`
                 )
                 .setImage("attachment://welcome.png")
@@ -82,11 +140,22 @@ function setupWelcome(client) {
                 files: [attachment]
             });
 
-            console.log(`[WELCOME] Sent welcome message for ${member.user.tag}`);
+            console.log(
+                `[WELCOME] SUCCESS! Welcome message sent for ${member.user.tag}`
+            );
+
         } catch (error) {
-            console.error("[WELCOME] Failed to send welcome message:", error);
+
+            console.error(
+                "[WELCOME] FAILED TO SEND WELCOME MESSAGE:"
+            );
+
+            console.error(error);
+
         }
     });
 }
 
-module.exports = { setupWelcome };
+module.exports = {
+    setupWelcome
+};

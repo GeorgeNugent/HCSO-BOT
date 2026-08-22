@@ -8839,7 +8839,7 @@ startDashboard({
     STRIKE_ROLE_IDS,
 });
 
-client.login(TOKEN);
-
 const { setupWelcome } = require("./welcome");
 setupWelcome(client);
+
+client.login(TOKEN);
