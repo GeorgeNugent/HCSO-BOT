@@ -1,3 +1,5 @@
+console.log("🔥🔥🔥 WELCOME FILE LOADED 🔥🔥🔥");
+
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 const sharp = require("sharp");
 const path = require("path");
