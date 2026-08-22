@@ -11,7 +11,7 @@ const PANELS = path.join(ASSETS, "side pannels.png");
 
 // Put your Discord welcome channel ID here.
 // Example: const WELCOME_CHANNEL_ID = "123456789012345678";
-const WELCOME_CHANNEL_ID = process.env.WELCOME_CHANNEL_ID || "PUT_CHANNEL_ID_HERE";
+const WELCOME_CHANNEL_ID = process.env.WELCOME_CHANNEL_ID || "1533590256354590725";
 
 async function makeWelcomeImage() {
     if (!fs.existsSync(BACKGROUND)) {
