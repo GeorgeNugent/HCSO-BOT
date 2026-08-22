@@ -5695,6 +5695,7 @@ client.on("interactionCreate", async interaction => {
                     });
                 }
             }
+            // hi baby girl
 
             // TRAINING SUB-BUTTONS
             if (interaction.customId.startsWith("dashboard_training_")) {
