@@ -158,6 +158,4 @@ function setupWelcome(client) {
     });
 }
 
-module.exports = {
-    setupWelcome
-};
+export { setupWelcome };

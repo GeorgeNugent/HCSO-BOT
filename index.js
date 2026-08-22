@@ -11,6 +11,7 @@ import { startDashboard } from "./dashboard.js";
 import { createDepartmentEmbed, getDepartmentName } from "./src/embeds/embedHandler.js";
 import { getAllDepartments, getBranding } from "./src/embeds/departmentThemes.js";
 import { handleAssignVehicle, handleMyCars, handleGiveButton, handleGiveSelect, handleRevertButton } from "./src/vehicleOwnership.js";
+import { setupWelcome } from "./welcome/index.js";
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -8839,7 +8840,5 @@ startDashboard({
     STRIKE_ROLE_IDS,
 });
 
-const { setupWelcome } = require("./welcome");
 setupWelcome(client);
-
 client.login(TOKEN);
